@@ -2,7 +2,7 @@
 
 turkanime.tv kapandıktan sonra geride bıraktığı arşivi görüntülemek için yaptığım, sunucusuz (statik) bir web uygulaması. ~6100 anime, bölüm/izleme linkleri ve AniList üzerinden çekilmiş kapak görselleriyle birlikte tek sayfalık bir viewer.
 
-**[👉 Canlı demo](https://berke-aras.github.io/turkanime-arsiv/)** *(GitHub Pages'te yayınladıktan sonra linki güncelle)*
+**[👉 Canlı demo](https://berke-aras.github.io/turkanime-arsiv/)**
 
 ## Özellikler
 
@@ -39,3 +39,7 @@ Veride bir değişiklik olursa sırayla `node scripts/build-meta.js` ve `node sc
 ## Not
 
 Bölüm linkleri farklı video sağlayıcılara (GDrive, Mp4upload, vb.) ait; bu proje sadece arşivlenmiş linkleri düzenli bir arayüzde sunar, dosyaları barındırmaz.
+
+---
+
+Special thanks to [Kerim Demirkaynak](https://github.com/KerimDemirkaynak) — turkanime.tv kapanmadan önce bu arşivi (bölüm/izleme linkleri) derleyip paylaştığı için.

@@ -10,6 +10,9 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// X-Frame-Options: SAMEORIGIN döndürdüğü doğrulanan sağlayıcılar (iframe'de açılamaz, yeni sekmede açılır).
+const NO_EMBED_PLAYERS = new Set(['DOODSTREAM', 'YADISK', 'MEDIACM', 'STREAMRUBY', 'PIXELDRAIN']);
+
 const META = window.META || {};
 const ANIME = (window.INDEX || []).map(r => {
   const baslik = r[1] || r[0]; // kaynak veride bazı başlıklar null, slug'a düş
@@ -137,6 +140,23 @@ function wireCards(container) {
 const app = document.getElementById('app');
 const searchEl = document.getElementById('search');
 const countEl = document.getElementById('count');
+
+// ---- Bölüm oynatıcı modalı (embed edilebilen linkler burada açılır) ----
+const playerModal = document.getElementById('player-modal');
+const playerFrame = document.getElementById('player-modal-frame');
+const playerNewTab = document.getElementById('player-modal-newtab');
+function openPlayerModal(url) {
+  playerFrame.src = url;
+  playerNewTab.href = url;
+  playerModal.hidden = false;
+}
+function closePlayerModal() {
+  playerModal.hidden = true;
+  playerFrame.src = 'about:blank';
+}
+document.getElementById('player-modal-close').addEventListener('click', closePlayerModal);
+document.getElementById('player-modal-backdrop').addEventListener('click', closePlayerModal);
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && !playerModal.hidden) closePlayerModal(); });
 // slug -> <script> elemanı, ekleniş sırasıyla (Map sırayı korur). Sınırsız büyümesin diye
 // en eski girişler LOADED_CAP aşılınca hem DOM'dan hem window.__TKA__'dan atılıyor.
 const loadedScripts = new Map();
@@ -313,10 +333,12 @@ async function renderDetail(slug) {
   const epHtml = episodes.map((ep, i) => `
     <div class="ep" data-i="${i}">
       <div class="ep-head"><span class="ep-arrow">▸</span>${esc(ep.ad)}<span class="meta">${ep.links.length} link</span></div>
-      <div class="ep-links">${ep.links.map(l => l.tip === 'mask'
-        ? `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${esc(l.player)} <span class="fs">${esc(l.fansub || '')}</span></span>`
-        : `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.player)} <span class="fs">${esc(l.fansub || '')}</span></a>`
-      ).join('')}
+      <div class="ep-links">${ep.links.map(l => {
+        const label = `${esc(l.player)} <span class="fs">${esc(l.fansub || '')}</span>`;
+        if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
+        if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`;
+        return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
+      }).join('')}
       </div>
     </div>`).join('');
 
@@ -341,6 +363,10 @@ async function renderDetail(slug) {
     h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
   });
 
+  app.querySelectorAll('[data-embed-url]').forEach(b => {
+    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl));
+  });
+
   document.getElementById('detail-fav').addEventListener('click', () => {
     toggleFav(slug);
     const b = document.getElementById('detail-fav');
@@ -360,8 +386,29 @@ async function renderDetail(slug) {
   }
 }
 
+function renderLegal() {
+  app.innerHTML = `
+    <a class="back" href="#/">&larr; Listeye dön</a>
+    <div class="legal">
+      <h2>Gizlilik &amp; Yasal Bilgilendirme</h2>
+
+      <h3>KVKK / Gizlilik</h3>
+      <p>Bu site sunucusuz (statik) çalışır: herhangi bir kullanıcı hesabı, form ya da sunucu tarafı veri kaydı yoktur. Favori animeler ve "son bakılanlar" listesi yalnızca kendi cihazındaki tarayıcı belleğinde (localStorage) tutulur, hiçbir yere gönderilmez; tarayıcı verilerini temizlediğinde silinir. Site kendi adına çerez kullanmaz ve ziyaretçi takibi/analitik yapmaz. Bu nedenlerle 6698 sayılı KVKK kapsamında işlenen bir kişisel veri bulunmamaktadır.</p>
+      <p>Anime kapak görselleri <a href="https://anilist.co" target="_blank" rel="noopener noreferrer">AniList</a>'ten, bölüm oynatıcıları ise ilgili video barındırma sitelerinden (embed) yüklenir; bu üçüncü taraf servisler kendi gizlilik politikalarına ve çerezlerine tabidir, bu sitenin sorumluluğunda değildir.</p>
+
+      <h3>Telif Hakkı</h3>
+      <p>Bu site hiçbir video dosyasını kendi sunucusunda barındırmaz. Yalnızca, artık kapanmış olan turkanime.tv'nin arşivinde bulunan ve halka açık üçüncü taraf video servislerine (GDrive, çeşitli embed sağlayıcıları vb.) ait bağlantıları bir araya getiren bir dizin/arşivdir. Tüm video içeriklerinin ve çevirilerin telif hakları ilgili hak sahiplerine (yapımcı stüdyo, dağıtımcı, fansub grupları) aittir.</p>
+
+      <h3>Kaldırma Talebi</h3>
+      <p>Bir içeriğin veya bağlantının hak sahibiysen ve kaldırılmasını istiyorsan, lütfen
+        <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">GitHub üzerinden bir issue açarak</a>
+        ilgili anime/bölüm/link bilgisini ilet; talep incelenip en kısa sürede kaldırılır.</p>
+    </div>`;
+}
+
 function route() {
   const hash = location.hash || '#/';
+  if (hash === '#/yasal') { renderLegal(); return; }
   const m = hash.match(/^#\/anime\/(.+)$/);
   if (m) renderDetail(decodeURIComponent(m[1]));
   else renderList();

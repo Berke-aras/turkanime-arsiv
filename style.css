@@ -11,6 +11,7 @@ body{margin:0;background:
 
 header{position:sticky;top:0;z-index:5;display:flex;gap:14px;align-items:center;padding:14px 22px;
   background:rgba(24,27,34,.75);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.home-link{text-decoration:none;cursor:pointer}
 header h1{font-size:17px;margin:0;white-space:nowrap;background:linear-gradient(90deg,var(--accent),var(--accent2));
   -webkit-background-clip:text;background-clip:text;color:transparent}
 #search{flex:1;max-width:420px;padding:9px 14px;border-radius:9px;border:1px solid var(--border);
@@ -20,7 +21,9 @@ header h1{font-size:17px;margin:0;white-space:nowrap;background:linear-gradient(
   font-size:13px;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s}
 #random-btn:hover{border-color:var(--accent);background:rgba(108,141,255,.12)}
 .count{color:var(--muted);font-size:13px;white-space:nowrap}
-#gh-link{color:var(--muted);display:flex;align-items:center;margin-left:auto;transition:color .15s}
+#legal-link{color:var(--muted);font-size:12.5px;text-decoration:none;white-space:nowrap;margin-left:auto;transition:color .15s}
+#legal-link:hover{color:var(--text);text-decoration:underline}
+#gh-link{color:var(--muted);display:flex;align-items:center;transition:color .15s}
 #gh-link:hover{color:var(--text)}
 main{padding:24px 20px 60px;max-width:1200px;margin:0 auto}
 
@@ -94,7 +97,7 @@ main{padding:24px 20px 60px;max-width:1200px;margin:0 auto}
 .ep.open .ep-arrow{transform:rotate(90deg)}
 .ep-links{padding:0 14px 14px 34px;display:none;flex-wrap:wrap;gap:7px}
 .ep.open .ep-links{display:flex}
-.link-btn{font-size:12px;padding:6px 11px;border-radius:20px;border:1px solid var(--border);background:var(--panel2);
+.link-btn{font:inherit;font-size:12px;padding:6px 11px;border-radius:20px;border:1px solid var(--border);background:var(--panel2);
   color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:border-color .15s,background .15s}
 .link-btn:hover{border-color:var(--accent);background:rgba(108,141,255,.12)}
 .link-btn.mask{color:var(--bad);cursor:not-allowed;text-decoration:line-through;opacity:.6}
@@ -102,6 +105,30 @@ main{padding:24px 20px 60px;max-width:1200px;margin:0 auto}
 .link-btn .fs{color:var(--muted);font-weight:400}
 
 .empty{color:var(--muted);padding:50px 20px;text-align:center;font-size:14px}
+
+.legal{max-width:720px}
+.legal h2{font-size:22px;margin:0 0 18px}
+.legal h3{font-size:15px;color:var(--accent2);margin:22px 0 8px}
+.legal p{color:var(--muted);font-size:13.5px;line-height:1.7;margin:0 0 8px}
+.legal a{color:var(--accent)}
+
+footer{max-width:1200px;margin:0 auto;padding:10px 20px 40px;text-align:center;color:var(--muted);font-size:12.5px}
+footer a{color:var(--muted);text-decoration:none}
+footer a:hover{color:var(--text);text-decoration:underline}
+.footer-sep{margin:0 8px;opacity:.5}
+
+#player-modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+#player-modal[hidden]{display:none}
+#player-modal-backdrop{position:absolute;inset:0;background:rgba(5,6,10,.85);backdrop-filter:blur(2px)}
+#player-modal-box{position:relative;width:100%;max-width:960px;aspect-ratio:16/9;background:#000;border-radius:12px;
+  overflow:hidden;box-shadow:0 20px 60px -20px rgba(0,0,0,.6);display:flex;flex-direction:column}
+#player-modal-bar{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:8px 12px;
+  background:var(--panel);border-bottom:1px solid var(--border);font-size:12.5px;flex:none}
+.player-modal-hint{color:var(--muted);margin-right:auto}
+#player-modal-newtab{padding:5px 10px;font-size:12px}
+#player-modal-close{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;padding:2px 6px}
+#player-modal-close:hover{color:var(--text)}
+#player-modal-frame{flex:1;border:0;width:100%}
 
 .pager{display:flex;justify-content:center;align-items:center;gap:18px;margin:26px 0 10px;color:var(--muted);font-size:13px}
 .pager button{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;transition:border-color .15s}
@@ -123,6 +150,7 @@ main{padding:24px 20px 60px;max-width:1200px;margin:0 auto}
   header{flex-wrap:wrap;padding:10px 14px}
   header h1{font-size:15px}
   #random-btn{font-size:12px;padding:7px 10px}
+  #legal-link{font-size:11px}
   .count{margin-left:auto}
   #search{order:3;flex-basis:100%;max-width:none}
   .featured{flex-direction:column;align-items:flex-start}
