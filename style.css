@@ -21,7 +21,8 @@ header h1{font-size:17px;margin:0;white-space:nowrap;background:linear-gradient(
   font-size:13px;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s}
 #random-btn:hover{border-color:var(--accent);background:rgba(108,141,255,.12)}
 .count{color:var(--muted);font-size:13px;white-space:nowrap}
-#legal-link{color:var(--muted);font-size:12.5px;text-decoration:none;white-space:nowrap;margin-left:auto;transition:color .15s}
+.header-links{display:flex;align-items:center;gap:14px;margin-left:auto}
+#legal-link{color:var(--muted);font-size:12.5px;text-decoration:none;white-space:nowrap;transition:color .15s}
 #legal-link:hover{color:var(--text);text-decoration:underline}
 #gh-link,#ig-link{color:var(--muted);display:flex;align-items:center;transition:color .15s}
 #gh-link:hover,#ig-link:hover{color:var(--text)}
@@ -152,9 +153,9 @@ footer a:hover{color:var(--text);text-decoration:underline}
   header h1{font-size:15px}
   #random-btn{font-size:12px;padding:7px 10px}
   #legal-link{font-size:11px}
-  #ig-link span{display:none}
   .count{margin-left:auto;font-size:11px}
   #search{order:3;flex-basis:100%;max-width:none}
+  .header-links{order:4;flex-basis:100%;justify-content:flex-end;margin-left:0;gap:12px}
   .featured{flex-direction:column;align-items:flex-start}
   .poster.featured-poster{width:100px}
 }
