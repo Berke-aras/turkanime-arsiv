@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://berke-aras.github.io/turkanime-arsiv/sitemap.xml

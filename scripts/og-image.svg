@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#141726"/>
+      <stop offset="0.55" stop-color="#181b26"/>
+      <stop offset="1" stop-color="#1e1730"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6c8dff"/>
+      <stop offset="1" stop-color="#8f6cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="90" y="205" width="150" height="150" rx="32" fill="url(#brand)"/>
+  <text x="165" y="308" font-size="86" font-family="system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-weight="800" fill="white" text-anchor="middle">T</text>
+  <text x="280" y="290" font-size="62" font-family="system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-weight="800" fill="#e9ebf2">TürkAnime Arşivi</text>
+  <text x="280" y="345" font-size="27" font-family="system-ui,-apple-system,Segoe UI,Arial,sans-serif" fill="#8b90a0">turkanime.tv kapandıktan sonra geride kalan arşiv</text>
+  <text x="280" y="383" font-size="27" font-family="system-ui,-apple-system,Segoe UI,Arial,sans-serif" fill="#8b90a0">~6100 anime · bölüm ve izleme linkleriyle birlikte</text>
+</svg>

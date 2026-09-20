@@ -12,12 +12,24 @@ function esc(s) {
 
 // X-Frame-Options: SAMEORIGIN döndürdüğü doğrulanan sağlayıcılar (iframe'de açılamaz, yeni sekmede açılır).
 const NO_EMBED_PLAYERS = new Set(['DOODSTREAM', 'YADISK', 'MEDIACM', 'STREAMRUBY', 'PIXELDRAIN']);
+// Bilinen büyük/kurumsal platformlar (Google, Mail.ru, VK/OK.ru, Dailymotion): genelde daha az
+// popup/yönlendirme reklamı çıkarıyorlar, bu yüzden buton sırasında öne alınıyorlar. Bu ölçülmüş
+// bir veri değil, genel bilinirliğe dayalı bir tahmin — kesin garanti değildir.
+const PREFERRED_PLAYERS = ['GDRIVE', 'MAIL', 'OK.RU', 'ODNOKLASSNIKI', 'DAILYMOTION', 'VK'];
+function playerRank(player) {
+  const i = PREFERRED_PLAYERS.indexOf(player);
+  return i === -1 ? PREFERRED_PLAYERS.length : i;
+}
 
-function epLinksHtml(ep) {
-  // çalışmayan (mask) linkler taramayı yavaşlatmasın diye listenin sonuna alınıyor.
-  const sorted = [...ep.links].sort((a, b) => (a.tip === 'mask') - (b.tip === 'mask'));
+// fansub bilgisi çağıran taraftan (fansub grubu zaten seçilmiş) geldiği için buton üstünde tekrar edilmiyor.
+function epLinksHtml(links) {
+  // çalışmayan (mask) linkler sona, bilinen güvenilir sağlayıcılar öne alınıyor.
+  const sorted = [...links].sort((a, b) => {
+    if ((a.tip === 'mask') !== (b.tip === 'mask')) return (a.tip === 'mask') - (b.tip === 'mask');
+    return playerRank(a.player) - playerRank(b.player);
+  });
   return sorted.map(l => {
-    const label = `${esc(l.player)} <span class="fs">${esc(l.fansub || '')}</span>`;
+    const label = esc(l.player);
     if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
     if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`;
     return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
@@ -38,6 +50,12 @@ const ANIME = (window.INDEX || []).map(r => {
 
 const KATEGORILER = [...new Set(ANIME.map(a => a.kategori).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
 const TURLER = [...new Set(ANIME.flatMap(a => a.tur))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr'));
+const TOPLAM_BOLUM = ANIME.reduce((s, a) => s + (a.eps || 0), 0);
+const TOPLAM_LINK = ANIME.reduce((s, a) => s + (a.urls || 0), 0);
+function statsStripHtml() {
+  const stat = (num, label) => `<div class="stat"><span class="stat-num">${num.toLocaleString('tr-TR')}</span><span class="stat-label">${label}</span></div>`;
+  return `<div class="stats-strip">${stat(ANIME.length, 'anime')}${stat(TOPLAM_BOLUM, 'bölüm')}${stat(TOPLAM_LINK, 'izleme linki')}${stat(TURLER.length, 'tür')}</div>`;
+}
 
 // Gün boyunca aynı kalsın diye tarihi tohum olarak kullanan basit seçim (puanı 7 üstü animelerden).
 const SFW_EXCLUDED_TUR = new Set(['Ecchi', 'Hentai']);
@@ -156,7 +174,6 @@ function wireCards(container) {
 
 const app = document.getElementById('app');
 const searchEl = document.getElementById('search');
-const countEl = document.getElementById('count');
 
 // ---- Bölüm oynatıcı modalı (embed edilebilen linkler burada açılır) ----
 const playerModal = document.getElementById('player-modal');
@@ -165,10 +182,16 @@ const playerNewTab = document.getElementById('player-modal-newtab');
 const playerPrevBtn = document.getElementById('player-modal-prev');
 const playerNextBtn = document.getElementById('player-modal-next');
 const playerEpLabel = document.getElementById('player-modal-eplabel');
+const playerLoading = document.getElementById('player-modal-loading');
+const playerLoadingHint = document.getElementById('player-modal-loading-hint');
 // açık olan detay sayfasının bölümleri; modaldaki önceki/sonraki gezinmesi bunu kullanır.
 let currentEpisodes = [];
 let currentEpIndex = null;
+let playerLoadTimer = null;
 function openPlayerModal(url, epIndex = null) {
+  clearTimeout(playerLoadTimer);
+  playerLoadingHint.hidden = true;
+  playerLoading.hidden = false;
   playerFrame.src = url;
   playerNewTab.href = url;
   playerModal.hidden = false;
@@ -177,10 +200,14 @@ function openPlayerModal(url, epIndex = null) {
   playerEpLabel.textContent = ep ? `${epIndex + 1} / ${currentEpisodes.length}` : '';
   playerPrevBtn.disabled = epIndex == null || epIndex <= 0;
   playerNextBtn.disabled = epIndex == null || epIndex >= currentEpisodes.length - 1;
+  // bazı sağlayıcılar sandbox içinde hiç yüklenmeyebilir; uzun sürerse "ayrı sayfada aç"ı hatırlat.
+  playerLoadTimer = setTimeout(() => { playerLoadingHint.hidden = false; }, 8000);
 }
+playerFrame.addEventListener('load', () => { playerLoading.hidden = true; clearTimeout(playerLoadTimer); });
 function closePlayerModal() {
   playerModal.hidden = true;
   playerFrame.src = 'about:blank';
+  clearTimeout(playerLoadTimer);
 }
 // modalı kapatıp ilgili bölümü listede açar; hangi linke tıklanacağına kullanıcı kendi karar versin diye
 // otomatik bir link seçip oynatmıyoruz.
@@ -191,16 +218,47 @@ function jumpToEpisode(i) {
   openEpisode(epEl);
   epEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
-// bölümü açar, linkleri ilk kez açılıyorsa doldurur (renderDetail'deki ep-head handler'ıyla paylaşılır).
+function wireEmbedButtons(container, epIndex) {
+  container.querySelectorAll('[data-embed-url]').forEach(b => {
+    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, epIndex));
+  });
+}
+// bölümü açar; birden fazla fansub varsa önce fansub seçtirir, playerlar seçimden sonra gösterilir
+// (renderDetail'deki ep-head handler'ıyla paylaşılır).
 function openEpisode(epEl) {
   epEl.classList.add('open');
   const linksEl = epEl.querySelector('.ep-links');
   if (linksEl.dataset.filled) return;
-  const i = Number(epEl.dataset.i);
-  linksEl.innerHTML = epLinksHtml(currentEpisodes[i]);
   linksEl.dataset.filled = '1';
-  linksEl.querySelectorAll('[data-embed-url]').forEach(b => {
-    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, i));
+  const i = Number(epEl.dataset.i);
+  const links = currentEpisodes[i].links;
+
+  const groups = new Map();
+  links.forEach(l => {
+    const name = l.fansub || 'Bilinmeyen';
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(l);
+  });
+
+  if (groups.size <= 1) {
+    linksEl.innerHTML = `<div class="fansub-players">${epLinksHtml(links)}</div>`;
+    wireEmbedButtons(linksEl, i);
+    return;
+  }
+
+  const chipsHtml = [...groups.entries()].map(([name, groupLinks]) => {
+    const empty = groupLinks.every(l => l.tip === 'mask');
+    return `<button type="button" class="fansub-chip${empty ? ' fansub-chip-empty' : ''}" data-fansub="${esc(name)}">${esc(name)}<span class="meta">${groupLinks.length}</span></button>`;
+  }).join('');
+  linksEl.innerHTML = `<div class="fansub-chips">${chipsHtml}</div><div class="fansub-players"></div>`;
+  const playersEl = linksEl.querySelector('.fansub-players');
+  linksEl.querySelectorAll('.fansub-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      linksEl.querySelectorAll('.fansub-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      playersEl.innerHTML = epLinksHtml(groups.get(chip.dataset.fansub));
+      wireEmbedButtons(playersEl, i);
+    });
   });
 }
 document.getElementById('player-modal-close').addEventListener('click', closePlayerModal);
@@ -255,9 +313,10 @@ function filterAndSort() {
   return scored.map(x => x.a);
 }
 
-function filterBarHtml() {
+function filterBarHtml(count) {
   return `
     <div class="filterbar">
+      <span class="filter-count">${count.toLocaleString('tr-TR')} / ${ANIME.length.toLocaleString('tr-TR')} anime</span>
       <select id="f-kategori" title="Tür (TV/Film/OVA)">
         <option value="">Tüm kategoriler</option>
         ${KATEGORILER.map(k => `<option value="${esc(k)}" ${state.kategori === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}
@@ -288,9 +347,9 @@ function renderList() {
   state.page = Math.min(Math.max(1, state.page), totalPages);
   const pageItems = items.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
 
-  countEl.textContent = `${items.length} / ${ANIME.length} anime`;
-
   const showHome = !state.query && !state.kategori && !state.tur && !state.favOnly && state.page === 1;
+
+  const statsHtml = showHome ? statsStripHtml() : '';
 
   let featuredHtml = '';
   if (showHome) {
@@ -312,13 +371,13 @@ function renderList() {
   const showRecent = showHome && recent.length;
   let recentHtml = '';
   if (showRecent) {
-    const recentItems = recent.map(s => ANIME.find(a => a.slug === s)).filter(Boolean).slice(0, 12);
+    const recentItems = recent.map(s => ANIME.find(a => a.slug === s)).filter(Boolean).slice(0, 6);
     if (recentItems.length) {
-      recentHtml = `<div class="recent-row"><h2 class="section-title">Son bakılanlar</h2><div class="grid">${recentItems.map(cardHtml).join('')}</div></div>`;
+      recentHtml = `<div class="recent-row"><h2 class="section-title">Son bakılanlar</h2><div class="grid recent-grid">${recentItems.map(cardHtml).join('')}</div></div>`;
     }
   }
 
-  const bar = filterBarHtml();
+  const bar = filterBarHtml(items.length);
 
   if (!items.length) {
     app.innerHTML = `${bar}<div class="empty">Sonuç bulunamadı.</div>`;
@@ -333,7 +392,7 @@ function renderList() {
       <button id="next" ${state.page >= totalPages ? 'disabled' : ''}>Sonraki &rarr;</button>
     </div>`;
 
-  app.innerHTML = `${featuredHtml}${bar}${recentHtml}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
+  app.innerHTML = `${statsHtml}${featuredHtml}${bar}${recentHtml}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
   wireFilterBar();
   wireCards(app);
   const featuredEl = app.querySelector('.featured');

@@ -9,18 +9,40 @@
 <meta property="og:description" content="turkanime.tv kapandıktan sonra geride kalan arşiv: ~6100 anime, bölüm ve izleme linkleriyle birlikte.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://berke-aras.github.io/turkanime-arsiv/">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://berke-aras.github.io/turkanime-arsiv/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="tr_TR">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="TürkAnime Arşivi">
 <meta name="twitter:description" content="turkanime.tv kapandıktan sonra geride kalan arşiv: ~6100 anime, bölüm ve izleme linkleriyle birlikte.">
+<meta name="twitter:image" content="https://berke-aras.github.io/turkanime-arsiv/og-image.png">
+<link rel="canonical" href="https://berke-aras.github.io/turkanime-arsiv/">
+<meta name="theme-color" content="#181b22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TürkAnime Arşivi">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236c8dff'/%3E%3Cstop offset='1' stop-color='%238f6cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='22' fill='url(%23g)'/%3E%3Ctext x='50' y='70' font-size='58' font-family='system-ui,sans-serif' font-weight='800' fill='white' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "TürkAnime Arşivi",
+  "url": "https://berke-aras.github.io/turkanime-arsiv/",
+  "description": "turkanime.tv kapandıktan sonra geride kalan arşiv: ~6100 anime, bölüm ve izleme linkleriyle birlikte.",
+  "inLanguage": "tr"
+}
+</script>
 </head>
 <body>
 <header>
   <a href="#/" class="home-link"><h1>TürkAnime Arşivi</h1></a>
   <input id="search" type="search" placeholder="Anime ara... (örn. naruto)" autocomplete="off">
   <button id="random-btn" type="button" title="Rastgele anime">🎲 Rastgele</button>
-  <span id="count" class="count"></span>
   <div class="header-links">
     <a id="legal-link" href="#/yasal">Gizlilik &amp; Yasal</a>
     <a id="gh-link" href="https://github.com/Berke-aras" target="_blank" rel="noopener noreferrer" title="GitHub" aria-label="GitHub">
@@ -46,14 +68,25 @@
   <div id="player-modal-backdrop"></div>
   <div id="player-modal-box">
     <div id="player-modal-bar">
-      <span class="player-modal-hint">Yüklenmediyse:</span>
-      <button id="player-modal-prev" type="button" class="link-btn" title="Önceki bölüm">◂ Önceki</button>
-      <span id="player-modal-eplabel" class="player-modal-eplabel"></span>
-      <button id="player-modal-next" type="button" class="link-btn" title="Sonraki bölüm">Sonraki ▸</button>
-      <a id="player-modal-newtab" class="link-btn" href="#" target="_blank" rel="noopener noreferrer">Ayrı sayfada aç ↗</a>
-      <button id="player-modal-close" type="button" aria-label="Kapat">✕</button>
+      <span class="player-modal-hint">Yüklenmediyse ↗</span>
+      <div class="player-modal-center">
+        <button id="player-modal-prev" type="button" class="link-btn" title="Önceki bölüm">◂ Önceki</button>
+        <span id="player-modal-eplabel" class="player-modal-eplabel"></span>
+        <button id="player-modal-next" type="button" class="link-btn" title="Sonraki bölüm">Sonraki ▸</button>
+      </div>
+      <div class="player-modal-right">
+        <a id="player-modal-newtab" class="link-btn player-modal-cta" href="#" target="_blank" rel="noopener noreferrer">Ayrı sayfada aç</a>
+        <button id="player-modal-close" type="button" aria-label="Kapat">✕</button>
+      </div>
     </div>
-    <iframe id="player-modal-frame" src="" allow="autoplay; fullscreen" allowfullscreen loading="lazy"></iframe>
+    <div id="player-modal-viewport">
+      <div id="player-modal-loading">
+        <div class="spinner"></div>
+        <span id="player-modal-loading-hint" hidden>Yüklenmiyor mu? Yukarıdan "Ayrı sayfada aç"ı dene.</span>
+      </div>
+      <iframe id="player-modal-frame" src="" allow="autoplay; fullscreen" allowfullscreen loading="lazy"
+        sandbox="allow-scripts allow-same-origin allow-presentation allow-orientation-lock allow-forms allow-top-navigation-by-user-activation"></iframe>
+    </div>
   </div>
 </div>
 
