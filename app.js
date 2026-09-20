@@ -13,6 +13,15 @@ function esc(s) {
 // X-Frame-Options: SAMEORIGIN döndürdüğü doğrulanan sağlayıcılar (iframe'de açılamaz, yeni sekmede açılır).
 const NO_EMBED_PLAYERS = new Set(['DOODSTREAM', 'YADISK', 'MEDIACM', 'STREAMRUBY', 'PIXELDRAIN']);
 
+function epLinksHtml(ep) {
+  return ep.links.map(l => {
+    const label = `${esc(l.player)} <span class="fs">${esc(l.fansub || '')}</span>`;
+    if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
+    if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`;
+    return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
+  }).join('');
+}
+
 const META = window.META || {};
 const ANIME = (window.INDEX || []).map(r => {
   const baslik = r[1] || r[0]; // kaynak veride bazı başlıklar null, slug'a düş
@@ -38,8 +47,9 @@ function animeOfDay() {
   return pool[h % pool.length];
 }
 function pickRandomAnime() {
-  if (!ANIME.length) return;
-  location.hash = '#/anime/' + ANIME[Math.floor(Math.random() * ANIME.length)].slug;
+  const pool = filterAndSort();
+  if (!pool.length) return;
+  location.hash = '#/anime/' + pool[Math.floor(Math.random() * pool.length)].slug;
 }
 
 // Levenshtein mesafesi: yazım hatalarına toleranslı arama için.
@@ -113,7 +123,7 @@ function cardHtml(a) {
   return `
     <div class="card" data-slug="${a.slug}" tabindex="0" role="button">
       ${posterPlaceholder(a)}
-      <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori">${isFav(a.slug) ? '★' : '☆'}</button>
+      <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${isFav(a.slug) ? 'Favorilerden çıkar' : 'Favorilere ekle'}">${isFav(a.slug) ? '★' : '☆'}</button>
       <h3>${esc(a.baslik)}</h3>
       <div class="meta">${a.eps} bölüm · ${a.urls} link${a.puan ? ` · ⭐${a.puan}` : ''}</div>
       <div class="badges">${a.top.map(p => `<span class="badge">${esc(p)}</span>`).join('')}</div>
@@ -133,6 +143,7 @@ function wireCards(container) {
       toggleFav(b.dataset.fav);
       b.classList.toggle('active');
       b.textContent = isFav(b.dataset.fav) ? '★' : '☆';
+      b.setAttribute('aria-label', isFav(b.dataset.fav) ? 'Favorilerden çıkar' : 'Favorilere ekle');
     });
   });
 }
@@ -294,7 +305,7 @@ function renderList() {
   document.getElementById('next').addEventListener('click', () => { state.page++; renderList(); window.scrollTo(0, 0); });
 }
 
-async function renderDetail(slug) {
+async function renderDetail(slug, token) {
   const meta = ANIME.find(a => a.slug === slug);
   app.innerHTML = `
     <div class="skel-detail">
@@ -309,8 +320,10 @@ async function renderDetail(slug) {
     const r = await fetch(`kaynak/animeler/${slug}/info.json`);
     if (r.ok) info = await r.json();
   } catch (e) { /* bilgi paneli olmadan devam */ }
+  if (token !== routeToken) return; // kullanıcı beklerken başka rotaya geçti, eski yanıtı çizme
 
   await loadScript(slug).catch(() => {});
+  if (token !== routeToken) return;
   const episodes = (window.__TKA__ && window.__TKA__[slug]) || [];
 
   // özette gelen <br /> gibi ham HTML etiketlerini gerçek satır sonuna çevir
@@ -330,16 +343,12 @@ async function renderDetail(slug) {
       ${info['Özet'] ? `<p class="info-ozet">${escBr(info['Özet'])}</p>` : ''}
     </div>` : '';
 
+  // link butonları binlerce olabildiğinden (ör. One Piece: 1166 bölüm/~27000 link),
+  // baştan basmak yerine bölüm ilk açıldığında dolduruluyor (bkz. aşağıdaki ep-head handler'ı).
   const epHtml = episodes.map((ep, i) => `
     <div class="ep" data-i="${i}">
       <div class="ep-head"><span class="ep-arrow">▸</span>${esc(ep.ad)}<span class="meta">${ep.links.length} link</span></div>
-      <div class="ep-links">${ep.links.map(l => {
-        const label = `${esc(l.player)} <span class="fs">${esc(l.fansub || '')}</span>`;
-        if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
-        if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`;
-        return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
-      }).join('')}
-      </div>
+      <div class="ep-links"></div>
     </div>`).join('');
 
   const titleObj = { slug, baslik: meta ? meta.baslik : slug, poster: meta ? meta.poster : null };
@@ -350,7 +359,7 @@ async function renderDetail(slug) {
       <div class="detail-head">
         ${posterPlaceholder(titleObj).replace('class="poster', 'class="detail-poster poster')}
         <div>
-          <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori">${isFav(slug) ? '★' : '☆'}</button></h2>
+          <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${isFav(slug) ? 'Favorilerden çıkar' : 'Favorilere ekle'}">${isFav(slug) ? '★' : '☆'}</button></h2>
           <div class="sub">${episodes.length} bölüm arşivlendi</div>
         </div>
       </div>
@@ -360,11 +369,18 @@ async function renderDetail(slug) {
     </div>`;
 
   app.querySelectorAll('.ep-head').forEach(h => {
-    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
-  });
-
-  app.querySelectorAll('[data-embed-url]').forEach(b => {
-    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl));
+    h.addEventListener('click', () => {
+      const epEl = h.parentElement;
+      epEl.classList.toggle('open');
+      const linksEl = epEl.querySelector('.ep-links');
+      if (epEl.classList.contains('open') && !linksEl.dataset.filled) {
+        linksEl.innerHTML = epLinksHtml(episodes[Number(epEl.dataset.i)]);
+        linksEl.dataset.filled = '1';
+        linksEl.querySelectorAll('[data-embed-url]').forEach(b => {
+          b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl));
+        });
+      }
+    });
   });
 
   document.getElementById('detail-fav').addEventListener('click', () => {
@@ -372,6 +388,7 @@ async function renderDetail(slug) {
     const b = document.getElementById('detail-fav');
     b.classList.toggle('active');
     b.textContent = isFav(slug) ? '★' : '☆';
+    b.setAttribute('aria-label', isFav(slug) ? 'Favorilerden çıkar' : 'Favorilere ekle');
   });
 
   const epSearchEl = document.getElementById('ep-search');
@@ -393,7 +410,8 @@ function renderLegal() {
       <h2>Gizlilik &amp; Yasal Bilgilendirme</h2>
 
       <h3>KVKK / Gizlilik</h3>
-      <p>Bu site sunucusuz (statik) çalışır: herhangi bir kullanıcı hesabı, form ya da sunucu tarafı veri kaydı yoktur. Favori animeler ve "son bakılanlar" listesi yalnızca kendi cihazındaki tarayıcı belleğinde (localStorage) tutulur, hiçbir yere gönderilmez; tarayıcı verilerini temizlediğinde silinir. Site kendi adına çerez kullanmaz ve ziyaretçi takibi/analitik yapmaz. Bu nedenlerle 6698 sayılı KVKK kapsamında işlenen bir kişisel veri bulunmamaktadır.</p>
+      <p>Bu site sunucusuz (statik) çalışır: herhangi bir kullanıcı hesabı, form ya da sunucu tarafı veri kaydı yoktur. Favori animeler ve "son bakılanlar" listesi yalnızca kendi cihazındaki tarayıcı belleğinde (localStorage) tutulur, hiçbir yere gönderilmez; tarayıcı verilerini temizlediğinde silinir. Site kendi adına çerez kullanmaz.</p>
+      <p>Kaç kişinin siteyi, hangi sayfadan/bağlantıdan girip hangi bölümlere baktığını görebilmek için <a href="https://www.goatcounter.com/" target="_blank" rel="noopener noreferrer">GoatCounter</a> adlı, çerez kullanmayan bir ziyaretçi sayacı kullanılır. Bu sayaç görüntülenen sayfa, yönlendiren site/bağlantı, tarayıcı-işletim sistemi türü ve IP adresinden türetilen kabaca ülke bilgisini toplar; IP adresini kalıcı saklamaz ve seni diğer ziyaretçilerden ayırt edip profil çıkaracak bir kimlik kullanmaz. Sonuçlar yalnızca toplu/istatistiksel sayılar (günlük, haftalık, aylık, tüm zamanlar) olarak görüntülenir. Ayrıntı için <a href="https://www.goatcounter.com/privacy" target="_blank" rel="noopener noreferrer">GoatCounter'ın gizlilik politikası</a>na bakabilirsin. Bu nedenlerle 6698 sayılı KVKK kapsamında kimliği belirli veya belirlenebilir bir kişiyle ilişkilendirilen veri işlenmemektedir.</p>
       <p>Anime kapak görselleri <a href="https://anilist.co" target="_blank" rel="noopener noreferrer">AniList</a>'ten, bölüm oynatıcıları ise ilgili video barındırma sitelerinden (embed) yüklenir; bu üçüncü taraf servisler kendi gizlilik politikalarına ve çerezlerine tabidir, bu sitenin sorumluluğunda değildir.</p>
 
       <h3>Telif Hakkı</h3>
@@ -406,11 +424,13 @@ function renderLegal() {
     </div>`;
 }
 
+let routeToken = 0;
 function route() {
+  const token = ++routeToken;
   const hash = location.hash || '#/';
   if (hash === '#/yasal') { renderLegal(); return; }
   const m = hash.match(/^#\/anime\/(.+)$/);
-  if (m) renderDetail(decodeURIComponent(m[1]));
+  if (m) renderDetail(decodeURIComponent(m[1]), token);
   else renderList();
 }
 
