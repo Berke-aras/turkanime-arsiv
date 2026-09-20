@@ -123,7 +123,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
 #player-modal-backdrop{position:absolute;inset:0;background:rgba(5,6,10,.85);backdrop-filter:blur(2px)}
 #player-modal-box{position:relative;width:100%;max-width:960px;aspect-ratio:16/9;background:#000;border-radius:12px;
   overflow:hidden;box-shadow:0 20px 60px -20px rgba(0,0,0,.6);display:flex;flex-direction:column}
-#player-modal-bar{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:8px 12px;
+#player-modal-bar{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px 10px;padding:8px 12px;
   background:var(--panel);border-bottom:1px solid var(--border);font-size:12.5px;flex:none}
 .player-modal-hint{color:var(--muted);margin-right:auto}
 #player-modal-newtab{padding:5px 10px;font-size:12px}
@@ -131,7 +131,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
 #player-modal-close:hover{color:var(--text)}
 #player-modal-frame{flex:1;border:0;width:100%}
 
-.pager{display:flex;justify-content:center;align-items:center;gap:18px;margin:26px 0 10px;color:var(--muted);font-size:13px}
+.pager{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px 18px;margin:26px 0 10px;color:var(--muted);font-size:13px}
 .pager button{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);cursor:pointer;transition:border-color .15s}
 .pager button:hover:not(:disabled){border-color:var(--accent)}
 .pager button:disabled{opacity:.35;cursor:not-allowed}
@@ -148,11 +148,12 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .skel-ep{height:44px;border-radius:10px}
 
 @media (max-width:560px){
-  header{flex-wrap:wrap;padding:10px 14px}
+  header{flex-wrap:wrap;padding:10px 14px;gap:8px}
   header h1{font-size:15px}
   #random-btn{font-size:12px;padding:7px 10px}
   #legal-link{font-size:11px}
-  .count{margin-left:auto}
+  #ig-link span{display:none}
+  .count{margin-left:auto;font-size:11px}
   #search{order:3;flex-basis:100%;max-width:none}
   .featured{flex-direction:column;align-items:flex-start}
   .poster.featured-poster{width:100px}
