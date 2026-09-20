@@ -47,7 +47,8 @@ function animeOfDay() {
   return pool[h % pool.length];
 }
 function pickRandomAnime() {
-  const pool = filterAndSort();
+  const filtered = filterAndSort();
+  const pool = filtered.length ? filtered : ANIME; // filtre sonucu boşsa yine de bir yere götür
   if (!pool.length) return;
   location.hash = '#/anime/' + pool[Math.floor(Math.random() * pool.length)].slug;
 }
@@ -99,6 +100,7 @@ function writeLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)
 
 const favs = new Set(readLS('ta_favs', []));
 const isFav = slug => favs.has(slug);
+const favLabel = slug => isFav(slug) ? 'Favorilerden çıkar' : 'Favorilere ekle';
 function toggleFav(slug) { favs.has(slug) ? favs.delete(slug) : favs.add(slug); writeLS('ta_favs', [...favs]); }
 
 let recent = readLS('ta_recent', []);
@@ -123,7 +125,7 @@ function cardHtml(a) {
   return `
     <div class="card" data-slug="${a.slug}" tabindex="0" role="button">
       ${posterPlaceholder(a)}
-      <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${isFav(a.slug) ? 'Favorilerden çıkar' : 'Favorilere ekle'}">${isFav(a.slug) ? '★' : '☆'}</button>
+      <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${favLabel(a.slug)}">${isFav(a.slug) ? '★' : '☆'}</button>
       <h3>${esc(a.baslik)}</h3>
       <div class="meta">${a.eps} bölüm · ${a.urls} link${a.puan ? ` · ⭐${a.puan}` : ''}</div>
       <div class="badges">${a.top.map(p => `<span class="badge">${esc(p)}</span>`).join('')}</div>
@@ -143,7 +145,7 @@ function wireCards(container) {
       toggleFav(b.dataset.fav);
       b.classList.toggle('active');
       b.textContent = isFav(b.dataset.fav) ? '★' : '☆';
-      b.setAttribute('aria-label', isFav(b.dataset.fav) ? 'Favorilerden çıkar' : 'Favorilere ekle');
+      b.setAttribute('aria-label', favLabel(b.dataset.fav));
     });
   });
 }
@@ -313,7 +315,6 @@ async function renderDetail(slug, token) {
       <div class="skel-lines"><div class="skel skel-line w60"></div><div class="skel skel-line w30"></div></div>
     </div>
     <div class="skel-eps">${Array.from({ length: 6 }, () => '<div class="skel skel-ep"></div>').join('')}</div>`;
-  pushRecent(slug);
 
   let info = null;
   try {
@@ -324,6 +325,7 @@ async function renderDetail(slug, token) {
 
   await loadScript(slug).catch(() => {});
   if (token !== routeToken) return;
+  pushRecent(slug); // render kesinleşmeden "son bakılanlar"a yazma
   const episodes = (window.__TKA__ && window.__TKA__[slug]) || [];
 
   // özette gelen <br /> gibi ham HTML etiketlerini gerçek satır sonuna çevir
@@ -359,7 +361,7 @@ async function renderDetail(slug, token) {
       <div class="detail-head">
         ${posterPlaceholder(titleObj).replace('class="poster', 'class="detail-poster poster')}
         <div>
-          <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${isFav(slug) ? 'Favorilerden çıkar' : 'Favorilere ekle'}">${isFav(slug) ? '★' : '☆'}</button></h2>
+          <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${favLabel(slug)}">${isFav(slug) ? '★' : '☆'}</button></h2>
           <div class="sub">${episodes.length} bölüm arşivlendi</div>
         </div>
       </div>
@@ -388,7 +390,7 @@ async function renderDetail(slug, token) {
     const b = document.getElementById('detail-fav');
     b.classList.toggle('active');
     b.textContent = isFav(slug) ? '★' : '☆';
-    b.setAttribute('aria-label', isFav(slug) ? 'Favorilerden çıkar' : 'Favorilere ekle');
+    b.setAttribute('aria-label', favLabel(slug));
   });
 
   const epSearchEl = document.getElementById('ep-search');
