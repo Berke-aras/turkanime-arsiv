@@ -14,7 +14,9 @@ function esc(s) {
 const NO_EMBED_PLAYERS = new Set(['DOODSTREAM', 'YADISK', 'MEDIACM', 'STREAMRUBY', 'PIXELDRAIN']);
 
 function epLinksHtml(ep) {
-  return ep.links.map(l => {
+  // çalışmayan (mask) linkler taramayı yavaşlatmasın diye listenin sonuna alınıyor.
+  const sorted = [...ep.links].sort((a, b) => (a.tip === 'mask') - (b.tip === 'mask'));
+  return sorted.map(l => {
     const label = `${esc(l.player)} <span class="fs">${esc(l.fansub || '')}</span>`;
     if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
     if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`;
@@ -38,8 +40,9 @@ const KATEGORILER = [...new Set(ANIME.map(a => a.kategori).filter(Boolean))].sor
 const TURLER = [...new Set(ANIME.flatMap(a => a.tur))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'tr'));
 
 // Gün boyunca aynı kalsın diye tarihi tohum olarak kullanan basit seçim (puanı 7 üstü animelerden).
+const SFW_EXCLUDED_TUR = new Set(['Ecchi', 'Hentai']);
 function animeOfDay() {
-  const pool = ANIME.filter(a => a.puan > 7);
+  const pool = ANIME.filter(a => a.puan > 7 && !a.tur.some(t => SFW_EXCLUDED_TUR.has(t)));
   if (!pool.length) return null;
   const seed = new Date().toISOString().slice(0, 10);
   let h = 0;
@@ -125,10 +128,11 @@ function cardHtml(a) {
   return `
     <div class="card" data-slug="${a.slug}" tabindex="0" role="button">
       ${posterPlaceholder(a)}
+      ${a.puan ? `<span class="rating-badge">⭐ ${a.puan}</span>` : ''}
       <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${favLabel(a.slug)}">${isFav(a.slug) ? '★' : '☆'}</button>
       <h3>${esc(a.baslik)}</h3>
-      <div class="meta">${a.eps} bölüm · ${a.urls} link${a.puan ? ` · ⭐${a.puan}` : ''}</div>
-      <div class="badges">${a.top.map(p => `<span class="badge">${esc(p)}</span>`).join('')}</div>
+      <div class="meta">${a.eps} bölüm · ${a.urls} link</div>
+      <div class="badges">${a.tur.slice(0, 3).map(t => `<span class="badge">${esc(t)}</span>`).join('')}</div>
     </div>`;
 }
 
@@ -158,17 +162,51 @@ const countEl = document.getElementById('count');
 const playerModal = document.getElementById('player-modal');
 const playerFrame = document.getElementById('player-modal-frame');
 const playerNewTab = document.getElementById('player-modal-newtab');
-function openPlayerModal(url) {
+const playerPrevBtn = document.getElementById('player-modal-prev');
+const playerNextBtn = document.getElementById('player-modal-next');
+const playerEpLabel = document.getElementById('player-modal-eplabel');
+// açık olan detay sayfasının bölümleri; modaldaki önceki/sonraki gezinmesi bunu kullanır.
+let currentEpisodes = [];
+let currentEpIndex = null;
+function openPlayerModal(url, epIndex = null) {
   playerFrame.src = url;
   playerNewTab.href = url;
   playerModal.hidden = false;
+  currentEpIndex = epIndex;
+  const ep = epIndex != null ? currentEpisodes[epIndex] : null;
+  playerEpLabel.textContent = ep ? `${epIndex + 1} / ${currentEpisodes.length}` : '';
+  playerPrevBtn.disabled = epIndex == null || epIndex <= 0;
+  playerNextBtn.disabled = epIndex == null || epIndex >= currentEpisodes.length - 1;
 }
 function closePlayerModal() {
   playerModal.hidden = true;
   playerFrame.src = 'about:blank';
 }
+// modalı kapatıp ilgili bölümü listede açar; hangi linke tıklanacağına kullanıcı kendi karar versin diye
+// otomatik bir link seçip oynatmıyoruz.
+function jumpToEpisode(i) {
+  const epEl = app.querySelector(`.ep[data-i="${i}"]`);
+  if (!epEl) return;
+  closePlayerModal();
+  openEpisode(epEl);
+  epEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+// bölümü açar, linkleri ilk kez açılıyorsa doldurur (renderDetail'deki ep-head handler'ıyla paylaşılır).
+function openEpisode(epEl) {
+  epEl.classList.add('open');
+  const linksEl = epEl.querySelector('.ep-links');
+  if (linksEl.dataset.filled) return;
+  const i = Number(epEl.dataset.i);
+  linksEl.innerHTML = epLinksHtml(currentEpisodes[i]);
+  linksEl.dataset.filled = '1';
+  linksEl.querySelectorAll('[data-embed-url]').forEach(b => {
+    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, i));
+  });
+}
 document.getElementById('player-modal-close').addEventListener('click', closePlayerModal);
 document.getElementById('player-modal-backdrop').addEventListener('click', closePlayerModal);
+playerPrevBtn.addEventListener('click', () => { if (currentEpIndex > 0) jumpToEpisode(currentEpIndex - 1); });
+playerNextBtn.addEventListener('click', () => { if (currentEpIndex < currentEpisodes.length - 1) jumpToEpisode(currentEpIndex + 1); });
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && !playerModal.hidden) closePlayerModal(); });
 // slug -> <script> elemanı, ekleniş sırasıyla (Map sırayı korur). Sınırsız büyümesin diye
 // en eski girişler LOADED_CAP aşılınca hem DOM'dan hem window.__TKA__'dan atılıyor.
@@ -265,6 +303,7 @@ function renderList() {
             <span class="badge tag-main">🌟 Günün Animesi</span>
             <h2>${esc(featured.baslik)}</h2>
             <div class="meta">${featured.eps} bölüm · ⭐${featured.puan}</div>
+            <span class="featured-cta">İzlemeye başla ▸</span>
           </div>
         </div>`;
     }
@@ -327,6 +366,7 @@ async function renderDetail(slug, token) {
   if (token !== routeToken) return;
   pushRecent(slug); // render kesinleşmeden "son bakılanlar"a yazma
   const episodes = (window.__TKA__ && window.__TKA__[slug]) || [];
+  currentEpisodes = episodes;
 
   // özette gelen <br /> gibi ham HTML etiketlerini gerçek satır sonuna çevir
   const escBr = s => esc(s).replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/\n/g, '<br>');
@@ -347,11 +387,14 @@ async function renderDetail(slug, token) {
 
   // link butonları binlerce olabildiğinden (ör. One Piece: 1166 bölüm/~27000 link),
   // baştan basmak yerine bölüm ilk açıldığında dolduruluyor (bkz. aşağıdaki ep-head handler'ı).
-  const epHtml = episodes.map((ep, i) => `
-    <div class="ep" data-i="${i}">
-      <div class="ep-head"><span class="ep-arrow">▸</span>${esc(ep.ad)}<span class="meta">${ep.links.length} link</span></div>
+  const epHtml = episodes.map((ep, i) => {
+    const empty = ep.links.every(l => l.tip === 'mask');
+    return `
+    <div class="ep${empty ? ' ep-empty' : ''}" data-i="${i}">
+      <div class="ep-head"><span class="ep-arrow">▸</span>${esc(ep.ad)}<span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span></div>
       <div class="ep-links"></div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const titleObj = { slug, baslik: meta ? meta.baslik : slug, poster: meta ? meta.poster : null };
 
@@ -373,15 +416,8 @@ async function renderDetail(slug, token) {
   app.querySelectorAll('.ep-head').forEach(h => {
     h.addEventListener('click', () => {
       const epEl = h.parentElement;
-      epEl.classList.toggle('open');
-      const linksEl = epEl.querySelector('.ep-links');
-      if (epEl.classList.contains('open') && !linksEl.dataset.filled) {
-        linksEl.innerHTML = epLinksHtml(episodes[Number(epEl.dataset.i)]);
-        linksEl.dataset.filled = '1';
-        linksEl.querySelectorAll('[data-embed-url]').forEach(b => {
-          b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl));
-        });
-      }
+      if (epEl.classList.contains('open')) { epEl.classList.remove('open'); return; }
+      openEpisode(epEl);
     });
   });
 
@@ -407,8 +443,27 @@ async function renderDetail(slug, token) {
 
 function renderLegal() {
   app.innerHTML = `
-    <a class="back" href="#/">&larr; Listeye dön</a>
+    <a class="back" href="#/">&larr; Back to list · Listeye dön</a>
     <div class="legal">
+      <div class="legal-lang">EN</div>
+      <h2>Privacy &amp; Legal Information</h2>
+
+      <h3>Privacy</h3>
+      <p>This site is fully static (serverless): there are no user accounts, forms, or server-side data storage. Your favorites and "recently viewed" list are kept only in your own browser's storage (localStorage), are never sent anywhere, and are deleted when you clear your browser data. The site itself does not use cookies.</p>
+      <p>To see how many people visit the site, and which page/link they arrived from, it uses <a href="https://www.goatcounter.com/" target="_blank" rel="noopener noreferrer">GoatCounter</a>, a cookie-free visitor counter. It collects the page viewed, the referring site/link, browser/OS type, and a rough country derived from your IP address; it does not permanently store the IP address and does not build a profile that singles you out from other visitors. Results are shown only as aggregate/statistical counts (daily, weekly, monthly, all-time). See <a href="https://www.goatcounter.com/privacy" target="_blank" rel="noopener noreferrer">GoatCounter's privacy policy</a> for details. Under Turkish law (KVKK, Law No. 6698 on the Protection of Personal Data), this means no data tied to an identified or identifiable person is processed.</p>
+      <p>Anime cover images are loaded from <a href="https://anilist.co" target="_blank" rel="noopener noreferrer">AniList</a>, and episode players are embedded from their respective video-hosting sites; these third-party services are subject to their own privacy policies and cookies, which are outside this site's control.</p>
+
+      <h3>Copyright</h3>
+      <p>This site hosts no video files of its own. It is only a directory/archive collecting links, found in the archive of the now-closed turkanime.tv, to public third-party video services (GDrive, various embed providers, etc.). All copyrights to the video content and translations belong to their respective rights holders (production studio, distributor, fansub groups).</p>
+
+      <h3>Takedown Requests</h3>
+      <p>If you are a rights holder and want something removed, please
+        <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">open an issue on GitHub</a>
+        with the relevant anime/episode/link details; the request will be reviewed and removed as soon as possible.</p>
+
+      <hr class="legal-sep">
+
+      <div class="legal-lang">TR</div>
       <h2>Gizlilik &amp; Yasal Bilgilendirme</h2>
 
       <h3>KVKK / Gizlilik</h3>
