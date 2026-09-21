@@ -42,10 +42,26 @@
 </script>
 </head>
 <body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M16 8h.01M8 8h.01M8 16h.01M16 16h.01M12 12h.01"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9z"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect width="20" height="15" x="2" y="7" rx="2"/><path d="m17 2-5 5-5-5"/></symbol>
+  <symbol id="i-clapper" viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 3.9"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.9 2.9 12 9l6.1 2.1L12 13.2 9.9 19.3 7.8 13.2 1.7 11.1 7.8 9Z"/><path d="M20 3v4"/><path d="M22 5h-4"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+</svg>
 <header>
   <a href="#/" class="home-link"><h1>TürkAnime Arşivi</h1></a>
   <div class="search-wrap"><input id="search" type="search" placeholder="Anime ara... (örn. naruto)" autocomplete="off" aria-label="Anime ara"></div>
-  <button id="random-btn" type="button" title="Rastgele anime" aria-label="Rastgele anime">🎲 <span>Rastgele</span></button>
+  <button id="random-btn" type="button" title="Rastgele anime" aria-label="Rastgele anime"><svg class="ic" aria-hidden="true"><use href="#i-dice"/></svg><span>Rastgele</span></button>
   <div class="header-links">
     <a id="legal-link" href="#/yasal">Gizlilik &amp; Yasal</a>
     <a id="gh-link" href="https://github.com/Berke-aras" target="_blank" rel="noopener noreferrer" title="GitHub" aria-label="GitHub">
@@ -60,7 +76,7 @@
 </header>
 <main id="app"><div class="grid"><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div><div class="card"><div class="skel poster"></div><div class="skel skel-line w60" style="margin-top:8px"></div><div class="skel skel-line w30" style="margin-top:6px;height:10px"></div></div></div></main>
 
-<button id="top-btn" type="button" title="Yukarı çık" aria-label="Yukarı çık">↑</button>
+<button id="top-btn" type="button" title="Yukarı çık" aria-label="Yukarı çık"><svg class="ic" aria-hidden="true"><use href="#i-arrow-up"/></svg></button>
 
 <footer>
   <a href="#/yasal">Gizlilik &amp; Yasal Bilgilendirme</a>
@@ -74,15 +90,15 @@
   <div id="player-modal-backdrop"></div>
   <div id="player-modal-box">
     <div id="player-modal-bar">
-      <span class="player-modal-hint">Yüklenmediyse ↗</span>
+      <span class="player-modal-hint">Yüklenmediyse <svg class="ic" aria-hidden="true"><use href="#i-external"/></svg></span>
       <div class="player-modal-center">
-        <button id="player-modal-prev" type="button" class="link-btn" title="Önceki bölüm">◂ Önceki</button>
+        <button id="player-modal-prev" type="button" class="link-btn" title="Önceki bölüm"><svg class="ic" aria-hidden="true"><use href="#i-chevron-left"/></svg>Önceki</button>
         <span id="player-modal-eplabel" class="player-modal-eplabel"></span>
-        <button id="player-modal-next" type="button" class="link-btn" title="Sonraki bölüm">Sonraki ▸</button>
+        <button id="player-modal-next" type="button" class="link-btn" title="Sonraki bölüm">Sonraki<svg class="ic" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
       </div>
       <div class="player-modal-right">
         <a id="player-modal-newtab" class="link-btn player-modal-cta" href="#" target="_blank" rel="noopener noreferrer">Ayrı sayfada aç</a>
-        <button id="player-modal-close" type="button" aria-label="Kapat">✕</button>
+        <button id="player-modal-close" type="button" aria-label="Kapat"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </div>
     </div>
     <div id="player-modal-viewport">
@@ -90,6 +106,7 @@
         <div class="spinner"></div>
         <span id="player-modal-loading-hint" hidden>Yüklenmiyor mu? Yukarıdan "Ayrı sayfada aç"ı dene.</span>
       </div>
+      <video id="player-modal-video" controls playsinline preload="metadata" hidden></video>
       <iframe id="player-modal-frame" src="" allow="autoplay; fullscreen" allowfullscreen loading="lazy"
         sandbox="allow-scripts allow-same-origin allow-presentation allow-orientation-lock allow-forms allow-top-navigation-by-user-activation"></iframe>
     </div>

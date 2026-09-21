@@ -9,6 +9,12 @@ function norm(s){
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+
+// Sibnet'in reklamsız oynatılması için mp4 linkini çözen küçük servis (bkz. worker/sibnet-resolver.js).
+// Boş bırakılırsa "Reklamsız" butonu hiç gösterilmez, klasik SIBNET embed'i olduğu gibi kalır.
+const SIBNET_RESOLVER = '';
+const sibnetId = url => { const m = /videoid=(\d+)/.exec(url); return m ? m[1] : null; };
 
 // X-Frame-Options: SAMEORIGIN döndürdüğü doğrulanan sağlayıcılar (iframe'de açılamaz, yeni sekmede açılır).
 const NO_EMBED_PLAYERS = new Set(['DOODSTREAM', 'YADISK', 'MEDIACM', 'STREAMRUBY', 'PIXELDRAIN']);
@@ -28,12 +34,15 @@ function epLinksHtml(links) {
     if ((a.tip === 'mask') !== (b.tip === 'mask')) return (a.tip === 'mask') - (b.tip === 'mask');
     return playerRank(a.player) - playerRank(b.player);
   });
-  return sorted.map(l => {
+  // reklamsız sibnet butonları en başa; orijinal SIBNET embed butonları aynen kalır
+  const direct = SIBNET_RESOLVER ? sorted.filter(l => l.player === 'SIBNET' && l.tip !== 'mask' && sibnetId(l.url)).map(l =>
+    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct="${sibnetId(l.url)}" title="Sibnet videosunu reklamsız oynat">${ic('zap')}SIBNET <span class="meta">reklamsız</span></button>`) : [];
+  return direct.concat(sorted.map(l => {
     const label = esc(l.player);
     if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
-    if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label} ↗</a>`;
+    if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label}${ic('external')}</a>`;
     return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
-  }).join('');
+  })).join('');
 }
 
 const META = window.META || {};
@@ -147,8 +156,8 @@ function cardHtml(a) {
   return `
     <div class="card${a.eps ? '' : ' card-empty'}" data-slug="${a.slug}" tabindex="0" role="button">
       ${posterPlaceholder(a)}
-      ${a.puan ? `<span class="rating-badge">⭐ ${a.puan}</span>` : ''}
-      <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${favLabel(a.slug)}">${isFav(a.slug) ? '★' : '☆'}</button>
+      ${a.puan ? `<span class="rating-badge">${ic('star','ic-star')}${a.puan}</span>` : ''}
+      <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${favLabel(a.slug)}">${ic('star')}</button>
       <h3>${esc(a.baslik)}</h3>
       <div class="meta">${a.eps ? `${a.eps} bölüm · ${a.urls} link` : 'bölüm verisi yok'}</div>
       <div class="badges">${a.tur.slice(0, 3).map(t => `<span class="badge">${esc(t)}</span>`).join('')}</div>
@@ -167,7 +176,6 @@ function wireCards(container) {
       e.stopPropagation();
       toggleFav(b.dataset.fav);
       b.classList.toggle('active');
-      b.textContent = isFav(b.dataset.fav) ? '★' : '☆';
       b.setAttribute('aria-label', favLabel(b.dataset.fav));
     });
   });
@@ -181,6 +189,7 @@ const searchEl = document.getElementById('search');
 // ---- Bölüm oynatıcı modalı (embed edilebilen linkler burada açılır) ----
 const playerModal = document.getElementById('player-modal');
 const playerFrame = document.getElementById('player-modal-frame');
+const playerVideo = document.getElementById('player-modal-video');
 const playerNewTab = document.getElementById('player-modal-newtab');
 const playerPrevBtn = document.getElementById('player-modal-prev');
 const playerNextBtn = document.getElementById('player-modal-next');
@@ -191,12 +200,16 @@ const playerLoadingHint = document.getElementById('player-modal-loading-hint');
 let currentEpisodes = [];
 let currentEpIndex = null;
 let playerLoadTimer = null;
-function openPlayerModal(url, epIndex = null) {
+function openPlayerModal(url, epIndex = null, directId = null) {
   clearTimeout(playerLoadTimer);
   playerLoadingHint.hidden = true;
   playerLoading.hidden = false;
-  playerFrame.src = url;
+  stopVideo();
+  playerVideo.hidden = !directId;
+  playerFrame.hidden = !!directId;
+  playerFrame.src = directId ? 'about:blank' : url;
   playerNewTab.href = url;
+  if (directId) playDirect(directId, url);
   playerModal.hidden = false;
   currentEpIndex = epIndex;
   const ep = epIndex != null ? currentEpisodes[epIndex] : null;
@@ -206,9 +219,31 @@ function openPlayerModal(url, epIndex = null) {
   // bazı sağlayıcılar sandbox içinde hiç yüklenmeyebilir; uzun sürerse "ayrı sayfada aç"ı hatırlat.
   playerLoadTimer = setTimeout(() => { playerLoadingHint.hidden = false; }, 8000);
 }
-playerFrame.addEventListener('load', () => { playerLoading.hidden = true; clearTimeout(playerLoadTimer); });
+playerFrame.addEventListener('load', () => { if (playerFrame.hidden) return; playerLoading.hidden = true; clearTimeout(playerLoadTimer); });
+function stopVideo() { playerVideo.pause(); playerVideo.removeAttribute('src'); playerVideo.load(); }
+// resolver'dan mp4 linkini alıp <video> ile oynatır; olmazsa sessizce klasik iframe embed'e düşer.
+async function playDirect(id, embedUrl) {
+  const token = ++directToken;
+  try {
+    const r = await fetch(`${SIBNET_RESOLVER}?id=${id}`);
+    const data = r.ok ? await r.json() : null;
+    if (token !== directToken) return;
+    if (!data || !data.url) throw new Error('resolve failed');
+    playerVideo.src = data.url;
+    playerVideo.play().catch(() => {});
+    playerLoading.hidden = true; clearTimeout(playerLoadTimer);
+  } catch (e) {
+    if (token !== directToken) return;
+    playerVideo.hidden = true; playerFrame.hidden = false;
+    playerFrame.src = embedUrl;
+  }
+}
+let directToken = 0;
+playerVideo.addEventListener('error', () => { if (playerVideo.hidden || !playerVideo.getAttribute('src')) return; playerVideo.hidden = true; playerFrame.hidden = false; playerFrame.src = playerNewTab.href; });
 function closePlayerModal() {
   playerModal.hidden = true;
+  directToken++;
+  stopVideo();
   playerFrame.src = 'about:blank';
   clearTimeout(playerLoadTimer);
 }
@@ -224,7 +259,7 @@ function jumpToEpisode(i) {
 }
 function wireEmbedButtons(container, epIndex) {
   container.querySelectorAll('[data-embed-url]').forEach(b => {
-    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, epIndex));
+    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, epIndex, b.dataset.direct || null));
   });
 }
 // bölümü açar; birden fazla fansub varsa önce fansub seçtirir, playerlar seçimden sonra gösterilir
@@ -339,7 +374,7 @@ function filterBarHtml(count) {
         <option value="puan" ${state.sort === 'puan' ? 'selected' : ''}>Puana göre</option>
         <option value="eps" ${state.sort === 'eps' ? 'selected' : ''}>Bölüm sayısına göre</option>
       </select>
-      <label class="fav-toggle"><input type="checkbox" id="f-fav" ${state.favOnly ? 'checked' : ''}> ★ Favoriler</label>
+      <label class="fav-toggle"><input type="checkbox" id="f-fav" ${state.favOnly ? 'checked' : ''}> ${ic('star')}Favoriler</label>
     </div>`;
 }
 
@@ -369,10 +404,10 @@ function renderList() {
         <div class="featured" data-slug="${featured.slug}" tabindex="0" role="button"${featured.poster ? ` style="--hero:url('${esc(featured.poster)}')"` : ''}>
           ${posterPlaceholder(featured).replace('class="poster', 'class="featured-poster poster')}
           <div class="featured-info">
-            <span class="badge tag-main">🌟 Günün Animesi</span>
+            <span class="badge tag-main">${ic('sparkles')}Günün Animesi</span>
             <h2>${esc(featured.baslik)}</h2>
-            <div class="meta">${featured.eps} bölüm · ⭐${featured.puan}</div>
-            <span class="featured-cta">İzlemeye başla ▸</span>
+            <div class="meta">${featured.eps} bölüm · ${ic('star','ic-star')} ${featured.puan}</div>
+            <span class="featured-cta">${ic('play')}İzlemeye başla</span>
           </div>
         </div>`;
     }
@@ -464,10 +499,10 @@ async function renderDetail(slug, token) {
         ${(info['Anime Türü'] || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}
       </div>
       <div class="info-stats">
-        <span>📺 ${esc(info['Bölüm Sayısı'] || '?')} bölüm</span>
-        <span>🎬 ${esc(info['Stüdyo'] || '?')}</span>
-        <span>⭐ ${info['Puanı'] ?? '?'}</span>
-      </div>` : `<div class="info-stats"><span>📺 ${episodes.length} bölüm arşivlendi</span></div>`;
+        <span>${ic('tv')}${esc(info['Bölüm Sayısı'] || '?')} bölüm</span>
+        <span>${ic('clapper')}${esc(info['Stüdyo'] || '?')}</span>
+        <span>${ic('star','ic-star')}${info['Puanı'] ?? '?'}</span>
+      </div>` : `<div class="info-stats"><span>${ic('tv')}${episodes.length} bölüm arşivlendi</span></div>`;
   const ozet = info && info['Özet'] ? escBr(info['Özet']) : '';
   const ozetLong = ozet.length > 320;
   const ozetHtml = ozet ? `
@@ -483,7 +518,7 @@ async function renderDetail(slug, token) {
     const empty = ep.links.every(l => l.tip === 'mask');
     return `
     <div class="ep${empty ? ' ep-empty' : ''}" data-i="${i}">
-      <div class="ep-head"><span class="ep-arrow">▸</span>${esc(ep.ad)}<span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span></div>
+      <div class="ep-head"><span class="ep-arrow">${ic('chevron-right')}</span>${esc(ep.ad)}<span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span></div>
       <div class="ep-links"></div>
     </div>`;
   };
@@ -506,21 +541,21 @@ async function renderDetail(slug, token) {
   document.title = `${titleObj.baslik} · TürkAnime Arşivi`;
 
   app.innerHTML = `
-    <a class="back" href="#/">&larr; Listeye dön</a>
+    <a class="back" href="#/">${ic('arrow-left')}Listeye dön</a>
     <div class="detail">
       <div class="detail-head" ${titleObj.poster ? `style="--hero:url('${esc(titleObj.poster)}')"` : ''}>
         ${posterPlaceholder(titleObj).replace('class="poster', 'class="detail-poster poster')}
         <div class="detail-info">
-          <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${favLabel(slug)}">${isFav(slug) ? '★' : '☆'}</button></h2>
+          <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${favLabel(slug)}">${ic('star')}</button></h2>
           ${heroInfoHtml}
-          ${firstPlayable >= 0 ? `<button type="button" id="detail-start" class="start-btn">▶ İzlemeye başla</button>` : ''}
+          ${firstPlayable >= 0 ? `<button type="button" id="detail-start" class="start-btn">${ic('play')}İzlemeye başla</button>` : ''}
         </div>
       </div>
       ${ozetHtml}
       ${episodes.length ? `
       <div class="ep-toolbar">
         <h3 class="section-title">Bölümler <span class="meta">(${episodes.length})</span></h3>
-        <button type="button" id="ep-reverse" class="link-btn${epReverse ? ' active' : ''}" title="Sıralamayı tersine çevir">↕ Tersten</button>
+        <button type="button" id="ep-reverse" class="link-btn${epReverse ? ' active' : ''}" title="Sıralamayı tersine çevir">${ic('sort')}Tersten</button>
       </div>` : ''}
       ${episodes.length > 20 ? `<input id="ep-search" class="ep-search" placeholder="Bölüm ara... (örn. 12 veya final)">` : ''}
       <div id="ep-list">${epListHtml() || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
@@ -563,7 +598,6 @@ async function renderDetail(slug, token) {
     toggleFav(slug);
     const b = document.getElementById('detail-fav');
     b.classList.toggle('active');
-    b.textContent = isFav(slug) ? '★' : '☆';
     b.setAttribute('aria-label', favLabel(slug));
   });
 
@@ -588,7 +622,7 @@ async function renderDetail(slug, token) {
 function renderLegal() {
   document.title = 'Gizlilik & Yasal · TürkAnime Arşivi';
   app.innerHTML = `
-    <a class="back" href="#/">&larr; Back to list · Listeye dön</a>
+    <a class="back" href="#/">${ic('arrow-left')}Back to list · Listeye dön</a>
     <div class="legal">
       <div class="legal-lang">EN</div>
       <h2>Privacy &amp; Legal Information</h2>

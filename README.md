@@ -35,6 +35,17 @@ npx serve .
 
 `index.html`'i açman yeterli.
 
+## ⚡ Reklamsız Sibnet oynatıcı (opsiyonel)
+
+Sibnet videoları, `worker/sibnet-resolver.js` deploy edilirse iframe yerine sitenin kendi `<video>` oynatıcısında reklamsız açılır. Orijinal SIBNET butonları aynen kalır; yanına "SIBNET reklamsız" butonu eklenir.
+
+```bash
+npx wrangler login
+npx wrangler deploy worker/sibnet-resolver.js --name tka-sibnet --compatibility-date 2024-01-01
+```
+
+Çıkan adresi (`https://tka-sibnet.<hesap>.workers.dev/`) `app.js` içindeki `SIBNET_RESOLVER` sabitine yaz. Worker yalnızca mp4 linkini çözer; video trafiği tarayıcı ile sibnet CDN'i arasında doğrudan akar.
+
 ## 🗂️ Yapı
 
 ```
