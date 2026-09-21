@@ -11,9 +11,9 @@ function esc(s) {
 }
 const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
-// Sibnet'in reklamsız oynatılması için mp4 linkini çözen küçük servis (bkz. worker/sibnet-resolver.js).
+// Sibnet'in reklamsız oynatılması için mp4 linkini çözen küçük servis (bkz. api/sibnet.js, Vercel).
 // Boş bırakılırsa "Reklamsız" butonu hiç gösterilmez, klasik SIBNET embed'i olduğu gibi kalır.
-const SIBNET_RESOLVER = '';
+const SIBNET_RESOLVER = 'https://tka-sibnet.vercel.app/api/sibnet';
 const sibnetId = url => { const m = /videoid=(\d+)/.exec(url); return m ? m[1] : null; };
 
 // X-Frame-Options: SAMEORIGIN döndürdüğü doğrulanan sağlayıcılar (iframe'de açılamaz, yeni sekmede açılır).

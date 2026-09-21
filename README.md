@@ -35,16 +35,11 @@ npx serve .
 
 `index.html`'i açman yeterli.
 
-## ⚡ Reklamsız Sibnet oynatıcı (opsiyonel)
+## ⚡ Reklamsız Sibnet oynatıcı
 
-Sibnet videoları, `worker/sibnet-resolver.js` deploy edilirse iframe yerine sitenin kendi `<video>` oynatıcısında reklamsız açılır. Orijinal SIBNET butonları aynen kalır; yanına "SIBNET reklamsız" butonu eklenir.
+Sibnet videoları iframe yerine sitenin kendi `<video>` oynatıcısında reklamsız açılır ("Reklamsız izle" butonu, önerilen). Orijinal SIBNET butonları da durur.
 
-```bash
-npx wrangler login
-npx wrangler deploy worker/sibnet-resolver.js --name tka-sibnet --compatibility-date 2024-01-01
-```
-
-Çıkan adresi (`https://tka-sibnet.<hesap>.workers.dev/`) `app.js` içindeki `SIBNET_RESOLVER` sabitine yaz. Worker yalnızca mp4 linkini çözer; video trafiği tarayıcı ile sibnet CDN'i arasında doğrudan akar.
+Bunun için `api/sibnet.js` küçük bir Vercel serverless function olarak çalışır (proje: `tka-sibnet`, `https://tka-sibnet.vercel.app/api/sibnet?id=<videoid>`): sibnet sayfasından mp4 yolunu alır, Referer ile yönlendirmeleri takip edip Referer gerektirmeyen nihai CDN linkini döndürür. Video trafiği fonksiyondan geçmez. (Cloudflare Workers denendi; sibnet CF IP'lerini 403 ile engelliyor.)
 
 ## 🗂️ Yapı
 

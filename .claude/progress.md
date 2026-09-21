@@ -1,5 +1,5 @@
 # İlerleme
 
 - Tasarım baştan yazıldı (style.css), mobil/tablet/masaüstü uyumlu. Emojiler SVG sprite ikonlarla değişti (index.html `<svg>` sprite, app.js `ic()`).
-- Reklamsız Sibnet: `worker/sibnet-resolver.js` (Cloudflare Worker) videoid → nihai CDN mp4 linki. app.js `SIBNET_RESOLVER` boşken buton görünmez.
-- Sıradaki: worker deploy edilip `SIBNET_RESOLVER` doldurulacak; canlıda CDN'in farklı IP'den (noip=1) çalıştığı doğrulanacak.
+- Reklamsız Sibnet: `api/sibnet.js` Vercel function (proje tka-sibnet, https://tka-sibnet.vercel.app/api/sibnet). app.js `SIBNET_RESOLVER` dolu. Cloudflare Workers sibnet tarafından 403'lü, kullanılmadı.
+- Fonksiyon değişirse Vercel'e yeniden deploy gerekir (MCP create_deployment ile inline dosya; repo git'e bağlı değil).
