@@ -49,8 +49,17 @@ main{padding:24px 20px 60px;max-width:1200px;margin:0 auto}
 .fav-toggle input{accent-color:var(--accent)}
 
 .section-title{font-size:14px;color:var(--muted);margin:0 0 10px;font-weight:600}
-.archive-title{font-size:16px;color:var(--text);margin-top:4px}
-.recent-row{margin-bottom:26px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.archive-title{font-size:18px;color:var(--text);margin:0 0 12px;display:flex;align-items:center;gap:10px}
+.archive-title::before{content:"";width:4px;height:18px;border-radius:2px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+.recent-row{margin-bottom:28px;padding:14px 16px 6px;border-radius:14px;background:var(--panel2);border:1px solid var(--border)}
+.recent-row .section-title{color:var(--text);font-size:13px;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.recent-row .section-title::before{content:"🕘";font-size:14px}
+.recent-grid{display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;scroll-snap-type:x mandatory;scrollbar-width:thin}
+.recent-grid .card{flex:0 0 120px;padding:6px;scroll-snap-align:start;background:var(--panel)}
+.recent-grid .card h3{font-size:12px;margin:6px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent-grid .card .meta{margin-bottom:0}
+.recent-grid .badges,.recent-grid .fav-btn{display:none}
+.recent-grid .rating-badge{top:10px;left:10px;font-size:10px;padding:2px 7px}
 
 .featured{display:flex;gap:18px;align-items:center;margin-bottom:22px;padding:16px;border-radius:14px;cursor:pointer;
   background:linear-gradient(135deg,rgba(108,141,255,.14),rgba(143,108,255,.08)),linear-gradient(180deg,var(--panel),#141720);
@@ -217,7 +226,8 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .featured{flex-direction:column;align-items:center;text-align:center}
   .featured-info{width:100%}
   .poster.featured-poster{width:130px}
-  .recent-grid .card:nth-child(n+5){display:none}
+  .recent-row{padding:12px 12px 4px}
+  .recent-grid .card{flex-basis:104px}
   main{padding:16px 14px 40px}
 
   .detail-head{flex-direction:column;align-items:center;text-align:center;padding:16px;gap:14px}

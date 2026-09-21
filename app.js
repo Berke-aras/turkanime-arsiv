@@ -397,7 +397,7 @@ function renderList() {
 
   const archiveTitleHtml = showRecent ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
 
-  app.innerHTML = `${statsHtml}${featuredHtml}${bar}${recentHtml}${archiveTitleHtml}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
+  app.innerHTML = `${statsHtml}${featuredHtml}${recentHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
   fadeApp();
   wireFilterBar();
   wireCards(app);
