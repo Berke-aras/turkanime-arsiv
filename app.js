@@ -173,6 +173,8 @@ function wireCards(container) {
 }
 
 const app = document.getElementById('app');
+// içerik her değiştiğinde animasyonu baştan tetiklemek için class'ı kaldırıp reflow ile yeniden ekliyoruz.
+function fadeApp() { app.classList.remove('fade-in'); void app.offsetWidth; app.classList.add('fade-in'); }
 const searchEl = document.getElementById('search');
 
 // ---- Bölüm oynatıcı modalı (embed edilebilen linkler burada açılır) ----
@@ -381,6 +383,7 @@ function renderList() {
 
   if (!items.length) {
     app.innerHTML = `${bar}<div class="empty">Sonuç bulunamadı.</div>`;
+    fadeApp();
     wireFilterBar();
     return;
   }
@@ -395,6 +398,7 @@ function renderList() {
   const archiveTitleHtml = showRecent ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
 
   app.innerHTML = `${statsHtml}${featuredHtml}${bar}${recentHtml}${archiveTitleHtml}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
+  fadeApp();
   wireFilterBar();
   wireCards(app);
   const featuredEl = app.querySelector('.featured');
@@ -462,7 +466,7 @@ async function renderDetail(slug, token) {
   app.innerHTML = `
     <a class="back" href="#/">&larr; Listeye dön</a>
     <div class="detail">
-      <div class="detail-head">
+      <div class="detail-head" ${titleObj.poster ? `style="--hero:url('${esc(titleObj.poster)}')"` : ''}>
         ${posterPlaceholder(titleObj).replace('class="poster', 'class="detail-poster poster')}
         <div>
           <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${favLabel(slug)}">${isFav(slug) ? '★' : '☆'}</button></h2>
@@ -473,6 +477,7 @@ async function renderDetail(slug, token) {
       ${episodes.length > 20 ? `<input id="ep-search" class="ep-search" placeholder="Bölüm ara... (örn. 12 veya final)">` : ''}
       ${epHtml || '<div class="empty">Bölüm verisi bulunamadı.</div>'}
     </div>`;
+  fadeApp();
 
   app.querySelectorAll('.ep-head').forEach(h => {
     h.addEventListener('click', () => {
@@ -540,6 +545,7 @@ function renderLegal() {
         <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">GitHub üzerinden bir issue açarak</a>
         ilgili anime/bölüm/link bilgisini ilet; talep incelenip en kısa sürede kaldırılır.</p>
     </div>`;
+  fadeApp();
 }
 
 let routeToken = 0;
@@ -564,4 +570,10 @@ searchEl.addEventListener('input', () => {
 });
 document.getElementById('random-btn').addEventListener('click', pickRandomAnime);
 window.addEventListener('hashchange', route);
+
+const topBtn = document.getElementById('top-btn');
+window.addEventListener('scroll', () => { topBtn.classList.toggle('show', window.scrollY > 500); }, { passive: true });
+topBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 route();
