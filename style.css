@@ -214,8 +214,9 @@ footer a:hover{color:var(--text);text-decoration:underline}
   #legal-link{font-size:11px}
   #search{order:3;flex-basis:100%;max-width:none}
   .header-links{order:4;flex-basis:100%;flex-wrap:wrap;justify-content:flex-end;margin-left:0;gap:12px}
-  .featured{flex-direction:column;align-items:flex-start}
-  .poster.featured-poster{width:100px}
+  .featured{flex-direction:column;align-items:center;text-align:center}
+  .featured-info{width:100%}
+  .poster.featured-poster{width:130px}
   .recent-grid .card:nth-child(n+5){display:none}
   main{padding:16px 14px 40px}
 
