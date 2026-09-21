@@ -43,6 +43,7 @@ main{padding:24px 20px 60px;max-width:1200px;margin:0 auto}
 .fav-toggle input{accent-color:var(--accent)}
 
 .section-title{font-size:14px;color:var(--muted);margin:0 0 10px;font-weight:600}
+.archive-title{font-size:16px;color:var(--text);margin-top:4px}
 .recent-row{margin-bottom:26px;padding-bottom:20px;border-bottom:1px solid var(--border)}
 
 .featured{display:flex;gap:18px;align-items:center;margin-bottom:22px;padding:16px;border-radius:14px;cursor:pointer;
