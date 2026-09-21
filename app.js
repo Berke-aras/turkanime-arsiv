@@ -125,6 +125,7 @@ const favLabel = slug => isFav(slug) ? 'Favorilerden çıkar' : 'Favorilere ekle
 function toggleFav(slug) { favs.has(slug) ? favs.delete(slug) : favs.add(slug); writeLS('ta_favs', [...favs]); }
 
 let recent = readLS('ta_recent', []);
+let epReverse = readLS('ta_eprev', false);
 function pushRecent(slug) { recent = [slug, ...recent.filter(s => s !== slug)].slice(0, 16); writeLS('ta_recent', recent); }
 
 // Poster URL'leri build-time'da (scripts/build-posters.js) meta.js içine gömülüyor;
@@ -144,12 +145,12 @@ function posterPlaceholder(a) {
 
 function cardHtml(a) {
   return `
-    <div class="card" data-slug="${a.slug}" tabindex="0" role="button">
+    <div class="card${a.eps ? '' : ' card-empty'}" data-slug="${a.slug}" tabindex="0" role="button">
       ${posterPlaceholder(a)}
       ${a.puan ? `<span class="rating-badge">⭐ ${a.puan}</span>` : ''}
       <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${favLabel(a.slug)}">${isFav(a.slug) ? '★' : '☆'}</button>
       <h3>${esc(a.baslik)}</h3>
-      <div class="meta">${a.eps} bölüm · ${a.urls} link</div>
+      <div class="meta">${a.eps ? `${a.eps} bölüm · ${a.urls} link` : 'bölüm verisi yok'}</div>
       <div class="badges">${a.tur.slice(0, 3).map(t => `<span class="badge">${esc(t)}</span>`).join('')}</div>
     </div>`;
 }
@@ -217,6 +218,7 @@ function jumpToEpisode(i) {
   const epEl = app.querySelector(`.ep[data-i="${i}"]`);
   if (!epEl) return;
   closePlayerModal();
+  const g = epEl.closest('.ep-group'); if (g) g.open = true;
   openEpisode(epEl);
   epEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -267,7 +269,12 @@ document.getElementById('player-modal-close').addEventListener('click', closePla
 document.getElementById('player-modal-backdrop').addEventListener('click', closePlayerModal);
 playerPrevBtn.addEventListener('click', () => { if (currentEpIndex > 0) jumpToEpisode(currentEpIndex - 1); });
 playerNextBtn.addEventListener('click', () => { if (currentEpIndex < currentEpisodes.length - 1) jumpToEpisode(currentEpIndex + 1); });
-window.addEventListener('keydown', e => { if (e.key === 'Escape' && !playerModal.hidden) closePlayerModal(); });
+window.addEventListener('keydown', e => {
+  if (playerModal.hidden) return;
+  if (e.key === 'Escape') closePlayerModal();
+  else if (e.key === 'ArrowLeft') playerPrevBtn.click();
+  else if (e.key === 'ArrowRight') playerNextBtn.click();
+});
 // slug -> <script> elemanı, ekleniş sırasıyla (Map sırayı korur). Sınırsız büyümesin diye
 // en eski girişler LOADED_CAP aşılınca hem DOM'dan hem window.__TKA__'dan atılıyor.
 const loadedScripts = new Map();
@@ -339,17 +346,18 @@ function filterBarHtml(count) {
 function wireFilterBar() {
   document.getElementById('f-kategori').addEventListener('change', e => { state.kategori = e.target.value; state.page = 1; renderList(); });
   document.getElementById('f-tur').addEventListener('change', e => { state.tur = e.target.value; state.page = 1; renderList(); });
-  document.getElementById('f-sort').addEventListener('change', e => { state.sort = e.target.value; renderList(); });
+  document.getElementById('f-sort').addEventListener('change', e => { state.sort = e.target.value; state.page = 1; renderList(); });
   document.getElementById('f-fav').addEventListener('change', e => { state.favOnly = e.target.checked; state.page = 1; renderList(); });
 }
 
 function renderList() {
   const items = filterAndSort();
+  document.title = 'TürkAnime Arşiv Görüntüleyici';
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   state.page = Math.min(Math.max(1, state.page), totalPages);
-  const pageItems = items.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+  const pageItems = items.slice(0, state.page * PAGE_SIZE);
 
-  const showHome = !state.query && !state.kategori && !state.tur && !state.favOnly && state.page === 1;
+  const showHome = !state.query && !state.kategori && !state.tur && !state.favOnly;
 
   const statsHtml = showHome ? statsStripHtml() : '';
 
@@ -382,18 +390,22 @@ function renderList() {
   const bar = filterBarHtml(items.length);
 
   if (!items.length) {
-    app.innerHTML = `${bar}<div class="empty">Sonuç bulunamadı.</div>`;
+    const q = norm(state.query);
+    const suggestions = q ? ANIME
+      .map(a => ({ a, d: Math.min(levenshtein(q, a.n.slice(0, q.length + 2)), ...a.tok.map(t => levenshtein(q, t))) }))
+      .filter(x => x.d <= Math.ceil(q.length / 2))
+      .sort((x, y) => x.d - y.d).slice(0, 4) : [];
+    const suggestHtml = suggestions.length
+      ? `<div class="suggest">Bunu mu demek istedin?${suggestions.map(x => `<a class="link-btn" href="#/anime/${x.a.slug}">${esc(x.a.baslik)}</a>`).join('')}</div>` : '';
+    app.innerHTML = `${bar}<div class="empty">Sonuç bulunamadı.${suggestHtml}</div>`;
     fadeApp();
     wireFilterBar();
     return;
   }
 
-  const pager = `
-    <div class="pager">
-      <button id="prev" ${state.page <= 1 ? 'disabled' : ''}>&larr; Önceki</button>
-      <span>Sayfa ${state.page} / ${totalPages}</span>
-      <button id="next" ${state.page >= totalPages ? 'disabled' : ''}>Sonraki &rarr;</button>
-    </div>`;
+  const loadMoreHtml = () => state.page < totalPages
+    ? `<button id="load-more">Daha fazla yükle <span class="meta">(${(items.length - state.page * PAGE_SIZE).toLocaleString('tr-TR')} kaldı)</span></button>` : '';
+  const pager = `<div class="pager">${loadMoreHtml()}</div>`;
 
   const archiveTitleHtml = showRecent ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
 
@@ -407,8 +419,17 @@ function renderList() {
     featuredEl.addEventListener('click', go);
     featuredEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   }
-  document.getElementById('prev').addEventListener('click', () => { state.page--; renderList(); window.scrollTo(0, 0); });
-  document.getElementById('next').addEventListener('click', () => { state.page++; renderList(); window.scrollTo(0, 0); });
+  // tam yeniden çizim yerine yeni kartları ekle; kaydırma konumu korunur
+  app.querySelector('.pager').addEventListener('click', e => {
+    if (e.target.closest('#load-more') == null) return;
+    const from = state.page * PAGE_SIZE;
+    state.page++;
+    const tpl = document.createElement('template');
+    tpl.innerHTML = items.slice(from, state.page * PAGE_SIZE).map(cardHtml).join('');
+    wireCards(tpl.content);
+    app.querySelector('.grid:not(.recent-grid)').append(tpl.content);
+    e.currentTarget.innerHTML = loadMoreHtml();
+  });
 }
 
 async function renderDetail(slug, token) {
@@ -436,8 +457,8 @@ async function renderDetail(slug, token) {
   // özette gelen <br /> gibi ham HTML etiketlerini gerçek satır sonuna çevir
   const escBr = s => esc(s).replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/\n/g, '<br>');
 
-  const infoHtml = info ? `
-    <div class="info">
+  const firstPlayable = episodes.findIndex(ep => ep.links.some(l => l.tip !== 'mask'));
+  const heroInfoHtml = info ? `
       <div class="info-tags">
         ${info['Kategori'] ? `<span class="tag tag-main">${esc(info['Kategori'])}</span>` : ''}
         ${(info['Anime Türü'] || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}
@@ -446,45 +467,96 @@ async function renderDetail(slug, token) {
         <span>📺 ${esc(info['Bölüm Sayısı'] || '?')} bölüm</span>
         <span>🎬 ${esc(info['Stüdyo'] || '?')}</span>
         <span>⭐ ${info['Puanı'] ?? '?'}</span>
-      </div>
-      ${info['Özet'] ? `<p class="info-ozet">${escBr(info['Özet'])}</p>` : ''}
+      </div>` : `<div class="info-stats"><span>📺 ${episodes.length} bölüm arşivlendi</span></div>`;
+  const ozet = info && info['Özet'] ? escBr(info['Özet']) : '';
+  const ozetLong = ozet.length > 320;
+  const ozetHtml = ozet ? `
+    <div class="info">
+      <p class="info-ozet${ozetLong ? ' clamped' : ''}">${ozet}</p>
+      ${ozetLong ? '<button type="button" class="ozet-more">Devamını göster</button>' : ''}
     </div>` : '';
 
   // link butonları binlerce olabildiğinden (ör. One Piece: 1166 bölüm/~27000 link),
   // baştan basmak yerine bölüm ilk açıldığında dolduruluyor (bkz. aşağıdaki ep-head handler'ı).
-  const epHtml = episodes.map((ep, i) => {
+  const epItemHtml = i => {
+    const ep = episodes[i];
     const empty = ep.links.every(l => l.tip === 'mask');
     return `
     <div class="ep${empty ? ' ep-empty' : ''}" data-i="${i}">
       <div class="ep-head"><span class="ep-arrow">▸</span>${esc(ep.ad)}<span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span></div>
       <div class="ep-links"></div>
     </div>`;
-  }).join('');
+  };
+  // uzun serilerde (100+) bölümler 50'lik katlanır gruplara bölünüyor; sadece ilk grup açık gelir
+  const EP_GROUP = 50;
+  const epListHtml = () => {
+    let order = episodes.map((_, i) => i);
+    if (epReverse) order.reverse();
+    if (order.length <= 100) return order.map(epItemHtml).join('');
+    const groups = [];
+    for (let k = 0; k < order.length; k += EP_GROUP) groups.push(order.slice(k, k + EP_GROUP));
+    return groups.map((g, gi) => `
+      <details class="ep-group"${gi === 0 ? ' open' : ''}>
+        <summary>${g[0] + 1}–${g[g.length - 1] + 1}<span class="meta">${g.length} bölüm</span></summary>
+        ${g.map(epItemHtml).join('')}
+      </details>`).join('');
+  };
 
   const titleObj = { slug, baslik: meta ? meta.baslik : slug, poster: meta ? meta.poster : null };
+  document.title = `${titleObj.baslik} · TürkAnime Arşivi`;
 
   app.innerHTML = `
     <a class="back" href="#/">&larr; Listeye dön</a>
     <div class="detail">
       <div class="detail-head" ${titleObj.poster ? `style="--hero:url('${esc(titleObj.poster)}')"` : ''}>
         ${posterPlaceholder(titleObj).replace('class="poster', 'class="detail-poster poster')}
-        <div>
+        <div class="detail-info">
           <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${favLabel(slug)}">${isFav(slug) ? '★' : '☆'}</button></h2>
-          <div class="sub">${episodes.length} bölüm arşivlendi</div>
+          ${heroInfoHtml}
+          ${firstPlayable >= 0 ? `<button type="button" id="detail-start" class="start-btn">▶ İzlemeye başla</button>` : ''}
         </div>
       </div>
-      ${infoHtml}
+      ${ozetHtml}
+      ${episodes.length ? `
+      <div class="ep-toolbar">
+        <h3 class="section-title">Bölümler <span class="meta">(${episodes.length})</span></h3>
+        <button type="button" id="ep-reverse" class="link-btn${epReverse ? ' active' : ''}" title="Sıralamayı tersine çevir">↕ Tersten</button>
+      </div>` : ''}
       ${episodes.length > 20 ? `<input id="ep-search" class="ep-search" placeholder="Bölüm ara... (örn. 12 veya final)">` : ''}
-      ${epHtml || '<div class="empty">Bölüm verisi bulunamadı.</div>'}
+      <div id="ep-list">${epListHtml() || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
     </div>`;
   fadeApp();
 
-  app.querySelectorAll('.ep-head').forEach(h => {
-    h.addEventListener('click', () => {
-      const epEl = h.parentElement;
-      if (epEl.classList.contains('open')) { epEl.classList.remove('open'); return; }
-      openEpisode(epEl);
-    });
+  const epListEl = document.getElementById('ep-list');
+  epListEl.addEventListener('click', e => {
+    const h = e.target.closest('.ep-head');
+    if (!h) return;
+    const epEl = h.parentElement;
+    if (epEl.classList.contains('open')) { epEl.classList.remove('open'); return; }
+    openEpisode(epEl);
+  });
+  const goToEp = i => {
+    const epEl = epListEl.querySelector(`.ep[data-i="${i}"]`);
+    if (!epEl) return;
+    const g = epEl.closest('.ep-group'); if (g) g.open = true;
+    openEpisode(epEl);
+    epEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  const startBtn = document.getElementById('detail-start');
+  if (startBtn) startBtn.addEventListener('click', () => goToEp(firstPlayable));
+  const revBtn = document.getElementById('ep-reverse');
+  if (revBtn) revBtn.addEventListener('click', () => {
+    epReverse = !epReverse; writeLS('ta_eprev', epReverse);
+    revBtn.classList.toggle('active', epReverse);
+    epListEl.innerHTML = epListHtml();
+    const epSearchEl = document.getElementById('ep-search');
+    if (epSearchEl && epSearchEl.value) epSearchEl.dispatchEvent(new Event('input'));
+  });
+  const moreBtn = app.querySelector('.ozet-more');
+  if (moreBtn) moreBtn.addEventListener('click', () => {
+    const p = app.querySelector('.info-ozet');
+    p.classList.toggle('clamped');
+    moreBtn.textContent = p.classList.contains('clamped') ? 'Devamını göster' : 'Daha az göster';
   });
 
   document.getElementById('detail-fav').addEventListener('click', () => {
@@ -503,11 +575,18 @@ async function renderDetail(slug, token) {
         const txt = norm(el.querySelector('.ep-head').textContent);
         el.style.display = !q || txt.includes(q) ? '' : 'none';
       });
+      // eşleşme içeren grupları aç, hiç eşleşmeyenleri gizle
+      app.querySelectorAll('.ep-group').forEach(g => {
+        const hit = [...g.querySelectorAll('.ep')].some(el => el.style.display !== 'none');
+        g.style.display = hit ? '' : 'none';
+        if (q && hit) g.open = true;
+      });
     });
   }
 }
 
 function renderLegal() {
+  document.title = 'Gizlilik & Yasal · TürkAnime Arşivi';
   app.innerHTML = `
     <a class="back" href="#/">&larr; Back to list · Listeye dön</a>
     <div class="legal">
