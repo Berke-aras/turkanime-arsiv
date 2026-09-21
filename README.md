@@ -1,19 +1,31 @@
-# TürkAnime Arşivi
+<div align="center">
 
-turkanime.tv kapandıktan sonra geride bıraktığı arşivi görüntülemek için yaptığım, sunucusuz (statik) bir web uygulaması. ~6100 anime, bölüm/izleme linkleri ve AniList üzerinden çekilmiş kapak görselleriyle birlikte tek sayfalık bir viewer.
+# 📺 TürkAnime Arşivi
+
+**turkanime.tv kapandıktan sonra geride bıraktığı arşivi yaşatan, sunucusuz (statik) bir web uygulaması.**
+
+~6100 anime · bölüm/izleme linkleri · AniList kapak görselleri — tek sayfalık bir viewer.
+
+![Static Site](https://img.shields.io/badge/mimari-statik-6c8dff?style=flat-square)
+![No Backend](https://img.shields.io/badge/backend-yok-8f6cff?style=flat-square)
+![Anime](https://img.shields.io/badge/anime-~6100-3ddc84?style=flat-square)
 
 **[👉 Canlı demo](https://berke-aras.github.io/turkanime-arsiv/)**
 
-## Özellikler
+![Önizleme](og-image.png)
 
-- Yazım hatasına toleranslı arama (Levenshtein tabanlı)
-- Kategori / tür / puana göre filtreleme ve sıralama
-- Favoriler ve son bakılanlar (localStorage)
-- Günün Animesi (puanı 7+ olanlardan, gün boyunca sabit kalan seçim)
-- Rastgele anime butonu
-- Tamamen statik: build adımı olmadan doğrudan açılabilir
+</div>
 
-## Çalıştırma
+## ✨ Özellikler
+
+- 🔎 Yazım hatasına toleranslı arama (Levenshtein tabanlı)
+- 🎛️ Kategori / tür / puana göre filtreleme ve sıralama
+- ⭐ Favoriler ve son bakılanlar (localStorage)
+- 🌟 Günün Animesi (puanı 7+ olanlardan, gün boyunca sabit kalan seçim)
+- 🎲 Rastgele anime butonu
+- ⚡ Tamamen statik: build adımı olmadan doğrudan açılabilir
+
+## 🚀 Çalıştırma
 
 ```bash
 python3 -m http.server 8000
@@ -23,7 +35,7 @@ npx serve .
 
 `index.html`'i açman yeterli.
 
-## Yapı
+## 🗂️ Yapı
 
 ```
 index.html / app.js / style.css / meta.js   → viewer uygulaması
@@ -36,10 +48,14 @@ scripts/build-posters.js                     → AniList'ten poster URL'lerini �
 
 Veride bir değişiklik olursa sırayla `node scripts/build-meta.js` ve `node scripts/build-posters.js` çalıştırılır.
 
-## Not
+## 📝 Not
 
 Bölüm linkleri farklı video sağlayıcılara (GDrive, Mp4upload, vb.) ait; bu proje sadece arşivlenmiş linkleri düzenli bir arayüzde sunar, dosyaları barındırmaz.
 
 ---
 
-Special thanks to [Kerim Demirkaynak](https://github.com/KerimDemirkaynak) — turkanime.tv kapanmadan önce bu arşivi (bölüm/izleme linkleri) derleyip paylaştığı için.
+<div align="center">
+
+Special thanks to **[Kerim Demirkaynak](https://github.com/KerimDemirkaynak)** — turkanime.tv kapanmadan önce bu arşivi (bölüm/izleme linkleri) derleyip paylaştığı için.
+
+</div>
