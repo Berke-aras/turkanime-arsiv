@@ -366,7 +366,7 @@ function renderList() {
     const featured = animeOfDay();
     if (featured) {
       featuredHtml = `
-        <div class="featured" data-slug="${featured.slug}" tabindex="0" role="button">
+        <div class="featured" data-slug="${featured.slug}" tabindex="0" role="button"${featured.poster ? ` style="--hero:url('${esc(featured.poster)}')"` : ''}>
           ${posterPlaceholder(featured).replace('class="poster', 'class="featured-poster poster')}
           <div class="featured-info">
             <span class="badge tag-main">🌟 Günün Animesi</span>
@@ -630,6 +630,7 @@ function renderLegal() {
 let routeToken = 0;
 function route() {
   const token = ++routeToken;
+  if (!playerModal.hidden) closePlayerModal(); // geri tuşuyla sayfa değişince modal açık kalmasın
   const hash = location.hash || '#/';
   if (hash === '#/yasal') { renderLegal(); return; }
   const m = hash.match(/^#\/anime\/(.+)$/);

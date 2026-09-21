@@ -1,4 +1,4 @@
-const CACHE = 'tka-v1';
+const CACHE = 'tka-v2';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
