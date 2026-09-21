@@ -34,9 +34,9 @@ function epLinksHtml(links) {
     if ((a.tip === 'mask') !== (b.tip === 'mask')) return (a.tip === 'mask') - (b.tip === 'mask');
     return playerRank(a.player) - playerRank(b.player);
   });
-  // reklamsız sibnet butonları en başa; orijinal SIBNET embed butonları aynen kalır
-  const direct = SIBNET_RESOLVER ? sorted.filter(l => l.player === 'SIBNET' && l.tip !== 'mask' && sibnetId(l.url)).map(l =>
-    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct="${sibnetId(l.url)}" title="Sibnet videosunu reklamsız oynat">${ic('zap')}SIBNET <span class="meta">reklamsız</span></button>`) : [];
+  // reklamsız sibnet butonları en başa (önerilen); orijinal SIBNET embed butonları aynen kalır
+  const direct = SIBNET_RESOLVER ? sorted.filter(l => l.player === 'SIBNET' && l.tip !== 'mask' && sibnetId(l.url)).map((l, i, arr) =>
+    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct="${sibnetId(l.url)}" title="Sibnet videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`) : [];
   return direct.concat(sorted.map(l => {
     const label = esc(l.player);
     if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
@@ -239,6 +239,7 @@ async function playDirect(id, embedUrl) {
   }
 }
 let directToken = 0;
+playerVideo.addEventListener('ended', () => { if (currentEpIndex != null && currentEpIndex < currentEpisodes.length - 1) playerNextBtn.click(); });
 playerVideo.addEventListener('error', () => { if (playerVideo.hidden || !playerVideo.getAttribute('src')) return; playerVideo.hidden = true; playerFrame.hidden = false; playerFrame.src = playerNewTab.href; });
 function closePlayerModal() {
   playerModal.hidden = true;
@@ -252,10 +253,12 @@ function closePlayerModal() {
 function jumpToEpisode(i) {
   const epEl = app.querySelector(`.ep[data-i="${i}"]`);
   if (!epEl) return;
-  closePlayerModal();
   const g = epEl.closest('.ep-group'); if (g) g.open = true;
   openEpisode(epEl);
   epEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const d = directBtnOf(epEl);
+  if (d) { d.click(); return; } // reklamsız link varsa modal kapanmadan sonraki bölüme geçer
+  closePlayerModal();
 }
 function wireEmbedButtons(container, epIndex) {
   container.querySelectorAll('[data-embed-url]').forEach(b => {
@@ -299,7 +302,12 @@ function openEpisode(epEl) {
       wireEmbedButtons(playersEl, i);
     });
   });
+  // reklamsız (sibnet) linki olan ilk fansub otomatik seçilir ki önerilen buton hemen görünsün
+  const preferred = SIBNET_RESOLVER && [...groups.entries()].find(([, ls]) => ls.some(l => l.player === 'SIBNET' && l.tip !== 'mask' && sibnetId(l.url)));
+  if (preferred) linksEl.querySelector(`.fansub-chip[data-fansub="${CSS.escape(preferred[0])}"]`).click();
 }
+// bölümün önerilen (reklamsız) butonu varsa onu döndürür
+const directBtnOf = epEl => epEl.querySelector('.link-btn.direct');
 document.getElementById('player-modal-close').addEventListener('click', closePlayerModal);
 document.getElementById('player-modal-backdrop').addEventListener('click', closePlayerModal);
 playerPrevBtn.addEventListener('click', () => { if (currentEpIndex > 0) jumpToEpisode(currentEpIndex - 1); });
@@ -576,6 +584,7 @@ async function renderDetail(slug, token) {
     const g = epEl.closest('.ep-group'); if (g) g.open = true;
     openEpisode(epEl);
     epEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const d = directBtnOf(epEl); if (d) d.click();
   };
   const startBtn = document.getElementById('detail-start');
   if (startBtn) startBtn.addEventListener('click', () => goToEp(firstPlayable));
