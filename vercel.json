@@ -1,1 +1,1 @@
-{"version":2,"functions":{"api/sibnet.js":{"maxDuration":20}}}
+{"version":2,"functions":{"api/sibnet.js":{"maxDuration":20},"api/sendvid.js":{"maxDuration":20},"api/uqload.js":{"maxDuration":20},"api/doodstream.js":{"maxDuration":20}}}

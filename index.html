@@ -58,6 +58,10 @@
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
   <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.7"/></symbol>
+  <symbol id="i-volume-mute" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
+  <symbol id="i-maximize" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
 </svg>
 <header>
   <a href="#/" class="home-link"><h1>TürkAnime Arşivi</h1></a>
@@ -107,7 +111,19 @@
         <div class="spinner"></div>
         <span id="player-modal-loading-hint" hidden>Yüklenmiyor mu? Yukarıdan "Ayrı sayfada aç"ı dene.</span>
       </div>
-      <video id="player-modal-video" controls playsinline preload="metadata" hidden></video>
+      <video id="player-modal-video" playsinline preload="metadata" hidden></video>
+      <div id="player-modal-controls" hidden>
+        <input id="player-modal-progress" type="range" min="0" max="100" value="0" step="0.1" title="Konum">
+        <div id="player-modal-controls-row">
+          <button id="player-modal-playtoggle" type="button" aria-label="Oynat/Duraklat"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></button>
+          <button id="player-modal-mute" type="button" aria-label="Sessiz"><svg class="ic" aria-hidden="true"><use href="#i-volume"/></svg></button>
+          <input id="player-modal-volume" type="range" min="0" max="1" value="1" step="0.05" title="Ses">
+          <span id="player-modal-time">0:00 / 0:00</span>
+          <span class="player-modal-controls-spacer"></span>
+          <button id="player-modal-speed" type="button" title="Oynatma hızı">1x</button>
+          <button id="player-modal-fullscreen" type="button" aria-label="Tam ekran"><svg class="ic" aria-hidden="true"><use href="#i-maximize"/></svg></button>
+        </div>
+      </div>
       <iframe id="player-modal-frame" src="" allow="autoplay; fullscreen" allowfullscreen loading="lazy"
         sandbox="allow-scripts allow-same-origin allow-presentation allow-orientation-lock allow-forms allow-top-navigation-by-user-activation"></iframe>
     </div>

@@ -12,10 +12,16 @@ function esc(s) {
 const IS_TR = (navigator.languages || [navigator.language || 'tr']).some(l => /^tr\b/i.test(l));
 const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
-// Sibnet'in reklamsız oynatılması için mp4 linkini çözen küçük servis (bkz. api/sibnet.js, Vercel).
-// Boş bırakılırsa "Reklamsız" butonu hiç gösterilmez, klasik SIBNET embed'i olduğu gibi kalır.
-const SIBNET_RESOLVER = 'https://tka-sibnet.vercel.app/api/sibnet';
-const sibnetId = url => { const m = /videoid=(\d+)/.exec(url); return m ? m[1] : null; };
+// Reklamlı/redirect'li sağlayıcıları reklamsız oynatmak için linki çözen küçük servisler (bkz. api/*.js, Vercel).
+// Her sağlayıcı embed URL'inden resolver'a atılacak querystring'i (id, gerekiyorsa host) çıkarır;
+// çıkaramazsa (regex tutmazsa) o link için "Reklamsız izle" butonu hiç gösterilmez, klasik embed kalır.
+const DIRECT_PROVIDERS = {
+  SIBNET: { resolver: 'https://tka-sibnet.vercel.app/api/sibnet', params: url => { const m = /videoid=(\d+)/.exec(url); return m && `id=${m[1]}`; } },
+  SENDVID: { resolver: 'https://tka-sibnet.vercel.app/api/sendvid', params: url => { const m = /sendvid\.com\/embed\/([a-z0-9]+)/i.exec(url); return m && `id=${m[1]}`; } },
+  UQLOAD: { resolver: 'https://tka-sibnet.vercel.app/api/uqload', params: url => { const m = /uqload\.[a-z]+\/embed-([a-z0-9]+)\.html/i.exec(url); return m && `id=${m[1]}`; } },
+  DOODSTREAM: { resolver: 'https://tka-sibnet.vercel.app/api/doodstream', params: url => { const m = /(dood\.[a-z]{2,4})\/e\/([a-z0-9]+)/i.exec(url); return m && `host=${m[1]}&id=${m[2]}`; } },
+};
+const directParams = l => { const p = DIRECT_PROVIDERS[l.player]; return p && p.params(l.url); };
 
 // X-Frame-Options: SAMEORIGIN döndürdüğü doğrulanan sağlayıcılar (iframe'de açılamaz, yeni sekmede açılır).
 const NO_EMBED_PLAYERS = new Set(['DOODSTREAM', 'YADISK', 'MEDIACM', 'STREAMRUBY', 'PIXELDRAIN']);
@@ -35,9 +41,9 @@ function epLinksHtml(links) {
     if ((a.tip === 'mask') !== (b.tip === 'mask')) return (a.tip === 'mask') - (b.tip === 'mask');
     return playerRank(a.player) - playerRank(b.player);
   });
-  // reklamsız sibnet butonları en başa (önerilen); orijinal SIBNET embed butonları aynen kalır
-  const direct = SIBNET_RESOLVER ? sorted.filter(l => l.player === 'SIBNET' && l.tip !== 'mask' && sibnetId(l.url)).map((l, i, arr) =>
-    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct="${sibnetId(l.url)}" title="Sibnet videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`) : [];
+  // reklamsız butonları en başa (önerilen); orijinal embed butonları aynen kalır
+  const direct = sorted.filter(l => l.tip !== 'mask' && directParams(l)).map((l, i, arr) =>
+    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct-player="${l.player}" data-direct-params="${esc(directParams(l))}" title="${esc(l.player)} videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`);
   return direct.concat(sorted.map(l => {
     const label = esc(l.player);
     if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
@@ -197,20 +203,55 @@ const playerNextBtn = document.getElementById('player-modal-next');
 const playerEpLabel = document.getElementById('player-modal-eplabel');
 const playerLoading = document.getElementById('player-modal-loading');
 const playerLoadingHint = document.getElementById('player-modal-loading-hint');
+// reklamsız <video> oynatımına özel custom kontrol çubuğu; iframe embed'de içeriği kontrol edemediğimiz için orada gizli.
+const playerControls = document.getElementById('player-modal-controls');
+const playerProgress = document.getElementById('player-modal-progress');
+const playerPlayToggle = document.getElementById('player-modal-playtoggle');
+const playerMuteBtn = document.getElementById('player-modal-mute');
+const playerVolume = document.getElementById('player-modal-volume');
+const playerTime = document.getElementById('player-modal-time');
+const playerSpeedBtn = document.getElementById('player-modal-speed');
+const playerFullscreenBtn = document.getElementById('player-modal-fullscreen');
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+let playerSpeed = 1;
+function applySpeed() { playerVideo.playbackRate = playerSpeed; playerSpeedBtn.textContent = playerSpeed + 'x'; }
+playerSpeedBtn.addEventListener('click', () => {
+  playerSpeed = SPEEDS[(SPEEDS.indexOf(playerSpeed) + 1) % SPEEDS.length];
+  applySpeed();
+});
+const fmtTime = s => !isFinite(s) ? '0:00' : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const setIcon = (btn, id) => btn.querySelector('use').setAttribute('href', '#' + id);
+playerPlayToggle.addEventListener('click', () => { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); });
+playerVideo.addEventListener('click', () => { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); });
+playerVideo.addEventListener('play', () => setIcon(playerPlayToggle, 'i-pause'));
+playerVideo.addEventListener('pause', () => setIcon(playerPlayToggle, 'i-play'));
+playerVideo.addEventListener('timeupdate', () => {
+  if (playerVideo.duration) playerProgress.value = (playerVideo.currentTime / playerVideo.duration) * 100;
+  playerTime.textContent = `${fmtTime(playerVideo.currentTime)} / ${fmtTime(playerVideo.duration)}`;
+});
+playerProgress.addEventListener('input', () => { if (playerVideo.duration) playerVideo.currentTime = (playerProgress.value / 100) * playerVideo.duration; });
+playerMuteBtn.addEventListener('click', () => { playerVideo.muted = !playerVideo.muted; });
+playerVideo.addEventListener('volumechange', () => {
+  setIcon(playerMuteBtn, playerVideo.muted || playerVideo.volume === 0 ? 'i-volume-mute' : 'i-volume');
+  playerVolume.value = playerVideo.muted ? 0 : playerVideo.volume;
+});
+playerVolume.addEventListener('input', () => { playerVideo.muted = false; playerVideo.volume = playerVolume.value; });
+playerFullscreenBtn.addEventListener('click', () => { playerVideo.requestFullscreen?.(); });
 // açık olan detay sayfasının bölümleri; modaldaki önceki/sonraki gezinmesi bunu kullanır.
 let currentEpisodes = [];
 let currentEpIndex = null;
 let playerLoadTimer = null;
-function openPlayerModal(url, epIndex = null, directId = null) {
+function openPlayerModal(url, epIndex = null, direct = null) {
   clearTimeout(playerLoadTimer);
   playerLoadingHint.hidden = true;
   playerLoading.hidden = false;
   stopVideo();
-  playerVideo.hidden = !directId;
-  playerFrame.hidden = !!directId;
-  playerFrame.src = directId ? 'about:blank' : url;
+  playerVideo.hidden = !direct;
+  playerFrame.hidden = !!direct;
+  playerControls.hidden = !direct;
+  playerFrame.src = direct ? 'about:blank' : url;
   playerNewTab.href = url;
-  if (directId) playDirect(directId, url);
+  if (direct) playDirect(direct, url);
   playerModal.hidden = false;
   currentEpIndex = epIndex;
   const ep = epIndex != null ? currentEpisodes[epIndex] : null;
@@ -221,27 +262,67 @@ function openPlayerModal(url, epIndex = null, directId = null) {
   playerLoadTimer = setTimeout(() => { playerLoadingHint.hidden = false; }, 8000);
 }
 playerFrame.addEventListener('load', () => { if (playerFrame.hidden) return; playerLoading.hidden = true; clearTimeout(playerLoadTimer); });
-function stopVideo() { playerVideo.pause(); playerVideo.removeAttribute('src'); playerVideo.load(); }
-// resolver'dan mp4 linkini alıp <video> ile oynatır; olmazsa sessizce klasik iframe embed'e düşer.
-async function playDirect(id, embedUrl) {
+let hlsInstance = null;
+function stopVideo() {
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+  playerVideo.pause(); playerVideo.removeAttribute('src'); playerVideo.load();
+}
+// tarayıcı HLS'i native oynatamıyorsa (Safari dışında) hls.js'i ilk ihtiyaç anında CDN'den yükler.
+function ensureHls() {
+  if (window.Hls) return Promise.resolve(window.Hls);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js';
+    s.onload = () => resolve(window.Hls);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+// resolver'dan mp4/m3u8 linkini alıp <video> ile oynatır; olmazsa sessizce klasik iframe embed'e düşer.
+let currentDirectPlayer = null;
+async function playDirect(direct, embedUrl) {
   const token = ++directToken;
+  currentDirectPlayer = direct.player;
   try {
-    const r = await fetch(`${SIBNET_RESOLVER}?id=${id}`);
+    const provider = DIRECT_PROVIDERS[direct.player];
+    const r = await fetch(`${provider.resolver}?${direct.params}`);
     const data = r.ok ? await r.json() : null;
     if (token !== directToken) return;
     if (!data || !data.url) throw new Error('resolve failed');
-    playerVideo.src = data.url;
+    if (data.hls && !playerVideo.canPlayType('application/vnd.apple.mpegurl')) {
+      const Hls = await ensureHls();
+      if (token !== directToken) return;
+      if (!Hls || !Hls.isSupported()) throw new Error('hls unsupported');
+      hlsInstance = new Hls();
+      hlsInstance.loadSource(data.url);
+      hlsInstance.attachMedia(playerVideo);
+    } else {
+      playerVideo.src = data.url;
+    }
+    applySpeed();
     playerVideo.play().catch(() => {});
     playerLoading.hidden = true; clearTimeout(playerLoadTimer);
   } catch (e) {
     if (token !== directToken) return;
-    playerVideo.hidden = true; playerFrame.hidden = false;
+    fallbackToEmbed(direct.player, embedUrl);
+  }
+}
+// bazı sağlayıcılar (NO_EMBED_PLAYERS) iframe'de hiç açılmaz; onlar için boş bir iframe'e düşüp
+// sessizce başarısız olmak yerine direkt "ayrı sayfada aç" ipucunu göster.
+function fallbackToEmbed(player, embedUrl) {
+  playerVideo.hidden = true; playerControls.hidden = true;
+  if (NO_EMBED_PLAYERS.has(player)) {
+    playerFrame.hidden = true;
+    playerLoadingHint.hidden = false;
+    clearTimeout(playerLoadTimer);
+  } else {
+    playerFrame.hidden = false;
     playerFrame.src = embedUrl;
   }
 }
 let directToken = 0;
 playerVideo.addEventListener('ended', () => { if (currentEpIndex != null && currentEpIndex < currentEpisodes.length - 1) playerNextBtn.click(); });
-playerVideo.addEventListener('error', () => { if (playerVideo.hidden || !playerVideo.getAttribute('src')) return; playerVideo.hidden = true; playerFrame.hidden = false; playerFrame.src = playerNewTab.href; });
+playerVideo.addEventListener('error', () => { if (playerVideo.hidden || !playerVideo.getAttribute('src')) return; fallbackToEmbed(currentDirectPlayer, playerNewTab.href); });
 function closePlayerModal() {
   playerModal.hidden = true;
   directToken++;
@@ -263,7 +344,8 @@ function jumpToEpisode(i) {
 }
 function wireEmbedButtons(container, epIndex) {
   container.querySelectorAll('[data-embed-url]').forEach(b => {
-    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, epIndex, b.dataset.direct || null));
+    const direct = b.dataset.directPlayer ? { player: b.dataset.directPlayer, params: b.dataset.directParams } : null;
+    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, epIndex, direct));
   });
 }
 // bölümü açar; birden fazla fansub varsa önce fansub seçtirir, playerlar seçimden sonra gösterilir
@@ -303,8 +385,8 @@ function openEpisode(epEl) {
       wireEmbedButtons(playersEl, i);
     });
   });
-  // reklamsız (sibnet) linki olan ilk fansub otomatik seçilir ki önerilen buton hemen görünsün
-  const preferred = SIBNET_RESOLVER && [...groups.entries()].find(([, ls]) => ls.some(l => l.player === 'SIBNET' && l.tip !== 'mask' && sibnetId(l.url)));
+  // reklamsız linki olan ilk fansub otomatik seçilir ki önerilen buton hemen görünsün
+  const preferred = [...groups.entries()].find(([, ls]) => ls.some(l => l.tip !== 'mask' && directParams(l)));
   if (preferred) linksEl.querySelector(`.fansub-chip[data-fansub="${CSS.escape(preferred[0])}"]`).click();
 }
 // bölümün önerilen (reklamsız) butonu varsa onu döndürür
@@ -636,10 +718,10 @@ function renderLegal() {
       <h2>Privacy &amp; Legal Information</h2>
 
       <h3>Privacy</h3>
-      <p>This site is fully static: there are no user accounts, forms, or server-side data storage (the only exception is the ad-free Sibnet helper described below). Your favorites and "recently viewed" list are kept only in your own browser's storage (localStorage), are never sent anywhere, and are deleted when you clear your browser data. The site itself does not use cookies.</p>
+      <p>This site is fully static: there are no user accounts, forms, or server-side data storage (the only exception is the ad-free playback helper described below). Your favorites and "recently viewed" list are kept only in your own browser's storage (localStorage), are never sent anywhere, and are deleted when you clear your browser data. The site itself does not use cookies.</p>
       <p>To see how many people visit the site, and which page/link they arrived from, it uses <a href="https://www.goatcounter.com/" target="_blank" rel="noopener noreferrer">GoatCounter</a>, a cookie-free visitor counter. It collects the page viewed, the referring site/link, browser/OS type, and a rough country derived from your IP address; it does not permanently store the IP address and does not build a profile that singles you out from other visitors. Results are shown only as aggregate/statistical counts (daily, weekly, monthly, all-time). See <a href="https://www.goatcounter.com/privacy" target="_blank" rel="noopener noreferrer">GoatCounter's privacy policy</a> for details. Under Turkish law (KVKK, Law No. 6698 on the Protection of Personal Data), this means no data tied to an identified or identifiable person is processed.</p>
       <p>Anime cover images are loaded from <a href="https://anilist.co" target="_blank" rel="noopener noreferrer">AniList</a>, and episode players are embedded from their respective video-hosting sites; these third-party services are subject to their own privacy policies and cookies, which are outside this site's control.</p>
-      <p>For the "Watch ad-free" option on Sibnet episodes, the site calls a small helper function hosted on <a href="https://vercel.com" target="_blank" rel="noopener noreferrer">Vercel</a> (<code>tka-sibnet.vercel.app</code>). This function receives only the Sibnet video ID, resolves the direct video address and returns it; it keeps no database, sets no cookies, and does not store the request. As with any web request, your IP address is technically visible to Vercel's infrastructure for the duration of the request and may appear in its short-lived operational logs, subject to <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel's privacy policy</a>. The video itself is then streamed directly from Sibnet's servers to your browser, exactly as with the classic embedded player.</p>
+      <p>For the "Watch ad-free" option (available on Sibnet, Uqload, Sendvid and Doodstream episodes), the site calls a small helper function hosted on <a href="https://vercel.com" target="_blank" rel="noopener noreferrer">Vercel</a> (<code>tka-sibnet.vercel.app</code>). This function receives only the provider's video ID, resolves the direct video address and returns it; it keeps no database, sets no cookies, and does not store the request. As with any web request, your IP address is technically visible to Vercel's infrastructure for the duration of the request and may appear in its short-lived operational logs, subject to <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel's privacy policy</a>. The video itself is then streamed directly from that provider's own servers to your browser, exactly as with the classic embedded player. For providers whose video is delivered as HLS (a segmented streaming format), the browser loads a small open-source player library (hls.js) from a public CDN (jsDelivr) to play it.</p>
 
       <h3>Copyright</h3>
       <p>This site hosts no video files of its own. It is only a directory/archive collecting links, found in the archive of the now-closed turkanime.tv, to public third-party video services (GDrive, various embed providers, etc.). All copyrights to the video content and translations belong to their respective rights holders (production studio, distributor, fansub groups).</p>
@@ -653,10 +735,10 @@ function renderLegal() {
       <h2>Gizlilik &amp; Yasal Bilgilendirme</h2>
 
       <h3>KVKK / Gizlilik</h3>
-      <p>Bu site statik çalışır: herhangi bir kullanıcı hesabı, form ya da sunucu tarafı veri kaydı yoktur (tek istisna aşağıda anlatılan reklamsız Sibnet yardımcısıdır). Favori animeler ve "son bakılanlar" listesi yalnızca kendi cihazındaki tarayıcı belleğinde (localStorage) tutulur, hiçbir yere gönderilmez; tarayıcı verilerini temizlediğinde silinir. Site kendi adına çerez kullanmaz.</p>
+      <p>Bu site statik çalışır: herhangi bir kullanıcı hesabı, form ya da sunucu tarafı veri kaydı yoktur (tek istisna aşağıda anlatılan reklamsız oynatma yardımcısıdır). Favori animeler ve "son bakılanlar" listesi yalnızca kendi cihazındaki tarayıcı belleğinde (localStorage) tutulur, hiçbir yere gönderilmez; tarayıcı verilerini temizlediğinde silinir. Site kendi adına çerez kullanmaz.</p>
       <p>Kaç kişinin siteyi, hangi sayfadan/bağlantıdan girip hangi bölümlere baktığını görebilmek için <a href="https://www.goatcounter.com/" target="_blank" rel="noopener noreferrer">GoatCounter</a> adlı, çerez kullanmayan bir ziyaretçi sayacı kullanılır. Bu sayaç görüntülenen sayfa, yönlendiren site/bağlantı, tarayıcı-işletim sistemi türü ve IP adresinden türetilen kabaca ülke bilgisini toplar; IP adresini kalıcı saklamaz ve seni diğer ziyaretçilerden ayırt edip profil çıkaracak bir kimlik kullanmaz. Sonuçlar yalnızca toplu/istatistiksel sayılar (günlük, haftalık, aylık, tüm zamanlar) olarak görüntülenir. Ayrıntı için <a href="https://www.goatcounter.com/privacy" target="_blank" rel="noopener noreferrer">GoatCounter'ın gizlilik politikası</a>na bakabilirsin. Bu nedenlerle 6698 sayılı KVKK kapsamında kimliği belirli veya belirlenebilir bir kişiyle ilişkilendirilen veri işlenmemektedir.</p>
       <p>Anime kapak görselleri <a href="https://anilist.co" target="_blank" rel="noopener noreferrer">AniList</a>'ten, bölüm oynatıcıları ise ilgili video barındırma sitelerinden (embed) yüklenir; bu üçüncü taraf servisler kendi gizlilik politikalarına ve çerezlerine tabidir, bu sitenin sorumluluğunda değildir.</p>
-      <p>Sibnet bölümlerindeki "Reklamsız izle" seçeneği için site, <a href="https://vercel.com" target="_blank" rel="noopener noreferrer">Vercel</a> üzerinde barındırılan küçük bir yardımcı fonksiyona (<code>tka-sibnet.vercel.app</code>) istek atar. Bu fonksiyon yalnızca Sibnet video numarasını alır, videonun doğrudan adresini çözüp geri döndürür; veritabanı tutmaz, çerez kullanmaz, isteği kaydetmez. Her web isteğinde olduğu gibi IP adresin istek süresince Vercel altyapısı tarafından teknik olarak görülür ve <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel'in gizlilik politikası</a> kapsamında kısa süreli işletim kayıtlarında yer alabilir. Videonun kendisi ise klasik gömülü oynatıcıda olduğu gibi doğrudan Sibnet sunucularından tarayıcına akar.</p>
+      <p>Sibnet, Uqload, Sendvid ve Doodstream bölümlerindeki "Reklamsız izle" seçeneği için site, <a href="https://vercel.com" target="_blank" rel="noopener noreferrer">Vercel</a> üzerinde barındırılan küçük bir yardımcı fonksiyona (<code>tka-sibnet.vercel.app</code>) istek atar. Bu fonksiyon yalnızca ilgili sağlayıcının video numarasını alır, videonun doğrudan adresini çözüp geri döndürür; veritabanı tutmaz, çerez kullanmaz, isteği kaydetmez. Her web isteğinde olduğu gibi IP adresin istek süresince Vercel altyapısı tarafından teknik olarak görülür ve <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">Vercel'in gizlilik politikası</a> kapsamında kısa süreli işletim kayıtlarında yer alabilir. Videonun kendisi ise klasik gömülü oynatıcıda olduğu gibi doğrudan ilgili sağlayıcının sunucularından tarayıcına akar. HLS (parçalı akış) formatıyla gelen sağlayıcılar için tarayıcı, halka açık bir CDN'den (jsDelivr) küçük bir açık kaynak oynatıcı kütüphanesi (hls.js) yükler.</p>
 
       <h3>Telif Hakkı</h3>
       <p>Bu site hiçbir video dosyasını kendi sunucusunda barındırmaz. Yalnızca, artık kapanmış olan turkanime.tv'nin arşivinde bulunan ve halka açık üçüncü taraf video servislerine (GDrive, çeşitli embed sağlayıcıları vb.) ait bağlantıları bir araya getiren bir dizin/arşivdir. Tüm video içeriklerinin ve çevirilerin telif hakları ilgili hak sahiplerine (yapımcı stüdyo, dağıtımcı, fansub grupları) aittir.</p>
