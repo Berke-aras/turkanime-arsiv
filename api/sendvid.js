@@ -1,9 +1,7 @@
 // Sendvid embed id -> doğrudan mp4 linki. Vercel serverless function (proje: tka-sibnet).
-// UYARI: sendvid.com bu ortamdan (ve muhtemelen datacenter IP aralıklarından genel olarak) TLS
-// handshake seviyesinde bağlantıyı reddediyor (SSL_ERROR_SYSCALL, HTTP isteği hiç gitmiyor) — bu
-// yüzden aşağıdaki regex'ler gerçek sayfa HTML'i üzerinde test edilemedi, bilinen (yt-dlp benzeri)
-// Sendvid embed yapısına dayanıyor. Vercel'e deploy ettikten sonra gerçek bir id ile doğrula;
-// çalışmazsa Vercel fonksiyon loglarına düşen HTML'i inceleyip regex'i güncellemek gerekebilir.
+// UYARI: Vercel'e deploy edilip production loglarında doğrulandı — sendvid.com bu fonksiyonun
+// isteklerine 502 "Technical Difficulties" döndürüyor (muhtemelen datacenter IP engeli/anti-bot).
+// Bu yüzden app.js'de DIRECT_PROVIDERS'a bağlanmadı. Regex'ler kendileri test edilemedi.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 module.exports = async (req, res) => {

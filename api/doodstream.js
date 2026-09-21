@@ -1,7 +1,7 @@
 // Doodstream (dood.*) embed -> doğrudan mp4 linki (bilinen pass_md5 akışı). Vercel serverless function.
-// UYARI: bu depoda geliştirilirken dood.* domainlerine Cloudflare 403 verdiği için (Sibnet'in Cloudflare
-// Workers'ta yaşadığı sorunun aynısı) akış canlı doğrulanamadı; Vercel'in AWS IP'lerinden çalışması
-// beklenir ama deploy sonrası gerçek bir id ile test edilmeli.
+// UYARI: Vercel'e deploy edilip production loglarında doğrulandı — dood.watch da (Sibnet'in Cloudflare
+// Workers'ta yaşadığı sorunun aynısı gibi) Vercel'in IP'lerine 403 "Just a moment..." challenge'ı
+// döndürüyor. Bu yüzden app.js'de DIRECT_PROVIDERS'a bağlanmadı.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 module.exports = async (req, res) => {
@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(204).end();
   const id = String((req.query && req.query.id) || '');
   const host = String((req.query && req.query.host) || '');
-  if (!/^[a-z0-9]{6,20}$/i.test(id) || !/^dood\.[a-z]{2,4}$/i.test(host)) return res.status(400).send(JSON.stringify({ error: 'bad id' }));
+  if (!/^[a-z0-9]{6,20}$/i.test(id) || !/^dood\.[a-z]{2,6}$/i.test(host)) return res.status(400).send(JSON.stringify({ error: 'bad id' }));
 
   try {
     const embed = `https://${host}/e/${id}`;

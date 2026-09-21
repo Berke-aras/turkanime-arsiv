@@ -2,6 +2,10 @@
 // uqload.com embed'i uqload.vc'ye redirect ediyor; kaynak JWPlayer p,a,c,k,e,d ile paketlenmiş,
 // içindeki m3u8 linkini görmek için sunucu tarafında elle unpack ediyoruz (eval kullanmadan,
 // üçüncü taraf sayfa içeriğini kod olarak çalıştırmamak için).
+// UYARI: çıkarma mantığı doğrulandı (gerçek sayfa HTML'i üzerinde test edildi, çalışıyor) ama
+// Vercel'e deploy edildiğinde uqload.com Cloudflare "Just a moment..." challenge'ı ile 403
+// döndürüyor — Vercel'in IP aralıkları bu sitede engelli. Bu yüzden app.js'de DIRECT_PROVIDERS'a
+// bağlanmadı. Farklı bir egress (ör. residential proxy) ile denenirse tekrar aktif edilebilir.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 // Dean Edwards P.A.C.K.E.R. çözücüsü; argümanları eval etmeden regex ile ayıklayıp burada çözüyoruz.
