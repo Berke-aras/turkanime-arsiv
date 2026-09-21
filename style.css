@@ -258,6 +258,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .legal h2{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0 0 18px}
 .legal h3{font-size:15px;color:var(--accent-2);margin:24px 0 8px}
 .legal p{color:var(--text-2);font-size:14px;line-height:1.75;margin:0 0 10px}
+.legal code{font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
 .legal-lang{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);
   background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;margin-bottom:8px}
 .legal-sep{border:none;border-top:1px solid var(--border);margin:36px 0}
