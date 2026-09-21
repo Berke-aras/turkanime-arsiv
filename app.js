@@ -9,6 +9,7 @@ function norm(s){
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+const IS_TR = (navigator.languages || [navigator.language || 'tr']).some(l => /^tr\b/i.test(l));
 const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 // Sibnet'in reklamsız oynatılması için mp4 linkini çözen küçük servis (bkz. api/sibnet.js, Vercel).
@@ -629,10 +630,8 @@ async function renderDetail(slug, token) {
 }
 
 function renderLegal() {
-  document.title = 'Gizlilik & Yasal · TürkAnime Arşivi';
-  app.innerHTML = `
-    <a class="back" href="#/">${ic('arrow-left')}Back to list · Listeye dön</a>
-    <div class="legal">
+  document.title = IS_TR ? 'Gizlilik & Yasal · TürkAnime Arşivi' : 'Privacy & Legal · TürkAnime Arşivi';
+  const en = `
       <div class="legal-lang">EN</div>
       <h2>Privacy &amp; Legal Information</h2>
 
@@ -648,10 +647,8 @@ function renderLegal() {
       <h3>Takedown Requests</h3>
       <p>If you are a rights holder and want something removed, please
         <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">open an issue on GitHub</a>
-        with the relevant anime/episode/link details; the request will be reviewed and removed as soon as possible.</p>
-
-      <hr class="legal-sep">
-
+        with the relevant anime/episode/link details; the request will be reviewed and removed as soon as possible.</p>`;
+  const tr = `
       <div class="legal-lang">TR</div>
       <h2>Gizlilik &amp; Yasal Bilgilendirme</h2>
 
@@ -667,7 +664,15 @@ function renderLegal() {
       <h3>Kaldırma Talebi</h3>
       <p>Bir içeriğin veya bağlantının hak sahibiysen ve kaldırılmasını istiyorsan, lütfen
         <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">GitHub üzerinden bir issue açarak</a>
-        ilgili anime/bölüm/link bilgisini ilet; talep incelenip en kısa sürede kaldırılır.</p>
+        ilgili anime/bölüm/link bilgisini ilet; talep incelenip en kısa sürede kaldırılır.</p>`;
+  // tarayıcı dili Türkçe değilse İngilizce bölüm üstte gelir
+  app.innerHTML = `
+    <a class="back" href="#/">${ic('arrow-left')}${IS_TR ? 'Listeye dön' : 'Back to list'}</a>
+    <div class="legal">
+      ${IS_TR ? tr : en}
+
+      <hr class="legal-sep">
+      ${IS_TR ? en : tr}
     </div>`;
   fadeApp();
 }
@@ -694,6 +699,12 @@ searchEl.addEventListener('input', () => {
   }, 150);
 });
 document.getElementById('random-btn').addEventListener('click', pickRandomAnime);
+if (!IS_TR) {
+  const nav = document.getElementById('legal-link');
+  nav.querySelector('span').textContent = 'Privacy & Legal';
+  nav.title = nav.ariaLabel = 'Privacy & Legal';
+  document.getElementById('footer-legal').textContent = 'Privacy & Legal Notice';
+}
 window.addEventListener('hashchange', route);
 
 const topBtn = document.getElementById('top-btn');
