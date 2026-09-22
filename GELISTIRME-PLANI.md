@@ -11,9 +11,19 @@
 
 ## Durum takibi
 
-Tamamlanan maddeler başlıklarında **(TAMAM)** ile işaretlenir ve en altta *Değişiklik günlüğü*
-bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; öncesinde
-`node scripts/smoke-test.js` (tarayıcı duman testi) yeşil olmalı.
+Başlık işaretleri:
+
+| işaret | anlamı |
+|---|---|
+| **(TAMAM)** | Yapıldı, doğrulandı, `main`'e pushlandı. |
+| **(YAPILMAYACAK)** | Bilerek yapılmıyor. Gerekçe maddenin altında yazılı; çoğu repo sahibinin kararını gerektiriyor (geri dönüşü olmayan işlem, telif riski). Karar değişirse işaret kaldırılır. |
+| işaretsiz | Sırada. |
+
+Her madde ayrı commit olarak `main`'e gider; öncesinde `npm run lint`, `npm test` ve
+`npm run test:smoke` yeşil olmalı. Tamamlananlar en altta *Değişiklik günlüğü*'ne tarihiyle yazılır.
+
+**Ölçümü yanlış çıkan maddeler bu dosyadan silinir** (düzeltme notu bırakılmaz); ne bulunduğu
+değişiklik günlüğünde ve commit mesajında durur.
 
 ---
 
@@ -42,7 +52,8 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   URL'si mutlak değil, turkanime'nin kendi ajax yolu:
   `ajax/videosec&b=dXVkYXg2...` — bu `data-embed-url` olarak basılınca iframe
   `https://berke-aras.github.io/turkanime-arsiv/ajax/videosec&b=...` isteyip 404 sayfası gösteriyor.
-- **Ölçüm:** Örneklemde 35 adet `yol` (hepsi `ALUCARD(BETA)`). Az ama %100'ü kırık.
+- **Ölçüm:** Tam taramada **1.708 adet** `yol` (hepsi `ALUCARD(BETA)`), %100'ü kırık.
+  (Karşılaştırma: 1.165.204 `url`, 387.519 `mask`.)
 - **Yapılacak:** `mask` kontrolünü `const OLU = t => t !== 'url'` hâline getir; `epLinksHtml`,
   `epItemHtml` (`app.js:666`), `openEpisode` (`app.js:412`) ve `firstPlayable`
   (`app.js` renderDetail içi) hepsi bu yardımcıyı kullansın.
@@ -242,7 +253,8 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
 ### 3.1 697 MB kullanılmayan ham veri repoda — **(1. ADIM TAMAM; ÖNEMLİ BULGU, aşağıyı oku)**
 - **Ölçüm:** `kaynak/animeler/` = 697 MB, 89.597 dosya. Runtime'da **sadece** `info.json`
   (6107 dosya, toplam birkaç MB) kullanılıyor. Geri kalan `<slug>-<n>-bolum.json` ve `bolumler.json`
-  dosyaları `kaynak/b/<slug>.js`'in **ham hâli** — yani aynı veri iki kez duruyor.
+  dosyaları büyük ölçüde `kaynak/b/<slug>.js`'in ham karşılığı. (**Dikkat:** birebir aynı veri
+  değil — ölçüm için bkz. 1b.)
   `.git` klasörü 307 MB. `git clone` dakikalar sürüyor, GitHub Pages deploy'u yavaş.
 - **Yapılacak (dikkatli, geri dönüşü zor):**
   1. ~~Önce `scripts/build-b.js` yaz~~ — **(TAMAM, 2026-09-22)** `scripts/build-b.js` yazıldı ve
@@ -279,11 +291,17 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   4. Geçmişi temizlemek istersen `git filter-repo` ile; **ama** bu force-push gerektirir, fork'ları
      ve mevcut klonları bozar. Sahibine sor. Temizlemeden de yeni klonlar `--depth 1` ile hızlanır.
 - **Kabul:** `du -sh .` çıktısı ve `git clone --depth 1` süresi önce/sonra not edilsin.
-- **Kalan (sahibin kararı):** 2–4. adımlar (ham veriyi ayrı repoya/Release'e taşıma, geçmiş temizliği)
-  yapılmadı. İkisi de repo sahibinin kararı: 4. adım force-push gerektiriyor, fork'ları ve mevcut
-  klonları bozar; 2. adım da kalıcı bir yer (ayrı repo ya da Release) seçmeyi gerektiriyor.
-  Artık **güvenle yapılabilir** durumdalar: dönüşüm kodla belgelendi ve ham verinin
-  `kaynak/b`'den daha fakir olduğu ölçüldü.
+- **2–4. adımlar — (YAPILMAYACAK)** Ham veriyi ayrı repoya/Release'e taşıma ve `git filter-repo`
+  ile geçmiş temizliği yapılmıyor. Gerekçe:
+  - 4. adım **force-push** gerektiriyor; her fork'u ve her mevcut klonu bozar. Bir ajanın
+    tek başına alacağı karar değil.
+  - 2. adım verinin nereye taşınacağına (ayrı repo mu, GitHub Release mı) ve oranın bakımına
+    dair kalıcı bir karar gerektiriyor.
+  - 3. adım 2'ye bağlı.
+
+  **Hazırlık tamamlandı:** dönüşüm `scripts/build-b.js` ile kodla belgelendi ve ham verinin
+  `kaynak/b`'den **daha fakir** olduğu ölçüldü (1b). Yani sahibi isterse bu adımlar artık
+  güvenle atılabilir; karar verildiğinde bu işaret kaldırılsın.
 
 ### 3.2 Linklerin %25'i ölü ama yine de gönderiliyor
 - **Ölçüm:** Örneklemde 69.298 `url`, 23.032 `mask`, 35 `yol`. `kaynak/b/` baytlarının **%32.5'i**
@@ -339,10 +357,6 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   hedef sitelerin anti-bot/routing korumaları yüzünden hiç çalışmamışlardı. Deploy edilen ölü kod
   kalmadı; dosyalar git geçmişinde duruyor. `app.js` başındaki yorum gerekçeyi anlatacak biçimde
   güncellendi.
-- ~~`app.js:33` `PREFERRED_PLAYERS` içinde `'OK.RU'` var ama veride o ad hiç geçmiyor.~~
-  **Bu madde yanlıştı (2026-09-22'de doğrulandı):** `kaynak/b/*.js` taramasında `"player":"OK.RU"`
-  **3.238 kez** geçiyor ve **hepsi canlı `url` tipinde** (`ODNOKLASSNIKI` ayrıca 137.194 kez var,
-  ikisi farklı kayıtlar). Giriş ölü değil, **silinmedi**.
 - `masks` ve `top` alanları: **(TAMAM)** §2.1.1 ile veriden ve `app.js`'ten kaldırıldı.
 
 ---
@@ -624,7 +638,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 - Tüm veri `localStorage`'da ve tarayıcı verisi temizlenince gidiyor (yasal metinde de böyle yazıyor).
   Tek düğmeyle JSON indir / JSON yükle. Sunucu gerekmez, gizlilik duruşu bozulmaz.
 
-### 7.4 Gerçek URL'ler (SEO)
+### 7.4 Gerçek URL'ler (SEO) — **(YAPILMAYACAK)**
 - **Ölçüm:** `sitemap.xml`'de **tek bir URL** var (ana sayfa). 6107 animenin hiçbiri aranabilir değil,
   çünkü hepsi `#/anime/<slug>` hash rotası — arama motorları hash'i ayrı sayfa saymaz.
   Paylaşılan linklerde de Open Graph önizlemesi hep aynı genel görseli gösteriyor.
@@ -638,8 +652,12 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   3. `sitemap.xml`'i build'de üret (6107 URL; 50.000 sınırının altında, tek dosya yeter).
   4. `application/ld+json` ile her anime sayfasında `TVSeries`/`Movie` şeması.
 - **Beklenen etki:** Bu, ziyaretçi sayısında en büyük sıçramayı yapacak tek madde. Ama aynı zamanda
-  en çok iş ve telif açısından en görünür hâle gelme anlamına geliyor — **sahibi bunu bilerek
-  karar vermeli** (`#/yasal` sayfasındaki kaldırma talebi süreci zaten kurulu).
+  en çok iş ve telif açısından en görünür hâle gelme anlamına geliyor.
+- **Neden yapılmıyor:** Maddenin kendisi "sahibi bunu bilerek karar vermeli" diyor. 6107 anime
+  sayfasını arama motorlarına açmak, üçüncü taraf video linklerini barındıran bir arşivi
+  telif açısından görünür kılar; bu teknik değil hukuki/kişisel bir karar. `#/yasal`'daki
+  kaldırma talebi süreci kurulu olsa da tetiği repo sahibi çekmeli.
+  Karar verilirse işaret kaldırılsın; 1–4. adımlar olduğu gibi uygulanabilir.
 
 ### 7.5 Diğer
 - Klavye kısayolu `/` ile arama kutusuna odaklan.
@@ -650,23 +668,21 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 
 ## 8. Yol haritası (önerilen sıra)
 
-**Tur 1 — bir oturumda bitebilir, hepsi düşük riskli**
-1. §1.1 `yol` linkleri (5 satır)
-2. §1.2 detayda arama (2 satır)
-3. §2.1.1 `top`/`masks` alanlarını at → **−42 KB gzip**, tek script çalıştırma
-4. §3.4 ölü kod temizliği
-5. §5.1 kartları `<a>` yap
+**Tur 1 — bir oturumda bitebilir, hepsi düşük riskli** — TAMAM
+1. ~~§1.1 `yol` linkleri~~ · 2. ~~§1.2 detayda arama~~ · 3. ~~§2.1.1 `top`/`masks` alanlarını at~~
+   · 4. ~~§3.4 ölü kod temizliği~~ · 5. ~~§5.1 kartları `<a>` yap~~
+   (ayrıca §1.3, §1.4, §1.5, §1.6 ve plan dışı bulunan §1.7 de bu turda kapandı)
 
-**Tur 2 — altyapı**
-6. §4.3 `package.json` + `node --test` + veri bütünlüğü testi + CI
-7. §4.1 `app.js`'i modüllere böl (testler önce yazılmalı ki bölme güvenli olsun)
-8. §1.5 service worker'ı düzelt
+**Tur 2 — altyapı** — TAMAM
+6. ~~§4.3 `package.json` + `node --test` + veri bütünlüğü testi + CI~~
+7. ~~§4.1 `app.js`'i modüllere böl~~
+8. ~~§1.5 service worker'ı düzelt~~
 
 **Tur 3 — veri**
-9. §3.1 `scripts/build-b.js` yaz, ham veriyi ayır → **902 MB → ~210 MB**
-10. §3.2 ölü linkleri özete indir → `kaynak/b/` %32 küçülür
-11. §3.3 `meta.js`'e yıl + stüdyo ekle, filtre/sıralamaya bağla
-12. §2.4 eksik 903 posteri Japonca başlıkla tara
+9. §3.1 — 1. adım (`scripts/build-b.js`) ~~yazıldı~~; **2–4. adımlar (YAPILMAYACAK)**, bkz. §3.1
+10. §2.4 eksik 903 posteri Japonca başlıkla tara ← **sırada**
+11. §3.2 ölü linkleri özete indir → `kaynak/b/` %32 küçülür
+12. ~~§3.3 `meta.js`'e yıl + stüdyo ekle~~ (+ §2.1.2 poster öneki)
 
 **Tur 4 — tasarım**
 13. §6.1 açık tema
@@ -676,7 +692,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 
 **Tur 5 — özellikler**
 17. §7.1 izlemeye devam et + §7.2 izlendi işareti
-18. §7.4 gerçek URL'ler + sitemap (sahibin kararına bağlı)
+18. §7.4 gerçek URL'ler + sitemap — **(YAPILMAYACAK)**, bkz. §7.4
 19. §4.4 ODNOKLASSNIKI resolver'ı (en yaygın sağlayıcı, 8721 link)
 
 ---
@@ -716,3 +732,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §2.1.2 | Poster öneki sabite alındı + tür/stüdyo dizinlendi: `meta.js` ham 923→506 KB |
 | 2026-09-22 | CI | Duman testi hermetik hâle getirildi (üçüncü taraf istekleri engelli, `networkidle` yerine `domcontentloaded`) |
 | 2026-09-22 | §3.1.1 | `scripts/build-b.js`: dönüşüm kodla belgelendi (%98.2 birebir); `kaynak/b`'nin ham veriden zengin olduğu saptandı |
+| 2026-09-22 | belge | Ölçümle yanlış çıkan OK.RU maddesi silindi, §1.1 ve §3.1'in eskimiş ölçümleri düzeltildi; §3.1.2–4 ve §7.4 **(YAPILMAYACAK)** işaretlendi |
