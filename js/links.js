@@ -11,10 +11,11 @@ import { esc, ic } from './util.js';
 // ölü kod bırakmamak için api/sendvid.js ve api/doodstream.js silindi (git geçmişinde duruyorlar).
 //
 // ok.ru/odnoklassniki (arşivin en yaygın sağlayıcısı, ~140.000 link) için resolver yazıldı
-// (api/okru.js, ayrıştırıcısının testi test/okru.test.mjs) ama uç HENÜZ YAYINDA DEĞİL.
-// Deploy edilip başka bir ağdan tek bir bölümle doğrulandığında OKRU_ETKIN true yapılacak:
-// çalışmayan bir "Reklamsız izle" düğmesi 140.000 linkte boşuna tıklama demek olurdu.
-// (Doğrulanması gereken: dönen linkteki `srcIp` imzaya dahil mi — bkz. api/okru.js başlığı.)
+// (api/okru.js, ayrıştırıcısının testi test/okru.test.mjs), deploy edildi ve başka bir ağdan
+// doğrulandı: ÇALIŞMIYOR. Dönen mp4 linkindeki `srcIp` gerçekten imzaya dahil, link yalnız
+// fonksiyonun kendi IP'sinden açılıyor, gerçek kullanıcı tarayıcısı hiç oynatamıyor. Bu mevcut
+// mimarinin (Vercel serverless resolver) çözemediği bir kısıt — OKRU_ETKIN kalıcı olarak false
+// kalacak (bkz. GELISTIRME-PLANI.md §4.4.2). Yeniden denemeden önce farklı bir yaklaşım gerekir.
 const OKRU_ETKIN = false;
 const OKRU = {
   resolver: 'https://tka-sibnet.vercel.app/api/okru',
