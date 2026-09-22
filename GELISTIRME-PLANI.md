@@ -528,9 +528,21 @@ değişiklik günlüğünde ve commit mesajında durur.
 ### 4.4 Resolver'lar (Vercel/Cloudflare)
 - `api/sibnet.js` ve `cf/uqload/worker.js` iyi yazılmış (geri çekilme, deadline, cache başlıkları,
   `eval` kullanmadan unpack). İki eksik:
-  1. **CORS `*`** — herkes resolver'ı kullanabilir. Kötüye kullanımda Vercel faturası/limiti riski.
-     `access-control-allow-origin`'i `https://berke-aras.github.io` ile sınırla (+ localhost'u
-     bir env değişkeniyle aç).
+  1. ~~**CORS `*`**~~ — **(TAMAM, 2026-09-22)** İkisi de tamamen açıktı: `access-control-allow-origin: *`
+     ve hiçbir köken kontrolü yoktu, yani başka bir site resolver'ı kendi oynatıcısına bağlayabilir,
+     fatura/limit bize yazılırdı.
+     - Artık `Origin` (yoksa `Referer`) **sunucuda** doğrulanıyor; izinli değilse istek hiç
+       yapılmadan **403** dönüyor. CORS başlığı yalnız izinli kökene veriliyor, `vary: origin` ile.
+     - Varsayılan izinli köken `https://berke-aras.github.io`. Ek köken:
+       Vercel'de `TKA_ALLOWED_ORIGINS`, Worker'da `ALLOWED_ORIGINS` (virgülle ayrılmış).
+       Yerel geliştirme için `TKA_ALLOW_LOCALHOST=1` / `ALLOW_LOCALHOST=1`.
+     - **Ne kadar korur (dürüst sınır):** CORS yalnız tarayıcıyı bağlar. Sunucu tarafı kontrol
+       başlıksız `curl`'ü ve başka sitelerden gelen tarayıcı isteklerini keser, ama
+       `-H "Origin: …"` ile başlığı uyduran birini durdurmaz. Bu kimlik doğrulama değil,
+       kötüye kullanımı zorlaştıran bir sürtünme katmanıdır. **Gerçek koruma için önüne oran
+       sınırlayıcı gerekir:** Vercel Firewall ya da Cloudflare Rate Limiting (ücretsiz planda da var).
+     - `test/koken.test.mjs`: iki uygulama da aynı 7 senaryodan geçiyor (kendi kökeni, yabancı köken,
+       başlıksız istek, Referer'dan çıkarım, localhost, ek köken, benzeyen sahte kökenler).
   2. **Deploy elle yapılıyor** (`.claude/progress.md`: "MCP create_deployment ile inline dosya;
      repo git'e bağlı değil"). Bu kırılgan — repoyu Vercel projesine bağla ya da
      `.github/workflows/deploy-api.yml` ile `vercel deploy --prod` çalıştır. Aynısı Wrangler için.

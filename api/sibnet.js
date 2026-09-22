@@ -3,6 +3,32 @@
 // Video trafiği buradan geçmez; sadece link çözülür, tarayıcı mp4'ü doğrudan sibnet CDN'inden çeker.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
+// ---- köken kısıtlaması (GELISTIRME-PLANI.md §4.4.1) ----
+// Eskiden 'access-control-allow-origin: *' idi; yani başka bir site bu resolver'ı kendi
+// oynatıcısına bağlayabiliyordu ve fatura/limit bize yazılıyordu.
+//
+// NE KADAR KORUR: CORS yalnız tarayıcıyı bağlar, `curl` bağlamaz — ama aşağıdaki kontrol
+// Origin/Referer başlığını SUNUCUDA da doğruluyor, yani başka bir siteden gelen tarayıcı
+// isteği ve başlıksız betik isteği 403 alıyor. Başlığı elle uyduran birini durdurmaz;
+// bu bir kimlik doğrulama değil, kötüye kullanımı zorlaştıran bir sürtünme katmanıdır.
+// Gerçek koruma için önüne oran sınırlayıcı (Vercel Firewall / Cloudflare) koymak gerekir.
+//
+// Ayar: TKA_ALLOWED_ORIGINS ortam değişkeni, virgülle ayrılmış tam köken listesi.
+// TKA_ALLOW_LOCALHOST=1 verilirse yerel geliştirme kökenleri de kabul edilir.
+const VARSAYILAN_KOKENLER = ['https://berke-aras.github.io'];
+const izinliKokenler = () => (process.env.TKA_ALLOWED_ORIGINS || '')
+  .split(',').map(x => x.trim()).filter(Boolean).concat(VARSAYILAN_KOKENLER);
+const YEREL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+function kokenDogrula(req) {
+  const origin = req.headers.origin
+    || (req.headers.referer ? (() => { try { return new URL(req.headers.referer).origin; } catch (e) { return ''; } })() : '');
+  if (!origin) return { ok: false, origin: '' };         // başlıksız istek (curl, betik)
+  if (izinliKokenler().includes(origin)) return { ok: true, origin };
+  if (process.env.TKA_ALLOW_LOCALHOST === '1' && YEREL.test(origin)) return { ok: true, origin };
+  return { ok: false, origin };
+}
+
 // Sibnet yoğun isteklerde "403 Forbidden - Request forbidden by administrative rules." döndürüyor.
 // Bu, videonun silindiği anlamına GELMİYOR: aynı istek birkaç yüz ms sonra 200 dönüyor (ölçüldü:
 // 403 alan 4 videonun 3'ü tek tekrarda, kalanı ikinci tekrarda çözüldü). Eskiden durum kodu hiç
@@ -35,10 +61,18 @@ async function fetchRetry(url, init, deadline) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('access-control-allow-origin', '*');
+  const koken = kokenDogrula(req);
+  // Yalnız izinli kökene CORS başlığı veriliyor; 'vary: origin' olmadan CDN yanlış köken
+  // için cache'lenmiş bir başlık servis edebilir.
+  if (koken.ok) res.setHeader('access-control-allow-origin', koken.origin);
+  res.setHeader('vary', 'origin');
   res.setHeader('access-control-allow-methods', 'GET, OPTIONS');
   res.setHeader('content-type', 'application/json');
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method === 'OPTIONS') return res.status(koken.ok ? 204 : 403).end();
+  if (!koken.ok) {
+    res.setHeader('cache-control', 'no-store');
+    return res.status(403).send(JSON.stringify({ error: 'origin not allowed' }));
+  }
   const id = String((req.query && req.query.id) || '');
   // hata yanıtları cache'lenmemeli: geçici bir 403'ü yarım saat boyunca "video yok" diye servis etmeyelim.
   const fail = (code, body, extra) => {
@@ -74,3 +108,6 @@ module.exports = async (req, res) => {
     return fail(502, { error: String((e && e.message) || e) });
   }
 };
+
+// test/koken.test.js için; çalışma zamanında kullanılmıyor.
+module.exports.kokenDogrula = kokenDogrula;

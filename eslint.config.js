@@ -61,7 +61,7 @@ module.exports = [
     files: ["api/**/*.js"],
     languageOptions: {
       ecmaVersion: 2022, sourceType: "commonjs",
-      globals: { module: "writable", require: "readonly", console: "readonly",
+      globals: { module: "writable", require: "readonly", console: "readonly", process: "readonly",
         fetch: "readonly", Response: "readonly", Request: "readonly", URL: "readonly",
         URLSearchParams: "readonly", AbortController: "readonly", setTimeout: "readonly",
         clearTimeout: "readonly", TextDecoder: "readonly", atob: "readonly", caches: "readonly" },
