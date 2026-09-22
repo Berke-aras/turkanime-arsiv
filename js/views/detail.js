@@ -1,7 +1,7 @@
 // Detay görünümü: kapak/bilgi paneli, özet ve bölüm listesi.
 import { esc, ic, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
-import { ANIME, loadScript, NSFW_TURLER } from '../data.js';
+import { ANIME, loadScript } from '../data.js';
 import { cardHtml, wireCards } from '../cards.js';
 import { wireSeritler } from '../serit.js';
 import { epListHtml } from './bolum-listesi.js';
@@ -11,6 +11,7 @@ import { OLU } from '../links.js';
 import { openEpisode, setCurrentEpisodes, syncEpNavButtons, playerModal, directBtnOf } from '../player.js';
 import { izlendiMi, izlendiAyarla, burayaKadarIsaretle, izlenenSayisi, izlenenleriTemizle } from '../progress.js';
 import { getRouteToken } from '../router.js';
+import { yasKapisiGerekli, yasKapisiCiz, nsfwPanelHtml } from './yas-kapisi.js';
 
 async function renderDetail(slug, token) {
   const meta = ANIME.find(a => a.slug === slug);
@@ -24,6 +25,12 @@ async function renderDetail(slug, token) {
     fadeApp();
     return;
   }
+  // §6.8 yaş kapısı: yetişkin türündeki başlıkta onay verilmeden içerik (ve veri isteği) yok.
+  if (yasKapisiGerekli(meta)) {
+    yasKapisiCiz(meta, () => renderDetail(slug, token));
+    return;
+  }
+
   app.innerHTML = `
     <div class="skel-detail">
       <div class="skel skel-poster"></div>
@@ -103,17 +110,8 @@ async function renderDetail(slug, token) {
         </div>
       </section>` : '';
 
-  // Yetişkin içerik uyarısı: türü Ecchi/Hentai/Erotica olan animelerde (bkz. js/data.js NSFW_TURLER)
-  const nsfwTurleri = meta ? meta.tur.filter(t => NSFW_TURLER.has(t)) : [];
-  const nsfwHtml = nsfwTurleri.length ? `
-      <div class="nsfw-uyari" role="note">
-        <span class="nsfw-rozet">18+</span>
-        <div>
-          <strong>Yetişkin içerik</strong>
-          <p>Bu başlık <strong>${esc(nsfwTurleri.join(', '))}</strong> türünde; cinsel içerik ya da
-          çıplaklık barındırabilir. 18 yaşından küçükseniz devam etmeyin, iş yerinde açmayın.</p>
-        </div>
-      </div>` : '';
+  // Onay verildikten sonra sayfada kalan kalıcı uyarı paneli (§6.8)
+  const nsfwHtml = nsfwPanelHtml(meta);
 
   const titleObj = { slug, baslik: meta ? meta.baslik : slug, poster: meta ? meta.poster : null };
   document.title = `${titleObj.baslik} · TürkAnime Arşivi`;

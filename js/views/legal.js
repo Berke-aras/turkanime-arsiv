@@ -2,6 +2,7 @@
 import { ic, IS_TR } from '../util.js';
 import { app, fadeApp } from '../dom.js';
 import { indir, yukle } from '../yedek.js';
+import { yetiskinOnayli, yetiskinOnayGeriAl } from '../store.js';
 
 function renderLegal() {
   document.title = IS_TR ? 'Gizlilik & Yasal · TürkAnime Arşivi' : 'Privacy & Legal · TürkAnime Arşivi';
@@ -21,7 +22,29 @@ function renderLegal() {
       <h3>Takedown Requests</h3>
       <p>If you are a rights holder and want something removed, please
         <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">open an issue on GitHub</a>
-        with the relevant anime/episode/link details; the request will be reviewed and removed as soon as possible.</p>`;
+        with the relevant anime/episode/link details; the request will be reviewed and removed as soon as possible.
+        This is also the contact channel for any request about this site, including data-protection questions.</p>
+
+      <h3>Adult Content &amp; Age Limit</h3>
+      <p>The archive includes titles categorized as <strong>Ecchi, Hentai or Erotica</strong>, which may contain sexual
+        content or nudity. Such titles carry an <strong>18+</strong> badge on their cover, and their detail page is shown
+        only after you confirm that you are over 18. This confirmation is a declaration, not age verification: there is no
+        server, no account and no identity check. Your answer is stored only in this browser (<code>ta_18</code>) and you
+        can withdraw it from the "Your data" box above. The site is not intended for children under 13.</p>
+
+      <h3>Data Stored in Your Browser</h3>
+      <p>Nothing on this site is stored on a server. The following keys are kept in your browser's localStorage and are
+        never transmitted: favorites (<code>ta_favs</code>), recently viewed (<code>ta_recent</code>), playback position
+        and watched-episode marks (<code>ta_progress</code>), adult-content confirmation (<code>ta_18</code>) and
+        interface preferences (theme, volume, playback speed, episode list layout). You can export them to a JSON file
+        and restore them on another device from the box above; clearing your browser data deletes them permanently.</p>
+
+      <h3>Disclaimer</h3>
+      <p>This archive is provided "as is", with no warranty of any kind. Links point to third-party sites whose content,
+        advertising, tracking and security are entirely outside this project's control; open them at your own discretion.
+        A large share of the archived links no longer work — the archive documents what existed, it does not guarantee
+        that it still does. This project is not affiliated with turkanime.tv, with AniList, or with any rights holder,
+        studio or fansub group; names and cover images are used only to identify the works.</p>`;
   const tr = `
       <div class="legal-lang">TR</div>
       <h2>Gizlilik &amp; Yasal Bilgilendirme</h2>
@@ -38,7 +61,45 @@ function renderLegal() {
       <h3>Kaldırma Talebi</h3>
       <p>Bir içeriğin veya bağlantının hak sahibiysen ve kaldırılmasını istiyorsan, lütfen
         <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">GitHub üzerinden bir issue açarak</a>
-        ilgili anime/bölüm/link bilgisini ilet; talep incelenip en kısa sürede kaldırılır.</p>`;
+        ilgili anime/bölüm/link bilgisini ilet; talep incelenip en kısa sürede kaldırılır.
+        Bu kanal aynı zamanda siteyle ilgili her talep için geçerlidir: KVKK kapsamındaki
+        başvurular da (6698 sayılı Kanun md. 11) buradan iletilebilir. Sitede kimliği belirli
+        bir kişiye ait veri işlenmediği için pratikte silinecek bir kayıt bulunmuyor;
+        yine de her başvuru yanıtlanır.</p>
+
+      <h3>Yetişkin İçerik ve Yaş Sınırı</h3>
+      <p>Arşivde <strong>Ecchi, Hentai ve Erotica</strong> türünde, cinsel içerik ya da çıplaklık
+        barındırabilen başlıklar var. Bu başlıkların kapağında <strong>18+</strong> rozeti çıkar ve
+        detay sayfası, 18 yaşından büyük olduğunu onaylamadan açılmaz. Bu bir <em>beyandır</em>,
+        yaş doğrulaması değildir: sunucu, hesap ya da kimlik kontrolü yok. Verdiğin cevap yalnız bu
+        tarayıcıda (<code>ta_18</code>) saklanır, hiçbir yere gönderilmez; yukarıdaki
+        "Verilerini yedekle" kutusundan geri alabilirsin. Site 13 yaşından küçükler için
+        tasarlanmamıştır; ebeveynlerin çocuklarının erişimini kendi cihaz ayarlarıyla
+        sınırlaması önerilir.</p>
+
+      <h3>Tarayıcında Saklanan Veriler</h3>
+      <p>Bu sitede sunucuda tutulan hiçbir veri yok. Tarayıcının localStorage alanında tutulan ve
+        hiçbir yere gönderilmeyen anahtarlar: favoriler (<code>ta_favs</code>), son bakılanlar
+        (<code>ta_recent</code>), kaldığın bölüm ve izleme işaretleri (<code>ta_progress</code>),
+        yetişkin içerik onayı (<code>ta_18</code>) ve arayüz tercihleri (tema, ses, oynatma hızı,
+        bölüm listesi görünümü). Bunları yukarıdaki kutudan JSON olarak indirip başka bir cihazda
+        geri yükleyebilirsin; tarayıcı verisini temizlediğinde kalıcı olarak silinirler.</p>
+
+      <h3>Sorumluluk Reddi</h3>
+      <p>Bu arşiv "olduğu gibi" sunulur, hiçbir garanti verilmez. Bağlantılar üçüncü taraf sitelere
+        gider; oradaki içerik, reklamlar, takip kodları ve güvenlik tamamen bu projenin denetimi
+        dışındadır — açıp açmamak senin tercihin. Arşivdeki linklerin önemli bir bölümü artık
+        çalışmıyor; arşiv <em>neyin var olduğunu</em> belgeler, hâlâ çalıştığını garanti etmez.
+        Bu proje turkanime.tv ile, AniList ile ya da herhangi bir hak sahibi, stüdyo veya fansub
+        grubuyla bağlantılı değildir; isimler ve kapak görselleri yalnız eserleri tanıtmak için
+        kullanılır. Site ticari amaç gütmez, reklam göstermez, gelir elde etmez.</p>
+
+      <h3>Barındırma ve 5651 Sayılı Kanun</h3>
+      <p>Site statik dosyalardan oluşur ve GitHub Pages üzerinde yayınlanır; kullanıcı içeriği
+        yüklenemez, yorum yazılamaz, hiçbir video dosyası burada barındırılmaz. Gösterilen her
+        bağlantı, kapanmadan önce turkanime.tv arşivinde bulunan üçüncü taraf adreslerine aittir.
+        Hak sahiplerinin talepleri yukarıdaki kanaldan iletildiğinde ilgili kayıtlar arşivden
+        çıkarılır.</p>`;
   // §7.3: veri tamamen tarayıcıda durduğu için tarayıcı verisi temizlenince gidiyor.
   // Yedek alma/geri yükleme bu sayfada duruyor, çünkü metnin kendisi "veri sende kalıyor" diyor.
   const yedek = IS_TR ? `
@@ -66,12 +127,15 @@ function renderLegal() {
           <button type="button" id="veri-indir" class="link-btn">${ic('download')}${IS_TR ? 'JSON indir' : 'Download JSON'}</button>
           <button type="button" id="veri-yukle-btn" class="link-btn">${ic('upload')}${IS_TR ? 'JSON yükle' : 'Restore JSON'}</button>
           <input type="file" id="veri-dosya" accept="application/json,.json" hidden>
+          <button type="button" id="yas-geri-al" class="link-btn"${yetiskinOnayli() ? '' : ' hidden'}>${ic('shield')}${IS_TR ? '18+ onayını geri al' : 'Withdraw 18+ confirmation'}</button>
         </div>
         <p id="veri-durum" class="veri-durum" role="status" aria-live="polite"></p>
       </div>
 
       <hr class="legal-sep">
       ${IS_TR ? en : tr}
+
+      <p class="legal-tarih">${IS_TR ? 'Son güncelleme' : 'Last updated'}: 22.09.2026</p>
     </div>`;
   fadeApp();
   wireYedek();
@@ -89,6 +153,13 @@ function wireYedek() {
     yaz(IS_TR ? 'Yedek dosyası indirildi.' : 'Backup file downloaded.');
   });
   document.getElementById('veri-yukle-btn').addEventListener('click', () => dosya.click());
+  // §6.8: yetişkin içerik onayı da bu kutudan geri alınabiliyor (yaş kapısı tekrar sorar).
+  const geriAl = document.getElementById('yas-geri-al');
+  geriAl.addEventListener('click', () => {
+    yetiskinOnayGeriAl();
+    geriAl.hidden = true;
+    yaz(IS_TR ? '18+ onayı geri alındı; yetişkin başlıklarda tekrar sorulacak.' : '18+ confirmation withdrawn; adult titles will ask again.');
+  });
   dosya.addEventListener('change', async () => {
     const f = dosya.files && dosya.files[0];
     if (!f) return;

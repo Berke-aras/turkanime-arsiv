@@ -931,6 +931,17 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   kaldırma talebi süreci kurulu olsa da tetiği repo sahibi çekmeli.
   Karar verilirse işaret kaldırılsın; 1–4. adımlar olduğu gibi uygulanabilir.
 
+### 7.7 Yasal/gizlilik metninin tamamlanması — **(TAMAM)**
+- Metinde eksik olan başlıklar iki dilde de eklendi:
+  **Yetişkin İçerik ve Yaş Sınırı** (§6.8 kapısı, beyan/doğrulama ayrımı, 13 yaş notu),
+  **Tarayıcında Saklanan Veriler** (tüm `localStorage` anahtarları tek tek, yedekleme),
+  **Sorumluluk Reddi** ("olduğu gibi", üçüncü taraf reklam/güvenlik, ölü linkler,
+  turkanime.tv/AniList/stüdyolarla bağlantısızlık, ticari amaç yok),
+  **Barındırma ve 5651 Sayılı Kanun** (kullanıcı içeriği yok, video barındırılmıyor).
+- Kaldırma talebi bölümüne **KVKK md. 11 başvuru kanalı** eklendi (aynı GitHub issue kanalı;
+  kimliği belirli kişiye ait veri işlenmediği notuyla).
+- Sayfanın sonuna **son güncelleme tarihi** eklendi.
+
 ### 7.6 Keşfedilebilirlik — GitHub ve Google'da öne çıkmak — **(TAMAM — repodaki kısmı)**
 - **Sorun:** "türk anime arşivi", "turkanime kapandı" gibi aramalarda repo da site de görünmüyordu.
   GitHub aramasının baktığı alanlar: **repo adı, About açıklaması, topics, README**. Google'ın
@@ -961,6 +972,22 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 - **En büyük kaldıraç hâlâ §7.4** (her anime için gerçek URL + sitemap). Bu madde bilerek
   **(YAPILMAYACAK)** işaretli: teknik değil, telif/görünürlük kararı. Repo sahibi kararı verirse
   §7.4'teki 1–4. adımlar olduğu gibi uygulanabilir ve ziyaretçi sayısındaki asıl sıçrama o zaman olur.
+
+### 6.8 Yetişkin içerik: rozet, uyarı ve yaş kapısı — **(TAMAM)**
+- **Dosyalar:** `js/data.js` (`NSFW_TURLER`), `js/cards.js` (rozet), `js/views/yas-kapisi.js`
+  (kapı + kalıcı panel), `js/store.js` (`ta_18`), `js/views/legal.js` (metin + geri alma).
+- Ecchi/Hentai/Erotica türündeki başlıklarda kartta **18+** rozeti, detayda uyarı paneli.
+  Rozet önce kartın **sol altındaydı** ve `.card` konumlandırma bağlamı olduğu için başlık/tür
+  yazılarının üstüne biniyordu; **kapağın sağ üstüne** alındı (puan rozeti sol üstte kalıyor).
+  Duman testi rozetin kutusunu ölçüp posterin içinde ve başlığın üstünde olduğunu doğruluyor.
+- **Yaş kapısı:** Yetişkin başlıkların detay sayfası, "18 yaşından büyüğüm, onaylıyorum" /
+  "Beni buradan çıkar" seçeneği olmadan açılmıyor; onay verilmeden `info.json` ve bölüm
+  verisi bile istenmiyor. Onay `ta_18` anahtarında bu tarayıcıda saklanıyor, `#/yasal`
+  sayfasındaki kutudan geri alınabiliyor.
+- **Bilerek yapılmayan:** Onay `js/yedek.js`'in yedeklediği anahtarlara dahil edilmedi —
+  bir cihazın yaş beyanı başka bir cihaza taşınmamalı.
+- **Dürüst sınır:** Bu bir yaş *doğrulaması* değil, beyan. Sunucu, hesap ya da kimlik kontrolü
+  olmayan statik bir sitede yapılabilecek en fazlası bu; yasal metinde de böyle yazıyor.
 
 ### 7.5 Diğer
 - ~~Klavye kısayolu `/` ile arama kutusuna odaklan.~~ **(TAMAM)** `js/main.js`; `Esc` odaktan
@@ -1067,3 +1094,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §2.1.4 | Kartlara `content-visibility:auto`: 1560 kartta düzen maliyeti −%60 |
 | 2026-09-22 | §7.3 + §7.5 | JSON yedek al / birleştirerek geri yükle (7 birim + 6 duman testi), "/" arama kısayolu |
 | 2026-09-22 | §4.4.2 | ok.ru resolver'ı (140.428 link, örneklemde %48 canlı): `api/okru.js` + 9 test; `OKRU_ETKIN` bayrağı deploy'u bekliyor |
+| 2026-09-22 | §6.8 + §7.7 | Yaş kapısı (onayla / buradan çıkar), 18+ rozeti kapağın sağ üstüne, yasal metne 4 yeni bölüm + KVKK kanalı |

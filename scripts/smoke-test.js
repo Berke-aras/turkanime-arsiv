@@ -305,6 +305,33 @@ async function yedekTestleri(browser, base) {
     JSON.stringify(sonrasi.prog));
   check('§7.3 kullanıcıya özet gösteriliyor', /Geri yüklendi|Restored/.test(durumMetni), durumMetni);
 
+  // --- §6.8: onay yasal sayfasından geri alınabiliyor ---
+  await p.goto(base + '/index.html#/yasal', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('#veri-indir');
+  await p.evaluate(() => localStorage.setItem('ta_18', 'true'));
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('#veri-indir');
+  const dugmeGorunur = await p.evaluate(() => !document.getElementById('yas-geri-al').hidden);
+  await p.click('#yas-geri-al');
+  await p.waitForTimeout(200);
+  const geriAlindi = await p.evaluate(() => ({
+    kayit: localStorage.getItem('ta_18'),
+    gizli: document.getElementById('yas-geri-al').hidden,
+    durum: document.getElementById('veri-durum').textContent,
+  }));
+  check('§6.8 18+ onayı yasal sayfasından geri alınıyor',
+    dugmeGorunur && geriAlindi.kayit === 'false' && geriAlindi.gizli && /18\+/.test(geriAlindi.durum),
+    JSON.stringify(geriAlindi));
+
+  // yasal metinde yeni bölümler duruyor mu
+  const yasalBasliklar = await p.evaluate(() =>
+    [...document.querySelectorAll('.legal h3')].map(h => h.textContent.trim()));
+  const beklenen = ['Adult Content', 'Data Stored in Your Browser', 'Disclaimer',
+    'Yetişkin İçerik ve Yaş Sınırı', 'Tarayıcında Saklanan Veriler', 'Sorumluluk Reddi',
+    'Barındırma ve 5651 Sayılı Kanun'];
+  const eksik = beklenen.filter(b => !yasalBasliklar.some(h => h.includes(b)));
+  check('yasal sayfada yeni bölümler var (iki dilde)', eksik.length === 0, eksik.join(' | ') || yasalBasliklar.length + ' başlık');
+
   // --- §7.3: yanlış dosya anlaşılır hata veriyor ---
   const kotuYol = path.join(os.tmpdir(), 'tka-kotu-yedek.json');
   fs.writeFileSync(kotuYol, JSON.stringify({ uygulama: 'baska-sey', veri: {} }));
@@ -774,9 +801,48 @@ async function run(page, base) {
     check('§6.7 rastgele düğmesi bir animeye götürüyor', /^#\/anime\/.+/.test(gitti), gitti);
   }
 
-  // --- NSFW uyarıları ---
+  // --- NSFW uyarıları + §6.8 yaş kapısı ---
+  await page.evaluate(() => localStorage.removeItem('ta_18'));
+  await page.goto(base + '/index.html#/anime/high-school-dxd', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.yas-kapi', { timeout: 20000 });
+  const kapi = await page.evaluate(() => ({
+    metin: document.querySelector('.yas-kapi').textContent.replace(/\s+/g, ' ').trim(),
+    onay: !!document.getElementById('yas-onay'),
+    cik: !!document.getElementById('yas-cik'),
+    bolum: document.querySelectorAll('.ep').length,
+    odak: document.activeElement && document.activeElement.id,
+  }));
+  check('§6.8 yetişkin başlıkta önce yaş kapısı çıkıyor, içerik gizli',
+    kapi.onay && kapi.cik && kapi.bolum === 0 && /18 yaşından büyüğüm/.test(kapi.metin),
+    JSON.stringify({ bolum: kapi.bolum, odak: kapi.odak }));
+
+  // "Beni buradan çıkar" geri götürüyor
+  await page.goto(base + '/index.html#/', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card');
+  await page.evaluate(() => { location.hash = '#/anime/high-school-dxd'; });
+  await page.waitForSelector('#yas-cik');
+  await page.click('#yas-cik');
+  await page.waitForTimeout(500);
+  const cikilan = await page.evaluate(() => location.hash);
+  check('§6.8 "Beni buradan çıkar" sayfadan çıkarıyor', !/high-school-dxd/.test(cikilan), cikilan);
+
+  // onay verilince içerik açılıyor ve tercih hatırlanıyor
+  await page.goto(base + '/index.html#/anime/high-school-dxd', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#yas-onay');
+  await page.click('#yas-onay');
+  await page.waitForSelector('.ep', { timeout: 20000 });
+  const onaySonrasi = await page.evaluate(() => ({
+    kayit: localStorage.getItem('ta_18'),
+    bolum: document.querySelectorAll('.ep').length,
+  }));
+  check('§6.8 onaydan sonra içerik açılıyor ve tercih saklanıyor',
+    onaySonrasi.kayit === 'true' && onaySonrasi.bolum > 0, JSON.stringify(onaySonrasi));
+
   await page.goto(base + '/index.html#/anime/high-school-dxd', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.ep', { timeout: 20000 });
+  const kapiTekrar = await page.evaluate(() => !!document.querySelector('.yas-kapi'));
+  check('§6.8 onay verildikten sonra kapı tekrar sorulmuyor', !kapiTekrar);
+
   const nsfw = await page.evaluate(() => {
     const u = document.querySelector('.nsfw-uyari');
     return u ? { metin: u.textContent.replace(/\s+/g, ' ').trim(), rozet: !!u.querySelector('.nsfw-rozet') } : null;
@@ -793,6 +859,22 @@ async function run(page, base) {
   }));
   check('NSFW: Ecchi listesindeki her kartta 18+ rozeti var',
     rozetSayi.rozet === rozetSayi.kart && rozetSayi.kart > 10, JSON.stringify(rozetSayi));
+
+  // rozet kapağın sağ üstünde durmalı, başlık/tür yazılarının üstüne binmemeli
+  const rozetYeri = await page.evaluate(() => {
+    const kart = document.querySelector('.grid:not(.recent-grid) .card');
+    const rozet = kart.querySelector('.yas-rozet');
+    const poster = kart.querySelector('.poster');
+    const baslik = kart.querySelector('h3');
+    const r = rozet.getBoundingClientRect(), p = poster.getBoundingClientRect(), b = baslik.getBoundingClientRect();
+    return {
+      posterIcinde: r.top >= p.top - 1 && r.bottom <= p.bottom + 1,
+      sagda: r.right > p.left + p.width / 2,
+      yaziyaBinmiyor: r.bottom <= b.top + 1,
+    };
+  });
+  check('§6.8 18+ rozeti kapağın sağ üstünde, yazılara binmiyor',
+    rozetYeri.posterIcinde && rozetYeri.sagda && rozetYeri.yaziyaBinmiyor, JSON.stringify(rozetYeri));
 
   await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.ep');

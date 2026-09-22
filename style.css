@@ -315,10 +315,22 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 /* ---------- yetişkin içerik uyarısı ---------- */
 /* Kartta küçük rozet, detay sayfasında açık bir panel. Rozet kapak görselinin üstünde
    durduğu için --on-art-* token'larını kullanıyor (temayla dönmüyor). */
-.yas-rozet{position:absolute;left:12px;bottom:12px;z-index:2;display:inline-flex;align-items:center;
+/* Rozet kapağın SAĞ ÜSTÜNDE duruyor: .card konumlandırma bağlamı olduğu için alt kenara
+   yaslandığında başlık ve tür etiketlerinin üstüne biniyordu. Puan rozeti sol üstte. */
+.yas-rozet{position:absolute;right:12px;top:12px;z-index:2;display:inline-flex;align-items:center;
   padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.04em;
   background:var(--on-art-bg-strong);color:#ff8a8a;border:1px solid rgba(255,120,120,.45);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+
+/* §6.8 yaş kapısı */
+.yas-kapi{max-width:560px;margin:40px auto;padding:26px 24px;text-align:center;
+  background:var(--surface);border:1px solid rgba(255,120,120,.35);border-radius:var(--r-lg);
+  box-shadow:var(--shadow)}
+.yas-kapi h2{margin:14px 0 10px;font-size:20px}
+.yas-kapi p{margin:0 0 10px;font-size:14px;line-height:1.65;color:var(--text-2)}
+.yas-kapi-btnlar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px}
+.yas-kapi-btnlar .start-btn{margin:0}
+.yas-kapi-not{margin-top:16px!important;font-size:12.5px;color:var(--muted)}
 .nsfw-uyari{display:flex;gap:14px;align-items:flex-start;margin:0 0 18px;padding:14px 16px;
   border-radius:var(--r-lg);border:1px solid rgba(255,120,120,.4);background:rgba(255,120,120,.08)}
 .nsfw-uyari strong{font-size:14px}
@@ -466,6 +478,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .veri-btnlar{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
 .veri-durum{margin:12px 0 0;min-height:1.2em;font-size:13.5px;color:var(--muted)}
 .veri-durum.veri-hata{color:#e5484d}
+.legal-tarih{margin-top:28px;font-size:12.5px;color:var(--muted)}
 
 /* ---------- footer ---------- */
 footer{max-width:var(--container);margin:0 auto;padding:20px var(--gutter) calc(36px + var(--safe-b));text-align:center;color:var(--muted);font-size:12.5px;
@@ -614,6 +627,8 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .badge{font-size:10px;padding:2px 7px}
   .fav-btn{top:9px;right:9px;width:28px;height:28px}
   .rating-badge{top:9px;left:9px;font-size:10.5px;padding:3px 8px}
+  .yas-rozet{top:9px;right:9px;font-size:10px;padding:2px 7px}
+  .yas-kapi{margin:24px auto;padding:20px 16px}
 
   .detail-head{gap:14px;align-items:flex-start;padding:14px;margin-bottom:16px;border-radius:var(--r-lg)}
   .poster.detail-poster{width:104px;height:156px;font-size:24px}
