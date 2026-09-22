@@ -9,9 +9,23 @@ import { esc, ic } from './util.js';
 // Sendvid ve Doodstream için de resolver yazılmıştı ama production'da (Vercel'de de Cloudflare
 // Workers'ta da) hedef sitenin anti-bot/routing korumaları yüzünden hiç çalışmadı; deploy edilen
 // ölü kod bırakmamak için api/sendvid.js ve api/doodstream.js silindi (git geçmişinde duruyorlar).
+//
+// ok.ru/odnoklassniki (arşivin en yaygın sağlayıcısı, ~140.000 link) için resolver yazıldı
+// (api/okru.js, ayrıştırıcısının testi test/okru.test.mjs) ama uç HENÜZ YAYINDA DEĞİL.
+// Deploy edilip başka bir ağdan tek bir bölümle doğrulandığında OKRU_ETKIN true yapılacak:
+// çalışmayan bir "Reklamsız izle" düğmesi 140.000 linkte boşuna tıklama demek olurdu.
+// (Doğrulanması gereken: dönen linkteki `srcIp` imzaya dahil mi — bkz. api/okru.js başlığı.)
+const OKRU_ETKIN = false;
+const OKRU = {
+  resolver: 'https://tka-sibnet.vercel.app/api/okru',
+  params: url => { const m = /\/videoembed\/(\d{6,20})(?:[?&#]|$)/.exec(url); return m && `id=${m[1]}`; },
+};
+
 const DIRECT_PROVIDERS = {
   SIBNET: { resolver: 'https://tka-sibnet.vercel.app/api/sibnet', params: url => { const m = /videoid=(\d+)/.exec(url); return m && `id=${m[1]}`; } },
   UQLOAD: { resolver: 'https://tka-uqload.turkanime-arsiv.workers.dev', params: url => { const m = /uqload\.[a-z]+\/embed-([a-z0-9]+)\.html/i.exec(url); return m && `id=${m[1]}`; } },
+  // veride iki ad da geçiyor: ODNOKLASSNIKI (137k link) ve OK.RU (3.2k link)
+  ...(OKRU_ETKIN ? { ODNOKLASSNIKI: OKRU, 'OK.RU': OKRU } : {}),
 };
 const directParams = l => { const p = DIRECT_PROVIDERS[l.player]; return p && p.params(l.url); };
 
@@ -50,4 +64,4 @@ function epLinksHtml(links) {
 }
 
 
-export { DIRECT_PROVIDERS, directParams, NO_EMBED_PLAYERS, PREFERRED_PLAYERS, playerRank, OLU, epLinksHtml };
+export { DIRECT_PROVIDERS, OKRU, OKRU_ETKIN, directParams, NO_EMBED_PLAYERS, PREFERRED_PLAYERS, playerRank, OLU, epLinksHtml };

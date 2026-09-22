@@ -47,7 +47,8 @@ Dosyayı açtığın anda çalışır.
 | **İzlemeye devam et** | Bıraktığın yeri hatırlar, izlenen bölümleri işaretler, ilerleme çubuğu gösterir |
 | **Benzer animeler** | Detay sayfasında aynı seri ve aynı türden öneriler |
 | **18+ uyarısı** | Ecchi/Hentai/Erotica başlıklarında NSFW uyarısı ve kartlarda `18+` rozeti |
-| **Klavye** | Oynatıcıda `Esc` kapatır, `←` ve `→` bölüm değiştirir |
+| **Yedekleme** | Favoriler, geçmiş ve izleme konumları tek JSON dosyasına iner; başka cihazda birleştirilerek geri yüklenir |
+| **Klavye** | `/` aramaya odaklanır; oynatıcıda `Esc` kapatır, `←` ve `→` bölüm değiştirir |
 | **Çevrimdışı** | Service worker uygulama kabuğunu önbelleğe alır; PWA olarak kurulabilir |
 
 ## Çalıştırma

@@ -586,9 +586,33 @@ değişiklik günlüğünde ve commit mesajında durur.
   2. **Deploy elle yapılıyor** (`.claude/progress.md`: "MCP create_deployment ile inline dosya;
      repo git'e bağlı değil"). Bu kırılgan — repoyu Vercel projesine bağla ya da
      `.github/workflows/deploy-api.yml` ile `vercel deploy --prod` çalıştır. Aynısı Wrangler için.
-- **Ayrıca:** `ODNOKLASSNIKI` (8721 link, en yaygın sağlayıcı) için resolver yok. Sibnet/Uqload
-  kalıbı uygulanabilirse "Reklamsız izle" kapsamı ciddi biçimde genişler — en yüksek etkili
-  tek backend işi bu.
+### 4.4.2 ok.ru resolver'ı — **kod hazır, yayına alınmadı**
+- **Ölçüm (düzeltme):** Planda "8721 link" yazıyordu; gerçek sayı çok daha büyük —
+  `ODNOKLASSNIKI` **137.184** + `OK.RU` **3.238** link, neredeyse tamamı
+  `https://odnoklassniki.ru/videoembed/<id>` biçiminde. Arşivin açık ara en yaygın sağlayıcısı.
+- **Canlılık ölçümü:** Rastgele 25 ok.ru linki çekildi, **12'sinde** oynatıcı verisi var
+  (%48), 13'ü silinmiş (sayfa 200 dönüyor ama veri boş). Yani ~65.000 bölüm reklamsız
+  açılabilir görünüyor.
+- **Nasıl çözülüyor:** Embed sayfasında oynatıcının tüm verisi `data-options` özniteliğinde,
+  HTML-escape'li bir JSON olarak duruyor; içindeki `flashvars.metadata` → `videos[{name,url}]`
+  ve `hlsManifestUrl`. JavaScript çalıştırmaya gerek yok. `api/okru.js` bunu ayrıştırıp en iyi
+  mp4'ü döndürüyor (`full` → `hd` → `sd` → …).
+- **Neden mp4, neden HLS değil:** m3u8 de çalışıyor ama okcdn yanıtında
+  `access-control-allow-origin` **yok** — hls.js tarayıcıdan çekemez. mp4 `<video src>` ile
+  oynuyor (media elemanı CORS istemiyor); ölçüldü: `Accept-Ranges: bytes`, Range isteğine
+  **206** dönüyor, yani sarma çalışıyor. İkisi de tarayıcı `user-agent`'ı gerektiriyor
+  (UA'sız istek 400 alıyor).
+- **Açık risk (buradan doğrulanamadı):** Dönen linkte `srcIp=<isteği yapanın IP'si>` var.
+  İmzaya dahilse link yalnız fonksiyonun IP'sinden açılır, tarayıcıda 403 gelir. Fonksiyon ile
+  test tarayıcısı aynı çıkış IP'sinde olduğu için burada ölçülemez; **deploy sonrası başka bir
+  ağdan tek bölüm denemesi** gerekiyor.
+- **Durum:** `api/okru.js` + `vercel.json` kaydı + 9 birim testi (ayrıştırıcı saf fonksiyon,
+  `test/fixtures/okru-embed*.html` üzerinden) hazır. `js/links.js`'te **`OKRU_ETKIN = false`**
+  bayrağı duruyor: uç yayına girip yukarıdaki doğrulama yapılınca `true` çevrilecek. O ana kadar
+  ok.ru linklerinde klasik embed görünüyor — çalışmayan bir "Reklamsız izle" düğmesi
+  140.000 linkte boşuna tıklama demek olurdu.
+- Ayrıca köken kontrolü iki Vercel fonksiyonunda tekrarlanmasın diye `api/_koken.js`'e alındı
+  (alt çizgiyle başlayan dosyayı Vercel uç nokta olarak yayınlamıyor).
 
 ---
 
@@ -984,8 +1008,8 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 24. §2.1.3 bölünmüş veri / tek `index.json` · 25. §2.1.5 Google Fonts render-blocking
 
 **Kalanlar (öncelik sırasıyla)**
-26. §4.4 ODNOKLASSNIKI resolver'ı (8721 link, en yaygın sağlayıcı) — **sıradaki en büyük iş**
-27. §4.4.1 resolver deploy'u (kod hazır, canlıya alınmayı bekliyor)
+26. ~~§4.4.2 ok.ru resolver'ı~~ — kod + testler hazır, **deploy ve tek bölüm doğrulaması bekliyor**
+27. §4.4.1 + §4.4.2 deploy'u (üç uç da canlıya alınmayı bekliyor)
 28. §7.6'nın elle yapılacakları (About, topics, Search Console)
 29. §2.1.3 · §2.1.5 · §7.5'in kalan iki maddesi (fansub filtresi)
 
@@ -1042,3 +1066,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §2.2 + §2.3 | Tembel arama anahtarı, iki aşamalı arama, tek `Intl.Collator`: `naruto` 31.6 → 1.0 ms, ilk kart 274 → 233 ms |
 | 2026-09-22 | §2.1.4 | Kartlara `content-visibility:auto`: 1560 kartta düzen maliyeti −%60 |
 | 2026-09-22 | §7.3 + §7.5 | JSON yedek al / birleştirerek geri yükle (7 birim + 6 duman testi), "/" arama kısayolu |
+| 2026-09-22 | §4.4.2 | ok.ru resolver'ı (140.428 link, örneklemde %48 canlı): `api/okru.js` + 9 test; `OKRU_ETKIN` bayrağı deploy'u bekliyor |

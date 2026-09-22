@@ -1,1 +1,1 @@
-{"version":2,"functions":{"api/sibnet.js":{"maxDuration":20}}}
+{"version":2,"functions":{"api/sibnet.js":{"maxDuration":20},"api/okru.js":{"maxDuration":20}}}
