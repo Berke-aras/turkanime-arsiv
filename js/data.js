@@ -16,10 +16,13 @@ const POSTER_ONEK = 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/med
 // Animesi'ne hiç girmez. ("Erotica" veride ayrı bir tür olarak duruyor.)
 const NSFW_TURLER = new Set(['Ecchi', 'Hentai', 'Erotica']);
 
+// Türkçe sıralamada tek bir karşılaştırıcı: String#localeCompare her çağrıda
+// karşılaştırıcıyı yeniden kuruyor, 6107 kayıtta ölçülebilir fark yapıyor (§2.2).
+const TR_SIRA = new Intl.Collator('tr');
+
 const BOS_META = ['', [], 0, null, 0, -1];
 const ANIME = (window.INDEX || []).map(r => {
   const baslik = r[1] || r[0]; // kaynak veride bazı başlıklar null, slug'a düş
-  const n = norm(baslik + ' ' + r[0]);
   const m = META[r[0]] || BOS_META;
   const tur = m[1].map(i => META_TURLER[i]).filter(Boolean);
   return {
@@ -31,13 +34,26 @@ const ANIME = (window.INDEX || []).map(r => {
     puan: m[2],
     poster: m[3] ? (/^https?:\/\//i.test(m[3]) ? m[3] : POSTER_ONEK + m[3]) : null,
     yil: m[4] || 0,
-    studyo: m[5] >= 0 ? (META_STUDYOLAR[m[5]] || '') : '',
-    n, tok: n.split(' ').filter(Boolean)
+    studyo: m[5] >= 0 ? (META_STUDYOLAR[m[5]] || '') : ''
   };
-}).sort((a, b) => a.baslik.localeCompare(b.baslik, 'tr'));
+}).sort((a, b) => TR_SIRA.compare(a.baslik, b.baslik));
 
-const KATEGORILER = [...new Set(ANIME.map(a => a.kategori).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
-const TURLER = [...META_TURLER].sort((a, b) => a.localeCompare(b, 'tr'));
+// Arama anahtarı yalnız arama yapılırken gerekiyor; açılışta 6107 kez norm() + split()
+// çalıştırmak ilk boyamanın önünde duruyordu (§2.2 ölçümü: 6107 kayıtta 17.3 ms).
+// Bu yüzden ilk kullanımda üretilip kaydın üstünde saklanıyor.
+// `n`  : norm edilmiş "başlık + slug" (ucuz `includes` eleme için)
+// `tok`: aynı dizenin kelimeleri (yalnız bulanık/Levenshtein taramasında gerekiyor)
+function aramaAnahtari(a) {
+  if (a.n === undefined) a.n = norm(a.baslik + ' ' + a.slug);
+  return a.n;
+}
+function aramaKelimeleri(a) {
+  if (a.tok === undefined) a.tok = aramaAnahtari(a).split(' ').filter(Boolean);
+  return a.tok;
+}
+
+const KATEGORILER = [...new Set(ANIME.map(a => a.kategori).filter(Boolean))].sort(TR_SIRA.compare);
+const TURLER = [...META_TURLER].sort(TR_SIRA.compare);
 
 // Onyıl filtresi: veride en eski 1910'lar, en yeni 2020'ler. Boş onyıl gösterilmiyor.
 const ONYILLAR = [...new Set(ANIME.map(a => a.yil).filter(Boolean).map(y => Math.floor(y / 10) * 10))]
@@ -86,4 +102,5 @@ function loadScript(slug) {
 }
 
 
-export { META, ANIME, KATEGORILER, TURLER, ONYILLAR, NSFW_TURLER, TOPLAM_BOLUM, TOPLAM_LINK, statsStripHtml, animeOfDay, loadScript };
+export { META, ANIME, KATEGORILER, TURLER, ONYILLAR, NSFW_TURLER, TOPLAM_BOLUM, TOPLAM_LINK,
+  TR_SIRA, aramaAnahtari, aramaKelimeleri, statsStripHtml, animeOfDay, loadScript };

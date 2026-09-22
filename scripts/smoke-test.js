@@ -371,6 +371,28 @@ async function run(page, base) {
   const ilk = await page.locator('.card').first().innerText().catch(() => '');
   check('ana sayfada arama', /naruto|boruto/i.test(ilk), ilk.split('\n')[0]);
 
+  // --- §2.3: tam eşleşme varken bulanık tarama yapılmıyor ---
+  const tamSonuc = await page.evaluate(() =>
+    [...document.querySelectorAll('.grid:not(.recent-grid) .card h3')].map(h => h.textContent));
+  const yabanci = tamSonuc.filter(t => !/naruto/i.test(t));
+  check('§2.3 tam eşleşmede bulanık sonuç karışmıyor',
+    tamSonuc.length > 0 && yabanci.length === 0, `${tamSonuc.length} sonuç, ${yabanci.length} yabancı: ${yabanci.slice(0, 3).join(', ')}`);
+
+  // --- §2.3: yazım hatasında bulanık taramaya düşülüyor ---
+  await page.fill('#search', 'narutoo');
+  await page.waitForTimeout(500);
+  const hataliSonuc = await page.locator('.grid:not(.recent-grid) .card').count();
+  check('§2.3 yazım hatasında bulanık tarama devrede', hataliSonuc > 0, hataliSonuc + ' sonuç');
+
+  // --- §2.1.4: ekran dışı kartlar düzenden çıkarılıyor ---
+  const cv = await page.evaluate(() => {
+    const w = document.querySelector('.card-wrap');
+    return w ? getComputedStyle(w).contentVisibility : '';
+  });
+  check('§2.1.4 kartlarda content-visibility:auto', cv === 'auto', cv);
+  await page.fill('#search', '');
+  await page.waitForTimeout(400);
+
   // --- detay sayfası ---
   await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.ep', { timeout: 20000 });

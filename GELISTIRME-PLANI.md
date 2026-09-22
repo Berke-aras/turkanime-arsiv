@@ -200,35 +200,65 @@ değişiklik günlüğünde ve commit mesajında durur.
      poster) ve detayda gereken (özet vb. — zaten `info.json`'da). Daha iyisi: `data.js` + `meta.js`'i
      **tek bir `index.json`**'da birleştirip `fetch` ile al (JSON parse, JS parse'tan hızlıdır) ve
      `app.js`'i `defer` yap. Bu, `<script>` zincirini kırar, ilk boyamayı öne çeker.
-  4. **Sanal liste.** `PAGE_SIZE = 60` (`app.js:467`) + "daha fazla yükle" ile 6107 karta kadar DOM
-     şişiyor. `content-visibility: auto` + `contain-intrinsic-size` CSS'i (bedava, 2 satır) ya da
-     `IntersectionObserver` tabanlı gerçek sanallaştırma.
+  4. **Sanal liste.** — **(TAMAM, 2026-09-22)** `.card-wrap`'e `content-visibility: auto` +
+     `contain-intrinsic-size: auto 320px` eklendi (2 satır CSS; `IntersectionObserver` tabanlı
+     sanallaştırmaya gerek kalmadı). `auto` anahtar sözcüğü sayesinde kart bir kez ölçüldükten
+     sonra gerçek boyutu hatırlanıyor, kaydırma çubuğu zıplamıyor.
+
+     **Ölçüm** (headless Chromium, 1280×900, `#/?q=a`, "daha fazla yükle" × 25 → 1560 kart;
+     her tıklamadan sonra `document.body.offsetHeight` ile düzen zorlanıp süre alındı):
+
+     | | önce | sonra |
+     |---|---|---|
+     | son 5 tıklamada 60 kart ekleme | 17–18 ms | **7.1–7.6 ms** |
+     | 25 tıklamanın toplam düzen maliyeti | 410 ms | **163 ms (−%60)** |
+
+     §1.6'daki kaydırma konumu korunması bozulmadı (duman testi geçiyor).
   5. Google Fonts render-blocking. Ya `Inter`'i self-host et (`woff2`, ~15 KB subset, `font-display:swap`)
      ya da `<link rel=preload as=style onload="this.rel='stylesheet'">` kalıbını kullan. Türkçe için
      `unicode-range` subset'i yeterli.
 
 - **Kabul:** Lighthouse mobil performans skoru ölç, önce/sonra yaz. Hedef: LCP < 2.5 s (Slow 4G).
 
-### 2.2 Başlangıçtaki 6107 elemanlık hazırlık
-- **Dosya:** `app.js:58-70`
-- **Sorun:** Açılışta 6107 kez `norm()` + `split(' ')` + `localeCompare` sıralaması yapılıyor,
+### 2.2 Başlangıçtaki 6107 elemanlık hazırlık — **(TAMAM)**
+- **Dosya:** `js/data.js`
+- **Sorun:** Açılışta 6107 kez `norm()` + `split(' ')` + `localeCompare` sıralaması yapılıyordu,
   ana iş parçacığında, ilk boyamadan önce.
-- **Yapılacak:** `norm` edilmiş arama anahtarını ve sıralamayı **build zamanında** üret
-  (`scripts/build-meta.js` zaten var). Veri dosyası zaten Türkçe alfabetik sıralı gelsin; `n`/`tok`
-  alanları da önceden hesaplanmış gelsin. Runtime'da sadece `map` kalır.
-- **Kabul:** `performance.mark` ile ölç; ilk `renderList()` öncesi süre <30 ms olsun.
+- **Ölçüm (önce, Node/V8, aynı veri):** script parse+eval 29.7 ms · `map` (norm+split) 31.7 ms ·
+  `sort` 13.1 ms → **hazırlık 44.8 ms**.
+- **Yapılan:** Arama anahtarı build zamanında üretilmedi — çünkü `n` alanı başlığın bir kopyası
+  ve `kaynak/data.js`'i ~150 KB büyütüyordu (§2.1 ile çelişir). Bunun yerine **tembel** hâle geldi:
+  `aramaAnahtari(a)` / `aramaKelimeleri(a)` ilk kullanımda üretip kayıtta saklıyor. Arama
+  yapılmayan oturumda hiç üretilmiyor. Sıralama tek bir `Intl.Collator('tr')` ile yapılıyor
+  (`String#localeCompare` her çağrıda karşılaştırıcıyı yeniden kuruyordu; ölçüm: 5.3 → 2.7 ms).
+- **Ölçüm (sonra):** `map` 31.7 → **6.4 ms** (−17.3 ms). Tarayıcıda ilk kartın boyanması
+  (headless Chromium, 5 açılışın ortancası): **274 → 233 ms**.
+- **Kabul:** ✅ Hazırlık (map+sort) <30 ms hedefiydi; ölçülen ~20 ms.
 
-### 2.3 Arama: her tuşta 6107 × Levenshtein
-- **Dosya:** `app.js:96` `levenshtein()`, `app.js:114` `matchScore()`
-- **Sorun:** 150 ms debounce var ama filtre yoksa her sorgu tüm kataloğu tarıyor. Boş sonuçta
-  `renderList()` içindeki "bunu mu demek istedin" bloğu **ikinci** bir tam tarama daha yapıyor.
-- **Yapılacak:**
-  1. Önce `includes()` ile ucuz eleme; Levenshtein'i sadece hiç eşleşme yoksa veya aday sayısı
-     azaldıktan sonra çalıştır.
-  2. Uzunluk farkı eşiği zaten var (`app.js:120`), bunu sorgu başına 2–3 karakterlik n-gram
-     ön-indeksiyle güçlendir (build zamanında üret).
-  3. Ya da bu işi bir `Web Worker`'a taşı — ana iş parçacığı hiç takılmaz.
-- **Kabul:** "narutoo" gibi hatalı bir sorguda input gecikmesi <50 ms (Performance panelinde ölç).
+### 2.3 Arama: her tuşta 6107 × Levenshtein — **(TAMAM)**
+- **Dosya:** `js/search.js` (`matchScore`, `filterAndSort`)
+- **Sorun:** 150 ms debounce vardı ama her sorgu tüm kataloğu Levenshtein ile tarıyordu.
+- **Yapılan (planın 1. maddesi):** İki aşamalı arama. Önce **ucuz eleme**: sorgunun her kelimesi
+  arama anahtarında aynen geçiyor mu (`includes`). Bir tek tam eşleşme bulunursa bulanık tarama
+  hiç çalışmıyor; hiç bulunmazsa eskisi gibi Levenshtein'e düşülüyor. Ayrıca varsayılan
+  (isim) sıralamada liste zaten sıralı geldiği için her çizimde yeniden sıralanmıyor.
+  2. ve 3. maddelere (n-gram indeksi, Web Worker) gerek kalmadı — ölçüm aşağıda.
+- **Ölçüm** (headless Chromium, `filterAndSort()` doğrudan çağrılarak):
+
+  | sorgu | önce | sonra |
+  |---|---|---|
+  | boş (tüm arşiv) | 1.8 ms | **0.2 ms** |
+  | `naruto` (ilk arama) | 46.6 ms | **25.8 ms** |
+  | `naruto` (sonraki aramalar) | 31.6 ms | **1.0 ms** |
+  | `narutoo` (hatalı → bulanık) | 36.3 ms | 43.8 ms |
+
+  İlk aramanın 25.8 ms'si tembel arama anahtarlarının bir kereye mahsus üretimini de içeriyor
+  (§2.2); `narutoo` satırında da aynı ödeme var, üstelik bulanık yol artık önce bir tam-eşleşme
+  turu yapıyor — yani hatalı yazım biraz pahalılaştı, doğru yazım 30 kat ucuzladı.
+- **Davranış değişikliği:** Tam eşleşme varken bulanık komşular artık listelenmiyor —
+  `naruto` sonucu 56 → 19 (eskiden "Boruto" da geliyordu). Yazım hatasında öneri mekanizması
+  ve "bunu mu demek istedin" bloğu aynen duruyor.
+- **Kabul:** ✅ Hatalı sorguda <50 ms (43.8 ms ölçüldü).
 
 ### 2.4 Eksik poster: 903 anime — **(TAMAM)**
 - **Dosya:** `scripts/build-posters.js`
@@ -933,6 +963,11 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 20. ~~§7.6 keşfedilebilirlik~~ — repodaki kısım bitti; About/topics/Search Console elle
 21. §4.4 ODNOKLASSNIKI resolver'ı (en yaygın sağlayıcı, 8721 link)
 
+**Tur 6 — performans** — TAMAM (kalan iki madde isteğe bağlı)
+22. ~~§2.2 açılış hazırlığı~~ + ~~§2.3 arama~~ → `naruto` 31.6 → 1.0 ms
+23. ~~§2.1.4 sanal liste (`content-visibility`)~~ → 1560 kartta düzen maliyeti −%60
+24. §2.1.3 bölünmüş veri / tek `index.json` · 25. §2.1.5 Google Fonts render-blocking
+
 ---
 
 ## 9. Çalışırken dikkat
@@ -983,3 +1018,5 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §6.8 | Ecchi/Hentai/Erotica için 18+ rozeti ve detay sayfasında yetişkin içerik uyarısı |
 | 2026-09-22 | §4.4.1 | Resolver'lara köken kısıtlaması (`Origin`/`Referer` sunucuda doğrulanıyor) + 7 senaryolu ortak test |
 | 2026-09-22 | §7.6 | Keşfedilebilirlik: başlık/meta/yapısal veri, zengin `noscript`, README (SSS + English); elle yapılacaklar listelendi |
+| 2026-09-22 | §2.2 + §2.3 | Tembel arama anahtarı, iki aşamalı arama, tek `Intl.Collator`: `naruto` 31.6 → 1.0 ms, ilk kart 274 → 233 ms |
+| 2026-09-22 | §2.1.4 | Kartlara `content-visibility:auto`: 1560 kartta düzen maliyeti −%60 |

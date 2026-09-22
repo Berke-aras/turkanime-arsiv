@@ -1,7 +1,7 @@
 // Liste görünümü: istatistik şeridi, Günün Animesi, son bakılanlar, filtre çubuğu ve kart ızgarası.
 import { esc, ic, levenshtein, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
-import { ANIME, KATEGORILER, TURLER, ONYILLAR, statsStripHtml, animeOfDay } from '../data.js';
+import { ANIME, KATEGORILER, TURLER, ONYILLAR, aramaAnahtari, aramaKelimeleri, statsStripHtml, animeOfDay } from '../data.js';
 import { listHash } from '../state.js';
 import { devamListesi } from '../progress.js';
 import { wireSeritler } from '../serit.js';
@@ -163,7 +163,7 @@ function renderList() {
   if (!items.length) {
     const q = norm(state.query);
     const suggestions = q ? ANIME
-      .map(a => ({ a, d: Math.min(levenshtein(q, a.n.slice(0, q.length + 2)), ...a.tok.map(t => levenshtein(q, t))) }))
+      .map(a => ({ a, d: Math.min(levenshtein(q, aramaAnahtari(a).slice(0, q.length + 2)), ...aramaKelimeleri(a).map(t => levenshtein(q, t))) }))
       .filter(x => x.d <= Math.ceil(q.length / 2))
       .sort((x, y) => x.d - y.d).slice(0, 4) : [];
     const suggestHtml = suggestions.length
