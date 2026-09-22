@@ -1,0 +1,53 @@
+// Bölüm linkleri: hangi sağlayıcı reklamsız çözülebiliyor, hangisi ölü, butonlar nasıl basılıyor.
+import { esc, ic } from './util.js';
+
+// Reklamlı/redirect'li sağlayıcıları reklamsız oynatmak için linki çözen küçük servisler.
+// Her sağlayıcı embed URL'inden resolver'a atılacak querystring'i (id, gerekiyorsa host) çıkarır;
+// çıkaramazsa (regex tutmazsa) o link için "Reklamsız izle" butonu hiç gösterilmez, klasik embed kalır.
+// Sibnet Vercel'de (bkz. api/sibnet.js), Uqload Cloudflare Workers'ta (bkz. cf/uqload) çalışıyor —
+// uqload.com'u Vercel'in IP'leri engelliyordu, Cloudflare Workers'ınkiler engellenmiyor.
+// Sendvid ve Doodstream için de resolver yazılmıştı ama production'da (Vercel'de de Cloudflare
+// Workers'ta da) hedef sitenin anti-bot/routing korumaları yüzünden hiç çalışmadı; deploy edilen
+// ölü kod bırakmamak için api/sendvid.js ve api/doodstream.js silindi (git geçmişinde duruyorlar).
+const DIRECT_PROVIDERS = {
+  SIBNET: { resolver: 'https://tka-sibnet.vercel.app/api/sibnet', params: url => { const m = /videoid=(\d+)/.exec(url); return m && `id=${m[1]}`; } },
+  UQLOAD: { resolver: 'https://tka-uqload.turkanime-arsiv.workers.dev', params: url => { const m = /uqload\.[a-z]+\/embed-([a-z0-9]+)\.html/i.exec(url); return m && `id=${m[1]}`; } },
+};
+const directParams = l => { const p = DIRECT_PROVIDERS[l.player]; return p && p.params(l.url); };
+
+// X-Frame-Options: SAMEORIGIN döndürdüğü doğrulanan sağlayıcılar (iframe'de açılamaz, yeni sekmede açılır).
+const NO_EMBED_PLAYERS = new Set(['DOODSTREAM', 'YADISK', 'MEDIACM', 'STREAMRUBY', 'PIXELDRAIN']);
+// Bilinen büyük/kurumsal platformlar (Google, Mail.ru, VK/OK.ru, Dailymotion): genelde daha az
+// popup/yönlendirme reklamı çıkarıyorlar, bu yüzden buton sırasında öne alınıyorlar. Bu ölçülmüş
+// bir veri değil, genel bilinirliğe dayalı bir tahmin — kesin garanti değildir.
+const PREFERRED_PLAYERS = ['GDRIVE', 'MAIL', 'OK.RU', 'ODNOKLASSNIKI', 'DAILYMOTION', 'VK'];
+function playerRank(player) {
+  const i = PREFERRED_PLAYERS.indexOf(player);
+  return i === -1 ? PREFERRED_PLAYERS.length : i;
+}
+
+// Veride üç link tipi var: 'url' (mutlak, çalışabilir), 'mask' (turkanime sunucusu gerektiren maskeli
+// link) ve 'yol' (turkanime'nin kendi ajax yolu, ör. "ajax/videosec&b=..."). Site kapalı olduğu için
+// 'url' dışındaki her tip ölüdür; 'yol' mutlak olmadığından iframe'e basılırsa kendi sayfamızda 404 açar.
+const OLU = tip => tip !== 'url';
+
+// fansub bilgisi çağıran taraftan (fansub grubu zaten seçilmiş) geldiği için buton üstünde tekrar edilmiyor.
+function epLinksHtml(links) {
+  // çalışmayan (mask) linkler sona, bilinen güvenilir sağlayıcılar öne alınıyor.
+  const sorted = [...links].sort((a, b) => {
+    if (OLU(a.tip) !== OLU(b.tip)) return OLU(a.tip) - OLU(b.tip);
+    return playerRank(a.player) - playerRank(b.player);
+  });
+  // reklamsız butonları en başa (önerilen); orijinal embed butonları aynen kalır
+  const direct = sorted.filter(l => !OLU(l.tip) && directParams(l)).map((l, i, arr) =>
+    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct-player="${l.player}" data-direct-params="${esc(directParams(l))}" title="${esc(l.player)} videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`);
+  return direct.concat(sorted.map(l => {
+    const label = esc(l.player);
+    if (OLU(l.tip)) return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
+    if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label}${ic('external')}</a>`;
+    return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
+  })).join('');
+}
+
+
+export { DIRECT_PROVIDERS, directParams, NO_EMBED_PLAYERS, PREFERRED_PLAYERS, playerRank, OLU, epLinksHtml };

@@ -3,14 +3,20 @@
 //  - DATA_CACHE:  kaynak/b/<slug>.js ve info.json gibi talep üzerine gelen bölüm verisi. Tek bir
 //    kaynak/b dosyası 3.4 MB'a kadar çıkabiliyor (one-piece), sınırsız biriktirilirse cihazda
 //    yüzlerce MB'a ulaşıp kota hatasıyla SW'yi sessizce düşürüyordu. Bu yüzden LRU ile sınırlı.
-const SHELL_CACHE = 'tka-shell-v4';
+const SHELL_CACHE = 'tka-shell-v5';
 const DATA_CACHE = 'tka-data-v1';
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);
 const DATA_CAP = 40;
 
 // Katalog dosyaları da kabukta: bunlar olmadan çevrimdışı ilk açılış boş liste gösteriyordu.
-const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'kaynak/data.js', 'meta.js',
-  'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png'];
+const SHELL = ['./', 'index.html', 'style.css', 'kaynak/data.js', 'meta.js',
+  'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png',
+  // ES modülleri (bkz. js/main.js). Biri eksik kalırsa uygulama çevrimdışı açılmaz,
+  // o yüzden hepsi kabuk cache'inde.
+  'js/main.js', 'js/util.js', 'js/dom.js', 'js/store.js', 'js/data.js', 'js/search.js',
+  'js/state.js', 'js/links.js', 'js/cards.js', 'js/router.js',
+  'js/player.js', 'js/player-dom.js', 'js/player-video.js',
+  'js/views/list.js', 'js/views/detail.js', 'js/views/legal.js'];
 
 const isData = url => /\/kaynak\/b\/[^/]+\.js$/.test(url.pathname) || /\/kaynak\/animeler\/[^/]+\/info\.json$/.test(url.pathname);
 

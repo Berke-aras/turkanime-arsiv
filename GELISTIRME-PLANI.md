@@ -287,7 +287,7 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
 
 ## 4. Mimari ve kod yapısı
 
-### 4.1 `app.js` 856 satırlık tek dosya
+### 4.1 `app.js` 856 satırlık tek dosya — **(TAMAM)**
 - **Sorun:** Router, oynatıcı, arama, favoriler, yasal metin, HTML şablonları — hepsi tek dosyada.
   `renderLegal()` (`app.js:773`) tek başına ~50 satır gömülü HTML: iki dilde uzun yasal metin
   **JavaScript string'i içinde**. Bir yazım düzeltmesi bile JS dosyasını değiştirip cache'i bozuyor.
@@ -307,6 +307,37 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   ayrı bir gerçek sayfa hâline getirmek daha da iyi).
 - **Not:** Modüle geçince `defer` bedava gelir (modüller varsayılan defer'dir) — §2.1'e katkı.
 - **Kabul:** Hiçbir dosya 250 satırı geçmesin; davranış birebir aynı kalsın.
+- **Yapıldı (2026-09-22):** `app.js` silindi, yerine 16 ES modülü (`index.html` artık
+  `<script type="module" src="js/main.js">`). En büyük dosya **176 satır**:
+
+  | dosya | satır | içerik |
+  |---|---|---|
+  | `js/util.js` | 60 | `norm`, `esc`, `ic`, `levenshtein`, `readLS/writeLS`, `initials`, `hue`, `jumpTo` |
+  | `js/dom.js` | 7 | `app`, `searchEl`, `fadeApp` |
+  | `js/store.js` | 18 | favoriler, son bakılanlar, `epReverse` (erişimcili) |
+  | `js/data.js` | 64 | `ANIME`/`META`, türetilmiş listeler, `loadScript` |
+  | `js/search.js` | 56 | `matchScore`, `filterAndSort`, `pickRandomAnime` |
+  | `js/state.js` | 73 | liste durumu, hash biçimi, kaydırma konumu |
+  | `js/links.js` | 53 | `DIRECT_PROVIDERS`, `OLU`, `epLinksHtml` |
+  | `js/cards.js` | 41 | `posterPlaceholder`, `cardHtml`, `wireCards` |
+  | `js/player-dom.js` | 40 | modal DOM referansları, yükleme ipucu zamanlayıcısı |
+  | `js/player-video.js` | 159 | resolver + HLS kurtarma + kontrol çubuğu |
+  | `js/player.js` | 139 | modal kabuğu, bölümler arası gezinme, `openEpisode` |
+  | `js/views/list.js` | 117 | `renderList`, filtre çubuğu |
+  | `js/views/detail.js` | 176 | `renderDetail` |
+  | `js/views/legal.js` | 54 | `renderLegal` |
+  | `js/router.js` | 27 | `route()` |
+  | `js/main.js` | 52 | bağlama |
+
+  Modüller arası döngüsel bağımlılık yok. Paylaşılan değişken durum erişimcilerle veriliyor
+  (`getEpReverse`/`setEpReverse`, `getRouteToken`, `setCurrentEpisodes`, `startLoadHint`) — modül
+  sınırında canlı bağlama sorunu çıkmasın diye. `sw.js` `SHELL` listesi 16 modülü kapsayacak
+  şekilde genişletildi, cache sürümü `tka-shell-v5`.
+  **Doğrulama:** refactor sonrası duman testi **31/31**, eslint temiz, masaüstü/mobil/filtreli
+  ekran görüntüleri değişmedi — davranış birebir aynı.
+- **Kalan:** Yasal metin hâlâ `js/views/legal.js` içinde JS string'i; ayrı `yasal.tr.html` /
+  `yasal.en.html` dosyalarına çıkarmak (planın önerisi) yapılmadı — artık kendi modülünde
+  olduğu için bir yazım düzeltmesi yalnız o dosyanın cache'ini bozuyor.
 
 ### 4.2 `innerHTML` + string şablon riski
 - **Sorun:** Tüm görünümler `innerHTML` ile basılıyor. `esc()` (`app.js:8`) doğru yazılmış ve
@@ -321,7 +352,7 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
      `frame-src` embed sağlayıcıları için geniş kalmak zorunda (`https:`).
   3. Yeni kod yazarken şablonları küçük fonksiyonlara böl, `esc` zorunluluğunu yorumla işaretle.
 
-### 4.3 Test, lint, CI yok — **(KISMEN TAMAM)**
+### 4.3 Test, lint, CI yok — **(TAMAM)**
 - **Yapılacak:**
   1. `package.json` ekle (bağımlılık gerektirmeden `node --test` yeterli).
   2. **Saf mantık için birim testleri** — bunlar DOM gerektirmiyor, kolay:
@@ -347,9 +378,13 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
     `api/` CommonJS + Fetch API, `cf/` ESM. `npx eslint .` temiz.
   - `.github/workflows/ci.yml`: iki iş — *lint + veri bütünlüğü* ve *tarayıcı duman testi*
     (Playwright + Chromium). push/PR/manuel tetikleme.
-- **Kalan:** Saf mantık birim testleri (`norm`, `levenshtein`, `matchScore`, `animeOfDay`, `esc`)
-  bu fonksiyonlar `app.js` içinde global olduğu için henüz yazılamadı — §4.1'deki `js/util.js`
-  ayrımından sonra doğrudan import edilip eklenecekler. Ayrıca CI'da tam checkout ~900 MB;
+- **Ek (2026-09-22, §4.1'den sonra):** `test/util.test.mjs` — `js/util.js`'i doğrudan import eden
+  9 birim testi (toplam 18 test): `norm` (Türkçe `ı/İ/I/ş/ğ/ü/ö/ç` eşlemesi, noktalama, boş girdi),
+  `esc` (beş karakter + çift kaçış davranışı), `levenshtein` (bilinen mesafeler, simetri, boş dize),
+  `initials`, `hue` (kararlılık ve 0–359 aralığı).
+- **Kalan:** `matchScore`/`animeOfDay` testleri (`js/search.js` ve `js/data.js`, ikisi de tepe
+  seviyede `window.INDEX`/`window.META` okuduğu için Node'da import edilemiyor — önce veri
+  yüklemesini bir fonksiyona almak gerekiyor). Ayrıca CI'da tam checkout ~900 MB;
   §3.1 (ham veriyi ayırma) CI süresini ciddi düşürür.
 
 ### 4.4 Resolver'lar (Vercel/Cloudflare)
@@ -607,3 +642,5 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §3.4 | `api/sendvid.js` + `api/doodstream.js` silindi; OK.RU maddesinin yanlış olduğu ölçümle saptandı |
 | 2026-09-22 | §1.7 | Bilinmeyen slug artık "bulunamadı" gösteriyor, 404 isteği atmıyor (plan dışı, çalışırken bulundu) |
 | 2026-09-22 | §4.3 | package.json, 9 veri bütünlüğü testi, eslint flat config, GitHub Actions CI |
+| 2026-09-22 | §4.1 | `app.js` (955 satır) 16 ES modülüne bölündü; en büyük dosya 176 satır |
+| 2026-09-22 | §4.3+ | `test/util.test.mjs` — saf mantık birim testleri (toplam 18 test) |

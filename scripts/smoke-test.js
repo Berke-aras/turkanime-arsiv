@@ -240,7 +240,7 @@ async function run(page, base) {
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v4');
+      const c = await caches.open('tka-shell-v5');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -254,7 +254,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v4');
+      const sh = await caches.open('tka-shell-v5');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });

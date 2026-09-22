@@ -23,7 +23,15 @@ module.exports = [
   { ignores: ["kaynak/**", "meta.js", "cf/**/node_modules/**"] },
   js.configs.recommended,
   {
-    files: ["app.js", "sw.js"],
+    files: ["js/**/*.js"],
+    languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: tarayiciGlobals },
+    rules: {
+      "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }],
+      "no-empty": ["error", { allowEmptyCatch: true }],
+    },
+  },
+  {
+    files: ["sw.js"],
     languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: tarayiciGlobals },
     rules: {
       "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }],
@@ -31,13 +39,19 @@ module.exports = [
     },
   },
   {
-    files: ["scripts/**/*.js", "test/**/*.js", "eslint.config.js"],
+    files: ["scripts/**/*.js", "test/**/*.test.js", "eslint.config.js"],
     languageOptions: {
       ecmaVersion: 2022, sourceType: "commonjs",
       // smoke-test.js'te page.evaluate() geri çağrıları tarayıcıda çalışıyor, o yüzden tarayıcı
       // global'leri de tanımlı sayılıyor.
       globals: { ...nodeGlobals, ...tarayiciGlobals },
     },
+    rules: { "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }] },
+  },
+  {
+    // Birim testleri ESM (js/ modüllerini doğrudan import ediyorlar).
+    files: ["test/**/*.mjs"],
+    languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: nodeGlobals },
     rules: { "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }] },
   },
   {

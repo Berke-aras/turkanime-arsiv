@@ -76,13 +76,30 @@ IP'lerini 403 ile engellediği için Vercel'de duruyor.)
 ## Proje yapısı
 
 ```
-index.html · app.js · style.css · meta.js   viewer uygulaması
+index.html · style.css · meta.js            uygulama kabuğu ve katalog metası
+js/                                         ES modülleri (giriş: js/main.js)
+  util · dom · store · data · search        yardımcılar, durum, veri, arama
+  state · router · main                     liste durumu, hash router, bağlama
+  links · cards · views/                    link butonları, kart, liste/detay/yasal görünümleri
+  player · player-dom · player-video        reklamsız oynatıcı modalı
 kaynak/data.js                              anime listesi (slug, başlık, bölüm/link sayısı)
 kaynak/b/<slug>.js                          her anime için bölüm ve izleme linkleri
 kaynak/animeler/<slug>/info.json            özet, kategori, puan gibi detay bilgisi
 scripts/build-meta.js                       info.json'lardan meta.js üretir
 scripts/build-posters.js                    AniList kapaklarını meta.js'e gömer
+scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
+scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
+test/                                       birim ve veri bütünlüğü testleri
 api/ · cf/                                  reklamsız oynatıcı yardımcıları
+```
+
+## Geliştirme
+
+```bash
+npm install
+npm run lint        # eslint
+npm test            # birim + veri bütünlüğü testleri (DOM/ağ gerekmez)
+npm run test:smoke  # headless Chromium'da uçtan uca duman testi
 ```
 
 Veride bir değişiklik olduğunda sırasıyla:
