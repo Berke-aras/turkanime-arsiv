@@ -230,7 +230,7 @@ değişiklik günlüğünde ve commit mesajında durur.
   3. Ya da bu işi bir `Web Worker`'a taşı — ana iş parçacığı hiç takılmaz.
 - **Kabul:** "narutoo" gibi hatalı bir sorguda input gecikmesi <50 ms (Performance panelinde ölç).
 
-### 2.4 Eksik poster: 903 anime
+### 2.4 Eksik poster: 903 anime — **(TAMAM)**
 - **Dosya:** `scripts/build-posters.js`
 - **Ölçüm:** 6107 animenin **903'ünde** (%14.8) poster yok; bunlar harf baş harfli renkli kutu olarak
   görünüyor ve ana sayfanın görsel kalitesini düşürüyor.
@@ -245,6 +245,24 @@ değişiklik günlüğünde ve commit mesajında durur.
      ana seriyi ara, bulunanın kapağını kullan.
   3. Hâlâ boş kalanlar için `posterPlaceholder`'ın harf kutusu kalsın — ama tasarımı iyileştir (§6.3).
 - **Kabul:** Postersiz anime sayısı <300'e insin; script yeniden çalıştırılabilir kalsın (zaten öyle).
+- **Yapıldı (2026-09-22):** `scripts/build-posters.js` çok turlu hâle getirildi
+  (`--tur N` ile tek tur, `--rapor` ile istek atmadan aday sayımı):
+
+  | tur | arama anahtarı | aday | bulunan |
+  |---|---|---|---|
+  | 1 | Türkçe/romanize başlık | 903 | — (daha önce tüketilmişti) |
+  | 2 | `info.json` → `Japonca` özgün başlık | 857 | **578** |
+  | 3 | ana seri (sezon/özel ekleri atılmış) | 273 | **233** |
+
+  **Sonuç: postersiz 903 → 92** (hedef <300 idi). Poster kapsamı 5204/6107 → **6015/6107 (%98.5)**.
+  Kalan 92, AniList'te o adla indekslenmeyen batı yapımları ve çok niş girdiler
+  (Arcane, Beware the Batman, Blood of Zeus…).
+  3. turun ürettiği eşleşmelerin 125'i ana serinin kapağını paylaşıyor (kasıtlı), 582 sezon
+  ise 1. ve 2. turda kendi kapağını bulmuş. Örnek URL'ler `curl` ile doğrulandı (200, image/jpeg).
+- **Yan düzeltme (aynı gün):** `build-posters.js`, `meta.js`'i yazarken §3.3 ile gelen
+  `window.META_TURLER` / `window.META_STUDYOLAR` sözlüklerini düşürüyordu — çalıştırılsaydı site
+  açılışta çökerdi. `meta.js` okuma/yazma işi tek yere alındı: **`scripts/meta-io.js`**.
+  `build-meta.js` ve `build-posters.js` artık onu kullanıyor.
 
 ---
 
@@ -680,8 +698,8 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 
 **Tur 3 — veri**
 9. §3.1 — 1. adım (`scripts/build-b.js`) ~~yazıldı~~; **2–4. adımlar (YAPILMAYACAK)**, bkz. §3.1
-10. §2.4 eksik 903 posteri Japonca başlıkla tara ← **sırada**
-11. §3.2 ölü linkleri özete indir → `kaynak/b/` %32 küçülür
+10. ~~§2.4 eksik 903 posteri Japonca başlıkla tara~~ → **903'ten 92'ye indi**
+11. §3.2 ölü linkleri özete indir → `kaynak/b/` %32 küçülür ← **sırada**
 12. ~~§3.3 `meta.js`'e yıl + stüdyo ekle~~ (+ §2.1.2 poster öneki)
 
 **Tur 4 — tasarım**
@@ -733,3 +751,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | CI | Duman testi hermetik hâle getirildi (üçüncü taraf istekleri engelli, `networkidle` yerine `domcontentloaded`) |
 | 2026-09-22 | §3.1.1 | `scripts/build-b.js`: dönüşüm kodla belgelendi (%98.2 birebir); `kaynak/b`'nin ham veriden zengin olduğu saptandı |
 | 2026-09-22 | belge | Ölçümle yanlış çıkan OK.RU maddesi silindi, §1.1 ve §3.1'in eskimiş ölçümleri düzeltildi; §3.1.2–4 ve §7.4 **(YAPILMAYACAK)** işaretlendi |
+| 2026-09-22 | §2.4 | Çok turlu poster taraması: postersiz 903 → 92; `scripts/meta-io.js` ile meta.js yazımı tek yere alındı |
