@@ -168,3 +168,29 @@ test("service worker kabuk listesi js/ altındaki her modülü kapsıyor (§1.5)
     assert.ok(liste.has(`fonts/${f}`), `fonts/${f} kabuk cache'inde yok`);
   }
 });
+
+test("Google Search Console doğrulama dosyası yerinde (§7.6)", () => {
+  // Dosya silinirse ya da içeriği bozulursa Google mülkiyet doğrulamasını düşürür ve
+  // sitemap gönderimi durur; sessizce kaybolmasın diye test ediliyor.
+  const ad = "google65be1d669fd704c0.html";
+  const yol = path.join(ROOT, ad);
+  assert.ok(fs.existsSync(yol), `${ad} repo kökünde olmalı (GitHub Pages bunu aynen servis ediyor)`);
+  assert.equal(fs.readFileSync(yol, "utf8").trim(), `google-site-verification: ${ad}`);
+});
+
+test("paylaşım görselleri doğru boyutta (§7.6)", () => {
+  // PNG başlığından genişlik/yükseklik: IHDR ilk 8 baytı imza, sonra 4 uzunluk + 4 tip.
+  const olc = p => {
+    const b = fs.readFileSync(p);
+    return { g: b.readUInt32BE(16), y: b.readUInt32BE(20), kb: Math.round(b.length / 1024) };
+  };
+  const sosyal = olc(path.join(ROOT, "docs/assets/social-preview.png"));
+  // GitHub sosyal önizleme: 1280x640 önerilir, 1 MB üstü kabul edilmiyor.
+  assert.deepEqual([sosyal.g, sosyal.y], [1280, 640]);
+  assert.ok(sosyal.kb < 1024, `social-preview.png ${sosyal.kb} KB — GitHub sınırı 1 MB`);
+
+  const og = olc(path.join(ROOT, "og-image.png"));
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const oku = n => Number((new RegExp(`property="og:image:${n}" content="(\\d+)"`).exec(html) || [])[1]);
+  assert.deepEqual([og.g, og.y], [oku("width"), oku("height")], "og:image meta etiketleri dosyayla uyuşmuyor");
+});

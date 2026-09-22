@@ -103,6 +103,8 @@ scripts/build-meta.js                       info.json'lardan meta.js üretir
 scripts/build-posters.js                    AniList kapaklarını meta.js'e gömer
 scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
 scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
+scripts/social-gorsel.py                    GitHub sosyal önizlemesi + og:image üretir
+docs/assets/social-preview.png              GitHub Settings > Social preview'a yüklenen görsel
 test/                                       birim ve veri bütünlüğü testleri
 api/ · cf/                                  reklamsız oynatıcı yardımcıları (sibnet · okru · uqload)
 ```

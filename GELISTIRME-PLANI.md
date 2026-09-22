@@ -62,7 +62,8 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
 | §4.4.1 | `npx vercel deploy --prod` — köken kısıtlaması **canlıda değil**, uçlar hâlâ herkese açık |
 | §4.4.2 | Aynı deploy + başka bir ağdan tek bölüm denemesi → sonra `js/links.js`'te `OKRU_ETKIN = true` |
 | §7.6 | Repo **About** açıklaması, **topics**, **website** alanı (GitHub arama motoru bunlara bakıyor) |
-| §7.6 | **Google Search Console**: siteyi ekle, `sitemap.xml` gönder |
+| §7.6 | **Google Search Console**: doğrulama dosyası repoda — Verify'a bas, `sitemap.xml` gönder |
+| §7.6 | **Social preview** görselini yükle (`docs/assets/social-preview.png`, Settings → General) |
 
 ### C. Sırada bekleyen gerçek işler
 | madde | ne | not |
@@ -1023,6 +1024,12 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 - **Sorun:** "türk anime arşivi", "turkanime kapandı" gibi aramalarda repo da site de görünmüyordu.
   GitHub aramasının baktığı alanlar: **repo adı, About açıklaması, topics, README**. Google'ın
   baktıkları: `<title>`, `<meta description>`, sayfadaki metin, yapısal veri, backlink.
+- **Paylaşım görselleri (2026-09-22):** `scripts/social-gorsel.py` ikisini birden üretiyor —
+  `docs/assets/social-preview.png` (1280×640, GitHub) ve `og-image.png` (1200×630, sitenin
+  `og:image`'i). Sanat, README'deki `loop-1.gif`'in bir karesi; yazı tipi Inter, sayılar
+  `kaynak/data.js`'ten okunuyor (6.107 anime · 71.573 bölüm · 1.165.204 link), yani veri
+  tazelendiğinde script tekrar çalıştırılıp görseller güncellenebiliyor. Boyut/ağırlık sınırları
+  veri bütünlüğü testinde.
 - **Yapıldı (repoda):**
   1. `index.html` başlığı jenerik "Arşiv Görüntüleyici"den anahtar kelimeli hâle getirildi:
      *"TürkAnime Arşivi — Türkçe anime arşivi, bölüm ve izleme linkleri"*. Açıklama, `keywords`,
@@ -1042,10 +1049,14 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
      · `arsiv` · `turkce-anime` · `static-site` · `github-pages` · `vanilla-js` · `pwa` · `anilist`
   3. **Website** alanına `https://berke-aras.github.io/turkanime-arsiv/` yazılsın (About kutusunda
      link olarak çıkar, Google için de backlink'tir).
-  4. **Google Search Console**'a siteyi ekle ve `sitemap.xml`'i gönder — GitHub Pages'te doğrulama
-     HTML dosyası yüklenerek yapılır. Bunsuz Google'ın siteyi bulması aylar sürebiliyor.
-  5. İsteğe bağlı: repoya bir **Release** ve **sosyal önizleme görseli** (Settings → Social preview)
-     ekle; paylaşılan linkler tık alır, tık da sıralamayı besler.
+  4. **Google Search Console**: doğrulama dosyası **repoda ve yayında**
+     (`google65be1d669fd704c0.html`, repo kökü → GitHub Pages aynen servis ediyor). Geriye kalan:
+     Search Console'da **Verify**'a bas, sonra **Sitemaps → `sitemap.xml` → Submit**. Dosyanın
+     kaybolmaması `test/veri-butunlugu.test.js` ile korunuyor.
+  5. **Sosyal önizleme görseli** — görsel hazır: **`docs/assets/social-preview.png`** (1280×640,
+     557 KB). Repo sayfası → **Settings → General → Social preview → Edit → Upload an image**.
+     Bu görsel GitHub arama sonuçlarında, repo kartlarında ve paylaşılan linklerde çıkıyor.
+  6. İsteğe bağlı: repoya bir **Release** ekle; paylaşılan linkler tık alır, tık da sıralamayı besler.
 - **En büyük kaldıraç hâlâ §7.4** (her anime için gerçek URL + sitemap). Bu madde bilerek
   **(YAPILMAYACAK)** işaretli: teknik değil, telif/görünürlük kararı. Repo sahibi kararı verirse
   §7.4'teki 1–4. adımlar olduğu gibi uygulanabilir ve ziyaretçi sayısındaki asıl sıçrama o zaman olur.
@@ -1164,3 +1175,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | belge | §0 güncel ölçümlerle tazelendi, **§0.1 "Geriye kalanlar"** tablosu eklendi; §6.8/§7.5–7.7 sıralaması düzeltildi |
 | 2026-09-22 | §2.1.5 | Inter self-host (133 → 63 KB, 0 üçüncü taraf istek, FCP 396 → 100 ms); CSP daraltıldı |
 | 2026-09-22 | §4.3 | `js/eslesme.js` ayrıldı + `data.js` `globalThis`'e geçti; `matchScore` ve `animeOfDay` artık birim testli (53 → 72 test) |
+| 2026-09-22 | §7.6 | Google doğrulama dosyası eklendi; `scripts/social-gorsel.py` ile GitHub sosyal önizleme (1280×640) ve yeni `og-image.png` üretildi |
