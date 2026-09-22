@@ -166,28 +166,28 @@ function posterPlaceholder(a) {
   return `<div class="poster" style="background:hsl(${hue(a.baslik)},45%,20%)"><span class="poster-init">${esc(initials(a.baslik))}</span></div>`;
 }
 
+// Kart gerçek bir <a>: orta tık/Ctrl+tık yeni sekmede açar, tarayıcı bağlantı önizlemesi gösterir,
+// ekran okuyucu bağlantı olarak duyurur. Favori butonu iç içe etkileşimli öğe olmasın diye
+// <a>'nın dışında, sarmalayıcıda duruyor ve üstüne konumlanıyor (bkz. style.css .card-wrap).
 function cardHtml(a) {
   return `
-    <div class="card${a.eps ? '' : ' card-empty'}" data-slug="${a.slug}" tabindex="0" role="button">
-      ${posterPlaceholder(a)}
-      ${a.puan ? `<span class="rating-badge">${ic('star','ic-star')}${a.puan}</span>` : ''}
+    <div class="card-wrap">
+      <a class="card${a.eps ? '' : ' card-empty'}" href="#/anime/${encodeURIComponent(a.slug)}">
+        ${posterPlaceholder(a)}
+        ${a.puan ? `<span class="rating-badge">${ic('star','ic-star')}${a.puan}</span>` : ''}
+        <h3>${esc(a.baslik)}</h3>
+        <div class="meta">${a.eps ? `${a.eps} bölüm · ${a.urls} link` : 'bölüm verisi yok'}</div>
+        <div class="badges">${a.tur.slice(0, 3).map(t => `<span class="badge">${esc(t)}</span>`).join('')}</div>
+      </a>
       <button class="fav-btn ${isFav(a.slug) ? 'active' : ''}" data-fav="${a.slug}" title="Favori" aria-label="${favLabel(a.slug)}">${ic('star')}</button>
-      <h3>${esc(a.baslik)}</h3>
-      <div class="meta">${a.eps ? `${a.eps} bölüm · ${a.urls} link` : 'bölüm verisi yok'}</div>
-      <div class="badges">${a.tur.slice(0, 3).map(t => `<span class="badge">${esc(t)}</span>`).join('')}</div>
     </div>`;
 }
 
+// Kart gezinmesini tarayıcı hallediyor; burada yalnız favori butonları bağlanıyor.
 function wireCards(container) {
-  container.querySelectorAll('.card').forEach(c => {
-    c.addEventListener('click', () => { location.hash = '#/anime/' + c.dataset.slug; });
-    c.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); location.hash = '#/anime/' + c.dataset.slug; }
-    });
-  });
   container.querySelectorAll('.fav-btn').forEach(b => {
     b.addEventListener('click', e => {
-      e.stopPropagation();
+      e.preventDefault();
       toggleFav(b.dataset.fav);
       b.classList.toggle('active');
       b.setAttribute('aria-label', favLabel(b.dataset.fav));
@@ -629,7 +629,7 @@ function renderList() {
     const featured = animeOfDay();
     if (featured) {
       featuredHtml = `
-        <div class="featured" data-slug="${featured.slug}" tabindex="0" role="button"${featured.poster ? ` style="--hero:url('${esc(featured.poster)}')"` : ''}>
+        <a class="featured" href="#/anime/${encodeURIComponent(featured.slug)}"${featured.poster ? ` style="--hero:url('${esc(featured.poster)}')"` : ''}>
           ${posterPlaceholder(featured).replace('class="poster', 'class="featured-poster poster')}
           <div class="featured-info">
             <span class="badge tag-main">${ic('sparkles')}Günün Animesi</span>
@@ -637,7 +637,7 @@ function renderList() {
             <div class="meta">${featured.eps} bölüm · ${ic('star','ic-star')} ${featured.puan}</div>
             <span class="featured-cta">${ic('play')}İzlemeye başla</span>
           </div>
-        </div>`;
+        </a>`;
     }
   }
 
@@ -676,12 +676,6 @@ function renderList() {
   fadeApp();
   wireFilterBar();
   wireCards(app);
-  const featuredEl = app.querySelector('.featured');
-  if (featuredEl) {
-    const go = () => { location.hash = '#/anime/' + featuredEl.dataset.slug; };
-    featuredEl.addEventListener('click', go);
-    featuredEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
-  }
   // tam yeniden çizim yerine yeni kartları ekle; kaydırma konumu korunur
   app.querySelector('.pager').addEventListener('click', e => {
     if (e.target.closest('#load-more') == null) return;

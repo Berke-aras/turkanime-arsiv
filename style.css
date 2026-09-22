@@ -103,6 +103,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 
 /* ---------- home: featured hero ---------- */
 .featured{position:relative;overflow:hidden;isolation:isolate;display:flex;gap:22px;align-items:center;margin-bottom:24px;padding:22px;
+  color:inherit;text-decoration:none;
   border-radius:var(--r-xl);cursor:pointer;background:var(--surface);border:1px solid rgba(var(--accent-rgb),.25);
   box-shadow:var(--shadow);transition:border-color .2s,transform .2s var(--ease),box-shadow .2s}
 .featured::before{content:"";position:absolute;inset:-40px;z-index:-2;background:var(--hero,linear-gradient(135deg,rgba(var(--accent-rgb),.2),rgba(169,125,255,.12))) center/cover;
@@ -127,7 +128,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .grid.recent-grid{display:flex;grid-template-columns:none;gap:12px;overflow-x:auto;padding:2px 2px 12px;margin:0 -2px;scroll-snap-type:x mandatory;scrollbar-width:none;
   -webkit-overflow-scrolling:touch}
 .recent-grid::-webkit-scrollbar{display:none}
-.recent-grid .card{--recent-card-w:140px;flex:0 0 var(--recent-card-w);width:var(--recent-card-w);min-width:0;scroll-snap-align:start}
+.recent-grid .card-wrap{--recent-card-w:140px;flex:0 0 var(--recent-card-w);width:var(--recent-card-w);min-width:0;scroll-snap-align:start}
 /* h3/meta nowrap olduğu için kartın min-content genişliği başlık kadar oluyordu; flex item'ın
    otomatik min-width:auto'su flex-basis'i ezip kartları başlık uzunluğuna göre farklı
    genişlikte yapıyordu (poster yüksekliği = genişliğin %150'si olduğundan posterler de
@@ -155,10 +156,12 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 
 /* ---------- grid & cards ---------- */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px}
-.card{position:relative;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+.card-wrap{position:relative;display:flex;min-width:0}
+.card{position:relative;display:flex;flex-direction:column;flex:1 1 auto;min-width:0;color:inherit;text-decoration:none;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
   padding:6px;cursor:pointer;box-shadow:var(--shadow-sm);
   transition:transform .2s var(--ease),border-color .2s,box-shadow .2s}
-.card:hover{border-color:rgba(var(--accent-rgb),.55);transform:translateY(-4px);box-shadow:var(--shadow),var(--glow)}
+.card-wrap:hover .card{border-color:rgba(var(--accent-rgb),.55);transform:translateY(-4px);box-shadow:var(--shadow),var(--glow)}
 .card h3{margin:10px 6px 4px;font-size:13.5px;font-weight:600;line-height:1.3;letter-spacing:-.005em;min-height:2.6em;
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .card .meta{margin:0 6px 8px;font-size:11.5px}
@@ -169,7 +172,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .4s ease,transform .35s var(--ease)}
 .poster img.img-loaded{opacity:1}
 .poster:not(.loaded){animation:pulse 1.6s ease-in-out infinite}
-.card:hover .poster img{transform:scale(1.05)}
+.card-wrap:hover .poster img{transform:scale(1.05)}
 .poster.loaded{color:transparent;animation:none}
 .card .poster::after{content:"";position:absolute;inset:auto 0 0 0;height:40%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.35));pointer-events:none}
 .fav-btn{position:absolute;top:12px;right:12px;z-index:2;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.12);
@@ -180,6 +183,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .rating-badge{position:absolute;top:12px;left:12px;z-index:2;display:inline-flex;align-items:center;gap:3px;background:rgba(10,12,17,.7);color:var(--star);
   font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;padding:4px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.1);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.card:focus-visible,.featured:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .card-empty{opacity:.55}
 .card-empty .meta{color:var(--bad)}
 
@@ -382,7 +386,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .featured-info h2{font-size:18px;margin:6px 0 4px}
   .featured-info .meta{font-size:12px}
   .featured-cta{margin-top:10px;padding:7px 13px;font-size:12.5px}
-  .recent-grid .card{--recent-card-w:124px}
+  .recent-grid .card-wrap{--recent-card-w:124px}
   .archive-title{font-size:18px}
 
   .filterbar{flex-wrap:nowrap;overflow-x:auto;margin:0 -12px 14px;padding:2px 12px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -442,8 +446,8 @@ footer a:hover{color:var(--text);text-decoration:underline}
 
 /* ---------- hover-capable only ---------- */
 @media (hover:none){
-  .card:hover{transform:none;box-shadow:var(--shadow-sm)}
-  .card:hover .poster img{transform:none}
+  .card-wrap:hover .card{transform:none;box-shadow:var(--shadow-sm)}
+  .card-wrap:hover .poster img{transform:none}
   .featured:hover{transform:none}
   .card:active{transform:scale(.98)}
 }

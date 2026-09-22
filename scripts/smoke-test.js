@@ -48,6 +48,7 @@ async function run(page, base) {
   const errors = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  page.on('response', r => { if (r.status() >= 400) errors.push(`HTTP ${r.status()} ${new URL(r.url()).pathname}`); });
 
   // --- ana sayfa ---
   await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
@@ -114,8 +115,8 @@ async function run(page, base) {
   await page.evaluate(() => window.scrollTo(0, 1500));
   await page.waitForFunction(() => Math.abs(window.scrollY - 1500) < 2, null, { timeout: 5000 });
   const oncekiY = await page.evaluate(() => window.scrollY);
-  const slug = await page.locator('.grid:not(.recent-grid) .card').nth(20).getAttribute('data-slug');
-  await page.evaluate(s => { location.hash = '#/anime/' + s; }, slug);
+  const kartHref = await page.locator('.grid:not(.recent-grid) .card').nth(20).getAttribute('href');
+  await page.evaluate(h => { location.hash = h; }, kartHref);
   await page.waitForSelector('.ep, .detail', { timeout: 20000 });
   const detayY = await page.evaluate(() => window.scrollY);
   check('§1.6 detay sayfası başa kaydırıyor', detayY < 50, 'scrollY=' + detayY);
@@ -160,6 +161,51 @@ async function run(page, base) {
   await page.goto(base + '/index.html#/yasal', { waitUntil: 'networkidle' });
   await page.waitForSelector('.legal', { timeout: 10000 });
   check('yasal sayfası açılıyor', true);
+
+  // --- §5.1: kartlar gerçek bağlantı, favori butonu iç içe değil ---
+  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.card');
+  const kartYapi = await page.evaluate(() => {
+    const c = document.querySelector('.grid:not(.recent-grid) .card');
+    const fav = document.querySelector('.grid:not(.recent-grid) .fav-btn');
+    return {
+      etiket: c.tagName,
+      href: c.getAttribute('href'),
+      role: c.getAttribute('role'),
+      tabindex: c.getAttribute('tabindex'),
+      favIcinde: !!c.querySelector('.fav-btn'),
+      favSarmalayicida: fav.parentElement.classList.contains('card-wrap'),
+      genislik: Math.round(c.getBoundingClientRect().width),
+      sarmalayiciGenislik: Math.round(c.parentElement.getBoundingClientRect().width),
+    };
+  });
+  check('§5.1 kart <a href> oldu', kartYapi.etiket === 'A' && /^#\/anime\/.+/.test(kartYapi.href || ''), `${kartYapi.etiket} ${kartYapi.href}`);
+  check('§5.1 iç içe etkileşimli öğe yok', !kartYapi.favIcinde && kartYapi.favSarmalayicida && !kartYapi.role && !kartYapi.tabindex, JSON.stringify(kartYapi));
+  check('§5.1 kart sarmalayıcıyı dolduruyor (düzen bozulmadı)', Math.abs(kartYapi.genislik - kartYapi.sarmalayiciGenislik) < 2, `${kartYapi.genislik} / ${kartYapi.sarmalayiciGenislik}`);
+  const featuredEtiket = await page.locator('.featured').evaluate(e => e.tagName + ' ' + e.getAttribute('href'));
+  check('§5.1 Günün Animesi kartı da bağlantı', /^A #\/anime\/.+/.test(featuredEtiket), featuredEtiket);
+
+  // Ctrl+tık yeni sekmede açmalı
+  const [yeniSekme] = await Promise.all([
+    page.context().waitForEvent('page', { timeout: 8000 }).catch(() => null),
+    page.locator('.grid:not(.recent-grid) .card').first().click({ modifiers: ['Control'] }),
+  ]);
+  // yeni sekme önce about:blank olarak açılıp sonra hedefe gidiyor; URL oturana kadar bekle
+  if (yeniSekme) await yeniSekme.waitForURL(/#\/anime\//, { timeout: 10000 }).catch(() => {});
+  check('§5.1 Ctrl+tık yeni sekmede açıyor', !!yeniSekme && /#\/anime\//.test(yeniSekme.url()), yeniSekme ? yeniSekme.url() : 'sekme açılmadı');
+  if (yeniSekme) await yeniSekme.close();
+
+  // favori butonu gezinmeyi tetiklememeli
+  const hashOnce = await page.evaluate(() => location.hash);
+  await page.locator('.grid:not(.recent-grid) .fav-btn').first().click();
+  await page.waitForTimeout(300);
+  const favDurum = await page.evaluate(() => ({
+    hash: location.hash,
+    aktif: document.querySelector('.grid:not(.recent-grid) .fav-btn').classList.contains('active'),
+  }));
+  check('§5.1 favori butonu gezinmiyor, favoriye ekliyor', favDurum.hash === hashOnce && favDurum.aktif, JSON.stringify(favDurum));
+  await page.locator('.grid:not(.recent-grid) .fav-btn').first().click(); // geri al
+  await page.waitForTimeout(200);
 
   // --- §1.5: service worker iki ayrı cache kullanıyor, veri cache'i LRU ile sınırlı ---
   await page.goto(base + '/index.html', { waitUntil: 'networkidle' });

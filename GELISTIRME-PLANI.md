@@ -337,7 +337,7 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
 
 ## 5. Erişilebilirlik (a11y)
 
-### 5.1 Kartlar link değil, `role="button"` div
+### 5.1 Kartlar link değil, `role="button"` div — **(TAMAM)**
 - **Dosya:** `app.js:164` `cardHtml()`, `app.js:176` `wireCards()`
 - **Sorun:** Kart `<div role="button" tabindex="0">` ve **içinde** favori `<button>`'u var.
   İç içe etkileşimli öğe geçersiz ARIA. Ayrıca: orta tık/Ctrl+tık ile yeni sekmede açılamıyor,
@@ -347,6 +347,15 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   `wireCards`'taki tıklama/klavye dinleyicileri tamamen silinir — tarayıcı bedava halleder.
   Aynısı `.featured` için de geçerli (`app.js` renderList içi).
 - **Kabul:** Bir karta Ctrl+tık yeni sekmede detayı açar; axe DevTools'ta iç içe etkileşim uyarısı gitmiş olur.
+- **Yapıldı (2026-09-22):** Kart `<a class="card" href="#/anime/<slug>">` oldu; `role`/`tabindex`
+  kalktı. Favori butonu `<a>`'nın dışına, yeni `.card-wrap` sarmalayıcısına taşındı (sarmalayıcı
+  `position:relative`, kart onu dolduruyor, buton eskisi gibi sağ üstte). `wireCards` artık yalnız
+  favori butonlarını bağlıyor; kart tıklama/klavye dinleyicileri tamamen silindi.
+  `.featured` (Günün Animesi) de `<a>` oldu, kendi JS dinleyicileri silindi. CSS'te `:hover`
+  kuralları `.card-wrap:hover .card`'a taşındı (favori butonunun üstündeyken kart sönük kalmasın),
+  `.recent-grid` genişlik kuralları sarmalayıcıya geçti, `:focus-visible` anahatı eklendi.
+  Test: Ctrl+tık gerçekten yeni sekmede detayı açıyor, favori butonu gezinmeyi tetiklemiyor,
+  kart genişliği sarmalayıcıyla birebir (düzen bozulmadı), masaüstü + mobil ekran görüntüsüyle doğrulandı.
 
 ### 5.2 Modal odak tuzağı yok
 - **Dosya:** `index.html` `#player-modal`, `app.js:246` `openPlayerModal()`
@@ -561,3 +570,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §1.4 | Ters sıralamada ileri/geri ekrandaki yönü izliyor, buton başlığı hedef bölümü söylüyor |
 | 2026-09-22 | §1.6 | Rota geçişleri sayfa başına, animasyonsuz kaydırıyor |
 | 2026-09-22 | §1.5 | SW: kabuk/veri cache'leri ayrıldı, veri LRU'lu (40), gezinme network-first, çevrimdışı açılış dolu |
+| 2026-09-22 | §5.1 | Kartlar ve Günün Animesi gerçek `<a>`; iç içe etkileşimli öğe kalmadı |
