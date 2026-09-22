@@ -678,16 +678,12 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
        sınırlayıcı gerekir:** Vercel Firewall ya da Cloudflare Rate Limiting (ücretsiz planda da var).
      - `test/koken.test.mjs`: iki uygulama da aynı 7 senaryodan geçiyor (kendi kökeni, yabancı köken,
        başlıksız istek, Referer'dan çıkarım, localhost, ek köken, benzeyen sahte kökenler).
-     - ⚠️ **KOD REPODA, CANLIDA DEĞİL.** Deploy denendi, Vercel MCP bağlantısı
-       `berke-aras-projects` kapsamına yetkili olmadığı için 403 döndü; Worker için de deploy
-       aracı yok. Ölçüm (deploy öncesi, canlı uçlar): başlıksız `curl` → `{"url":"https://dvb7.sibnet.ru/…mp4"}`
-       **HTTP 200**, `Origin: https://kotusite.example` → `access-control-allow-origin: *`.
-       Yani uçlar **hâlâ herkese açık**. Kapatmak için repo sahibinin bir kez çalıştırması gereken:
-       ```bash
-       npx vercel deploy --prod            # api/sibnet.js  (tka-sibnet)
-       cd cf/uqload && npx wrangler deploy # cf/uqload/worker.js
-       ```
-       Ardından tekrar ölçüm: başlıksız `curl` **403**, kendi sitemizden istek **200** olmalı.
+     - ✅ **CANLIDA, DOĞRULANDI (2026-09-22).** `npx wrangler deploy` ile Worker deploy edildi
+       (Vercel tarafı repo push'unda otomatik deploy olmuş, ayrıca elle tetiklemeye gerek kalmadı).
+       Ölçüm (deploy sonrası, üç uç): başlıksız `curl` → sibnet **403**, okru **403**, uqload **403**
+       (`{"error":"origin not allowed"}`); `Origin: https://berke-aras.github.io` ile üçü de isteği
+       işliyor (CORS başlığı yalnız bu köken için dönüyor); `Origin: https://kotusite.example` →
+       uqload **403**. Uçlar artık herkese açık değil.
   2. **Deploy elle yapılıyor** (`.claude/progress.md`: "MCP create_deployment ile inline dosya;
      repo git'e bağlı değil"). Bu kırılgan — repoyu Vercel projesine bağla ya da
      `.github/workflows/deploy-api.yml` ile `vercel deploy --prod` çalıştır. Aynısı Wrangler için.
@@ -707,15 +703,18 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
   oynuyor (media elemanı CORS istemiyor); ölçüldü: `Accept-Ranges: bytes`, Range isteğine
   **206** dönüyor, yani sarma çalışıyor. İkisi de tarayıcı `user-agent`'ı gerektiriyor
   (UA'sız istek 400 alıyor).
-- **Açık risk (buradan doğrulanamadı):** Dönen linkte `srcIp=<isteği yapanın IP'si>` var.
-  İmzaya dahilse link yalnız fonksiyonun IP'sinden açılır, tarayıcıda 403 gelir. Fonksiyon ile
-  test tarayıcısı aynı çıkış IP'sinde olduğu için burada ölçülemez; **deploy sonrası başka bir
-  ağdan tek bölüm denemesi** gerekiyor.
+- **Risk DOĞRULANDI, ÇALIŞMIYOR (2026-09-22):** Deploy edilmiş uçtan gerçek bir link çözüldü
+  (`srcIp=100.54.9.58`, fonksiyonun çıkış IP'si), dönen mp4 URL'i başka bir ağdan (`88.231.55.233`,
+  farklı `Origin`/`Referer`/`Range` kombinasyonlarıyla denendi) **HTTP 400** verdi — yani `srcIp`
+  gerçekten imzaya dahil, link yalnız fonksiyonun kendi IP'sinden açılıyor. Gerçek kullanıcıların
+  tarayıcısı (farklı IP) linki hiçbir zaman oynatamayacak.
 - **Durum:** `api/okru.js` + `vercel.json` kaydı + 9 birim testi (ayrıştırıcı saf fonksiyon,
-  `test/fixtures/okru-embed*.html` üzerinden) hazır. `js/links.js`'te **`OKRU_ETKIN = false`**
-  bayrağı duruyor: uç yayına girip yukarıdaki doğrulama yapılınca `true` çevrilecek. O ana kadar
-  ok.ru linklerinde klasik embed görünüyor — çalışmayan bir "Reklamsız izle" düğmesi
-  140.000 linkte boşuna tıklama demek olurdu.
+  `test/fixtures/okru-embed*.html` üzerinden) hazır ve doğru çalışıyor (ayrıştırma sorunu yok).
+  `js/links.js`'te **`OKRU_ETKIN = false`** bayrağı **kasıtlı olarak kalıcı** — mevcut mimariyle
+  (Vercel serverless resolver) çözülemeyen bir mimari kısıt bu, "deploy edilince açılacak" bir
+  şey değil. Açılması için ya ok.ru'nun IP kısıtlamasını atlatan farklı bir yaklaşım (ör. kullanıcı
+  tarayıcısından embed sayfasını doğrudan okuyup ayrıştırma) ya da bu sağlayıcının tamamen
+  vazgeçilmesi gerekir. O ana kadar ok.ru linklerinde klasik embed kalıyor.
 - Ayrıca köken kontrolü iki Vercel fonksiyonunda tekrarlanmasın diye `api/_koken.js`'e alındı
   (alt çizgiyle başlayan dosyayı Vercel uç nokta olarak yayınlamıyor).
 
@@ -1143,7 +1142,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 **Tur 5 — özellikler**
 17. ~~§7.1 izlemeye devam et + §7.2 izlendi işareti~~
 18. §7.4 gerçek URL'ler + sitemap — **(YAPILMAYACAK)**, bkz. §7.4
-19. ~~§4.4.1 resolver köken kısıtlaması~~ (kod hazır; **deploy bekliyor**, bkz. §4.4)
+19. ~~§4.4.1 resolver köken kısıtlaması~~ — **(TAMAM, deploy edildi ve doğrulandı 2026-09-22)**
 20. ~~§7.6 keşfedilebilirlik~~ — repodaki kısım bitti; About/topics/Search Console elle
 21. ~~§7.3 yedek al / geri yükle~~ + ~~§7.5 "/" kısayolu~~
 
@@ -1155,8 +1154,8 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 26. §2.1.3 bölünmüş veri / tek `index.json` — tek kalan performans maddesi
 
 **Kalanlar (öncelik sırasıyla)**
-26. ~~§4.4.2 ok.ru resolver'ı~~ — kod + testler hazır, **deploy ve tek bölüm doğrulaması bekliyor**
-27. §4.4.1 + §4.4.2 deploy'u (üç uç da canlıya alınmayı bekliyor)
+26. §4.4.2 ok.ru resolver'ı — deploy edildi, **doğrulandı ve ÇALIŞMIYOR** (bkz. §4.4.2): `srcIp` imzaya
+    dahil, farklı IP'den 400 dönüyor. `OKRU_ETKIN` kasıtlı olarak `false` kalacak.
 28. §7.6'nın elle yapılacakları (About, topics, Search Console)
 29. §2.1.3 · §2.1.5 · §7.5'in kalan iki maddesi (fansub filtresi)
 
