@@ -8,9 +8,55 @@ import { playerModal, playerFrame, playerVideo, playerNewTab, playerPrevBtn, pla
   playerEpLabel, playerLoading, playerLoadingHint, playerControls,
   startLoadHint, clearLoadHint } from './player-dom.js';
 import { playDirect, stopVideo, bumpDirectToken, videoKlavye, kontrolleriGoster } from './player-video.js';
+import { ilerlemeYaz, devamSaniyesi, izlendiAyarla } from './progress.js';
 
 let currentEpisodes = [];
 let currentEpIndex = null;
+// Hangi animenin bölümleri açık: ilerleme kaydı slug bazlı tutuluyor (§7.1).
+let currentSlug = null;
+
+// --- §7.1 nerede kalındı ---
+// timeupdate oynarken saniyede ~4 kez geliyor, o yüzden kısıtlanıyor. Ama duraklatma, sarma ve
+// modalın kapanması anında KISITSIZ yazılıyor: yoksa kullanıcı duraklatıp kapattığında son 5
+// saniyeye kadarki ilerleme kaybolabiliyor.
+const ILERLEME_ARALIGI = 5000;
+let sonYazim = 0;
+function ilerlemeKaydet(zorla = false) {
+  if (!currentSlug || currentEpIndex == null || playerVideo.hidden) return;
+  // Kaynak kaldırılmış ya da hiç oynatılmamış bir <video> için yazma: modal kapandıktan sonra
+  // stopVideo() currentTime'ı sıfırlıyor, o hâldeki bir 'pause'/'pagehide' kaydı konumu silerdi.
+  if (!playerVideo.currentTime) return;
+  const simdi = Date.now();
+  if (!zorla && simdi - sonYazim < ILERLEME_ARALIGI) return;
+  sonYazim = simdi;
+  ilerlemeYaz(currentSlug, currentEpIndex, playerVideo.currentTime, playerVideo.duration || 0);
+  // %90'ı geçildiyse bölüm izlenmiş sayılıyor (§7.2)
+  if (playerVideo.duration && playerVideo.currentTime > playerVideo.duration * 0.9) {
+    izlendiAyarla(currentSlug, currentEpIndex, true);
+    izlendiIsaretiniTazele(currentEpIndex);
+  }
+}
+playerVideo.addEventListener('timeupdate', () => ilerlemeKaydet());
+playerVideo.addEventListener('pause', () => ilerlemeKaydet(true));
+playerVideo.addEventListener('seeked', () => ilerlemeKaydet(true));
+window.addEventListener('pagehide', () => ilerlemeKaydet(true));
+playerVideo.addEventListener('ended', () => {
+  if (currentSlug && currentEpIndex != null) {
+    izlendiAyarla(currentSlug, currentEpIndex, true);
+    izlendiIsaretiniTazele(currentEpIndex);
+  }
+});
+// Kaydedilmiş konuma dön; kaynak yüklenip süre bilinene kadar beklenir.
+playerVideo.addEventListener('loadedmetadata', () => {
+  if (!currentSlug || currentEpIndex == null) return;
+  const t = devamSaniyesi(currentSlug, currentEpIndex);
+  if (t) playerVideo.currentTime = t;
+});
+// Detay sayfasındaki bölüm satırı açıksa işaretini anında güncelle.
+function izlendiIsaretiniTazele(i) {
+  const el = app.querySelector(`.ep[data-i="${i}"]`);
+  if (el) el.classList.add('ep-izlendi');
+}
 
 function openPlayerModal(url, epIndex = null, direct = null) {
   clearLoadHint();
@@ -34,6 +80,8 @@ function openPlayerModal(url, epIndex = null, direct = null) {
 playerFrame.addEventListener('load', () => { if (playerFrame.hidden) return; playerLoading.hidden = true; clearLoadHint(); });
 
 function closePlayerModal() {
+  ilerlemeKaydet(true); // kapatmadan önce son konumu yaz (§7.1)
+  currentEpIndex = null; // kapandıktan sonra gelen pause/pagehide kayıt yazmasın
   playerModal.hidden = true;
   bumpDirectToken();
   stopVideo();
@@ -152,7 +200,7 @@ window.addEventListener('keydown', e => {
 
 
 // Detay sayfası bölüm listesini çizerken buraya veriyor; gezinme bu diziye göre yürüyor.
-export function setCurrentEpisodes(eps) { currentEpisodes = eps; }
+export function setCurrentEpisodes(eps, slug = null) { currentEpisodes = eps; currentSlug = slug; }
 export const getCurrentEpisodes = () => currentEpisodes;
 
 export { openPlayerModal, closePlayerModal, openEpisode, wireEmbedButtons, syncEpNavButtons, playerModal, directBtnOf };

@@ -3,6 +3,7 @@ import { esc, ic, levenshtein, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
 import { ANIME, KATEGORILER, TURLER, ONYILLAR, statsStripHtml, animeOfDay } from '../data.js';
 import { listHash } from '../state.js';
+import { devamListesi } from '../progress.js';
 import { getRecent } from '../store.js';
 import { cardHtml, wireCards, posterPlaceholder } from '../cards.js';
 import { filterAndSort } from '../search.js';
@@ -137,6 +138,13 @@ function renderList() {
     }
   }
 
+  // "Devam et" (§6.2.3 + §7.1): izlemeye başlanmış animeler en üstte.
+  let devamHtml = '';
+  if (showHome) {
+    const devam = devamListesi().map(s => ANIME.find(a => a.slug === s)).filter(Boolean).slice(0, 16);
+    if (devam.length) devamHtml = seritHtml('İzlemeye devam et', devam);
+  }
+
   // Keşif şeritleri: 6107 anime tek düze alfabetik bir duvar hâlinde akmasın (§6.2).
   const enIyilerHtml = showHome ? seritHtml('En yüksek puanlı', enIyiler(), 'Puanı 8 ve üzeri') : '';
   const janrHtml = showHome ? janrSeridiHtml() : '';
@@ -163,7 +171,7 @@ function renderList() {
 
   const archiveTitleHtml = showHome ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
 
-  app.innerHTML = `${statsHtml}${featuredHtml}${recentHtml}${enIyilerHtml}${janrHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
+  app.innerHTML = `${statsHtml}${featuredHtml}${devamHtml}${recentHtml}${enIyilerHtml}${janrHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
   fadeApp();
   wireFilterBar();
   wireCards(app);

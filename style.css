@@ -261,6 +261,11 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .janr-chip .meta{font-variant-numeric:tabular-nums}
 .section-title .meta{margin-left:8px;font-size:12.5px;font-weight:400}
 
+/* §7.1 posterin alt kenarındaki ince izleme ilerlemesi çubuğu */
+.ilerleme{position:absolute;left:0;right:0;bottom:0;height:3px;z-index:2;
+  background:var(--on-art-bg);overflow:hidden;pointer-events:none}
+.ilerleme i{display:block;height:100%;background:var(--accent)}
+
 .card-empty{opacity:.55}
 /* bölüm: ölü arşiv linklerinin tek satırlık özeti (§3.2) */
 .ep-olu{margin:8px 2px 2px;font-size:12px;color:var(--muted)}
@@ -327,6 +332,18 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .ep-links{padding:0 16px 14px 16px;display:none;border-top:1px solid var(--border);padding-top:12px}
 .ep-kisa{display:none}
 
+/* ---------- §7.2 izlendi işareti ---------- */
+.ep-izle{flex:none;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:1px solid var(--border);border-radius:50%;color:var(--muted);
+  opacity:0;transition:opacity .15s,color .15s,border-color .15s,background .15s}
+.ep-head:hover .ep-izle,.ep-izle:focus-visible{opacity:1}
+.ep-izle:hover{color:var(--ok);border-color:var(--ok)}
+.ep-izle .ic{width:15px;height:15px}
+.ep-izlendi .ep-izle{opacity:1;color:var(--ok);border-color:var(--ok);background:rgba(61,220,132,.12)}
+.ep-izlendi .ep-ad,.ep-izlendi .ep-kisa{color:var(--muted)}
+.ep-izlenen-rozet{gap:6px}
+.ep-izlenen-rozet .ic{width:14px;height:14px;opacity:.7}
+
 /* ---------- §6.4 bölüm ızgarası ----------
    Aynı DOM, farklı yerleşim: ızgarada yalnız bölüm numarası görünür, açılan bölüm satırın
    tamamını kaplar ki link listesi yine tam genişlikte çıksın. Uzun serilerde (One Piece 1166)
@@ -337,6 +354,13 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
   font-variant-numeric:tabular-nums;font-weight:600}
 #ep-list.izgara .ep-arrow,#ep-list.izgara .ep-ad,#ep-list.izgara .ep-head .meta{display:none}
 #ep-list.izgara .ep-kisa{display:block}
+/* ızgarada tik düğmesi kutucuğun sağ üst köşesinde küçük bir rozet; ortayı kapatmamalı */
+#ep-list.izgara .ep-head{position:relative}
+#ep-list.izgara .ep-izle{position:absolute;top:1px;right:1px;width:18px;height:18px;border:0;background:none}
+#ep-list.izgara .ep-izle .ic{width:12px;height:12px}
+#ep-list.izgara .ep-izlendi{border-color:rgba(61,220,132,.5)}
+#ep-list.izgara .ep.open .ep-izle{position:static;width:28px;height:28px;border:1px solid var(--border)}
+#ep-list.izgara .ep.open.ep-izlendi .ep-izle{border-color:var(--ok);background:rgba(61,220,132,.12)}
 #ep-list.izgara .ep-empty{opacity:.4}
 /* açık bölüm: satırı kapla, tam başlığı geri getir */
 #ep-list.izgara .ep.open{grid-column:1/-1}

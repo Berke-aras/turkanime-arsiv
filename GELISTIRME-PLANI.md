@@ -734,7 +734,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 
 ## 7. Yeni özellikler (değer sırasına göre)
 
-### 7.1 İzlemeye devam et
+### 7.1 İzlemeye devam et — **(TAMAM)**
 - **Neden:** Şu an `recent` (`app.js:147` `pushRecent`) sadece **slug** tutuyor. Kullanıcı 300.
   bölümde kaldığını hatırlamak zorunda. Bir arşiv sitesinde en çok istenen özellik budur.
 - **Nasıl:** `ta_progress` anahtarında `{ [slug]: { ep: 12, t: 743, updated: 1690000000 } }`.
@@ -742,10 +742,31 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   yalnız bölüm numarası). Açılışta `playerVideo.currentTime = kayit.t`.
   Ana sayfaya "Devam et" şeridi (§6.2.3), kartta ince bir ilerleme çubuğu.
 - **Dikkat:** `localStorage` kotası — 6107 anime × kayıt değil, sadece izlenenler tutulacağı için sorun yok.
+- **Yapıldı (2026-09-22):** `js/progress.js` — `ta_progress` anahtarında
+  `{ [slug]: { ep, t, d, u, izlendi: [...] } }`, en fazla 200 anime (en eskiler düşer).
+  - Konum `timeupdate`'te 5 sn kısıtla, ayrıca **duraklatma, sarma, modalın kapanması ve
+    `pagehide` anında kısıtsız** yazılıyor.
+  - Açılışta `loadedmetadata`'da kaldığı yere dönüyor.
+  - Ana sayfada **"İzlemeye devam et"** şeridi en üstte (§6.2.3 de böylece kapandı).
+  - Kartta posterin alt kenarında ince ilerleme çubuğu.
+- **Çalışırken bulunan iki gerçek hata (ikisi de testle yakalandı):**
+  1. Oynatıcı kapandıktan sonra sayfadan ayrılınca `pagehide`, `stopVideo()`'nun sıfırladığı
+     `currentTime` ile kaydı **eziyordu** — kaydedilen konum sıfırlanıyordu. Artık kapanışta
+     `currentEpIndex` temizleniyor ve `currentTime` 0 ise hiç yazılmıyor.
+  2. Devam eşikleri sabit saniyeydi (başta 15 sn, sonda 30 sn); 3 dakikalık bir özel bölümde
+     ya da kısa bir OVA'da pencerenin tamamını yiyordu. Eşikler oransal yapıldı
+     (`min(15, %3)` ve `min(30, %8)`), uzun bölümlerde yine aynı değerlere oturuyor.
 
-### 7.2 İzlendi işareti
+### 7.2 İzlendi işareti — **(TAMAM)**
 - Bölüm listesinde izlenen bölümler tik ile işaretli, "izlendi olarak işaretle" / "buraya kadar
   hepsini işaretle" seçenekleri. §6.4'teki ızgara görünümüyle birlikte çok güçlü.
+- **Yapıldı (2026-09-22):**
+  - Her bölüm satırında tik düğmesi: normal tık tekil işaretler, **Shift+tık buraya kadar
+    hepsini** işaretler.
+  - Video %90'ı geçince ya da bittiğinde bölüm **otomatik** izlendi sayılıyor.
+  - İzlenen bölümlerin başlığı soluklaşıyor; ızgara görünümünde kutucuk yeşil kenarlı ve
+    köşesinde tik rozeti var.
+  - Araç çubuğunda "3 / 26 izlendi" rozeti; tıklanınca o anime için işaretler temizleniyor.
 
 ### 7.3 Favorileri/geçmişi dışa-içe aktarma
 - Tüm veri `localStorage`'da ve tarayıcı verisi temizlenince gidiyor (yasal metinde de böyle yazıyor).
@@ -804,7 +825,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 16. ~~§6.4 bölüm ızgarası~~ → One Piece'te ekranda görünen bölüm 2 → 457
 
 **Tur 5 — özellikler**
-17. §7.1 izlemeye devam et + §7.2 izlendi işareti
+17. ~~§7.1 izlemeye devam et + §7.2 izlendi işareti~~
 18. §7.4 gerçek URL'ler + sitemap — **(YAPILMAYACAK)**, bkz. §7.4
 19. §4.4 ODNOKLASSNIKI resolver'ı (en yaygın sağlayıcı, 8721 link)
 
@@ -852,3 +873,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §6.6 | Oynatıcı modalının altı maddesi: klavye, ses/hız hatırlama, 44px hedefler, otomatik gizlenme, tam ekran |
 | 2026-09-22 | §6.2 + §6.3 | Ana sayfaya "En yüksek puanlı" ve "Janra göre keşfet" şeritleri; postersiz kart tasarımı yenilendi |
 | 2026-09-22 | §6.4 | Bölüm ızgarası: One Piece'te ekranda görünen bölüm 2 → 457 |
+| 2026-09-22 | §7.1 + §7.2 | İzlemeye devam et (konum kaydı, şerit, ilerleme çubuğu) ve izlendi işareti |

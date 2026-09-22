@@ -6,6 +6,7 @@ import { isFav, favLabel, toggleFav, pushRecent, getEpReverse, setEpReverse, get
 import { posterPlaceholder } from '../cards.js';
 import { OLU } from '../links.js';
 import { openEpisode, setCurrentEpisodes, syncEpNavButtons, playerModal, directBtnOf } from '../player.js';
+import { izlendiMi, izlendiAyarla, burayaKadarIsaretle, izlenenSayisi, izlenenleriTemizle } from '../progress.js';
 import { getRouteToken } from '../router.js';
 
 async function renderDetail(slug, token) {
@@ -38,7 +39,7 @@ async function renderDetail(slug, token) {
   if (token !== getRouteToken()) return;
   pushRecent(slug); // render kesinleşmeden "son bakılanlar"a yazma
   const episodes = (window.__TKA__ && window.__TKA__[slug]) || [];
-  setCurrentEpisodes(episodes);
+  setCurrentEpisodes(episodes, slug);
 
   // özette gelen <br /> gibi ham HTML etiketlerini gerçek satır sonuna çevir
   const escBr = s => esc(s).replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/\n/g, '<br>');
@@ -77,13 +78,17 @@ async function renderDetail(slug, token) {
     const ep = episodes[i];
     const empty = !ep.links.length;
     const kisa = ep.no != null ? String(ep.no) : '•';
+    const izlendi = izlendiMi(slug, i);
     return `
-    <div class="ep${empty ? ' ep-empty' : ''}" data-i="${i}">
+    <div class="ep${empty ? ' ep-empty' : ''}${izlendi ? ' ep-izlendi' : ''}" data-i="${i}">
       <div class="ep-head">
         <span class="ep-arrow">${ic('chevron-right')}</span>
         <span class="ep-kisa" aria-hidden="true">${esc(kisa)}</span>
         <span class="ep-ad">${esc(ep.ad)}</span>
         <span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span>
+        <button type="button" class="ep-izle" data-i="${i}"
+          title="İzlendi olarak işaretle (Shift ile buraya kadar hepsi)"
+          aria-label="İzlendi olarak işaretle">${ic('check')}</button>
       </div>
       <div class="ep-links"></div>
     </div>`;
@@ -123,6 +128,7 @@ async function renderDetail(slug, token) {
       ${episodes.length ? `
       <div class="ep-toolbar">
         <h3 class="section-title">Bölümler <span class="meta">(${episodes.length})</span></h3>
+        <button type="button" id="ep-izlenen" class="link-btn ep-izlenen-rozet" hidden title="İzlenen bölümleri temizle"><span></span>${ic('x')}</button>
         <button type="button" id="ep-view" class="link-btn" title="${getEpIzgara() ? 'Liste görünümü' : 'Izgara görünümü'}" aria-label="${getEpIzgara() ? 'Liste görünümü' : 'Izgara görünümü'}">${ic(getEpIzgara() ? 'list' : 'grid')}</button>
         <button type="button" id="ep-reverse" class="link-btn${getEpReverse() ? ' active' : ''}" title="Sıralamayı tersine çevir">${ic('sort')}Tersten</button>
       </div>` : ''}
@@ -132,6 +138,30 @@ async function renderDetail(slug, token) {
   fadeApp();
 
   const epListEl = document.getElementById('ep-list');
+  // §7.2: tik düğmesi — normal tık tekil, Shift+tık "buraya kadar hepsi".
+  epListEl.addEventListener('click', e => {
+    const tik = e.target.closest('.ep-izle');
+    if (!tik) return;
+    e.stopPropagation();
+    const i = Number(tik.dataset.i);
+    if (e.shiftKey) burayaKadarIsaretle(slug, i);
+    else izlendiAyarla(slug, i, !izlendiMi(slug, i));
+    izlenenleriCiz();
+  }, true);
+
+  // İşaretleri yeniden çizmeden tazeler (bölüm listesi yeniden basılmıyor).
+  const izlenenleriCiz = () => {
+    epListEl.querySelectorAll('.ep').forEach(el => {
+      el.classList.toggle('ep-izlendi', izlendiMi(slug, Number(el.dataset.i)));
+    });
+    const sayi = izlenenSayisi(slug);
+    const rozet = document.getElementById('ep-izlenen');
+    if (rozet) {
+      rozet.hidden = !sayi;
+      rozet.querySelector('span').textContent = `${sayi} / ${episodes.length} izlendi`;
+    }
+  };
+
   epListEl.addEventListener('click', e => {
     const h = e.target.closest('.ep-head');
     if (!h) return;
@@ -155,6 +185,7 @@ async function renderDetail(slug, token) {
     revBtn.classList.toggle('active', getEpReverse());
     if (!playerModal.hidden) syncEpNavButtons(); // modal açıkken yön değişirse butonlar tazelensin
     epListEl.innerHTML = epListHtml();
+    izlenenleriCiz();
     const epSearchEl = document.getElementById('ep-search');
     if (epSearchEl && epSearchEl.value) epSearchEl.dispatchEvent(new Event('input'));
   });
@@ -165,6 +196,10 @@ async function renderDetail(slug, token) {
     viewBtn.innerHTML = ic(getEpIzgara() ? 'list' : 'grid');
     viewBtn.title = viewBtn.ariaLabel = getEpIzgara() ? 'Liste görünümü' : 'Izgara görünümü';
   });
+  const izlenenBtn = document.getElementById('ep-izlenen');
+  if (izlenenBtn) izlenenBtn.addEventListener('click', () => { izlenenleriTemizle(slug); izlenenleriCiz(); });
+  izlenenleriCiz();
+
   const moreBtn = app.querySelector('.ozet-more');
   if (moreBtn) moreBtn.addEventListener('click', () => {
     const p = app.querySelector('.info-ozet');

@@ -237,6 +237,105 @@ async function oynaticiTestleri(browser, base) {
   await ctx.close();
 }
 
+// §7.1 / §7.2: izleme konumu ve izlendi işareti. Gerçek <video> gerektiği için resolver
+// yerel test videosuna yönlendiriliyor (oynatıcı testleriyle aynı yöntem).
+async function ilerlemeTestleri(browser, base) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.route('**/*', r => {
+    const u = r.request().url();
+    if (/tka-sibnet|tka-uqload|api\/sibnet/.test(u)) {
+      return r.fulfill({ status: 200, contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ url: base + '/test/fixtures/video.webm' }) });
+    }
+    const host = new URL(u).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+
+  // Test videosu 9.5 sn; sonuna gelince uygulama otomatik sonraki bölüme geçiyor (doğru davranış,
+  // §1.4). Ölçümler bu geçişten etkilenmesin diye açar açmaz duraklatılıyor.
+  const bolumAc = async i => {
+    await p.locator(`.ep[data-i="${i}"] .ep-head`).click();
+    await p.waitForTimeout(400);
+    await p.locator(`.ep[data-i="${i}"] .ep-links .link-btn.direct`).first().click();
+    await p.waitForFunction(() => {
+      const v = document.getElementById('player-modal-video');
+      return !v.hidden && v.readyState >= 2;
+    }, null, { timeout: 20000 });
+    await p.evaluate(() => document.getElementById('player-modal-video').pause());
+  };
+
+  await p.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.ep');
+  await bolumAc(1);
+
+  // 6 saniyeye sar; seek de timeupdate tetikliyor, kayıt 5 sn'lik kısıtla yazılıyor
+  await p.evaluate(() => { document.getElementById('player-modal-video').currentTime = 6; });
+  await p.waitForFunction(() => {
+    const k = JSON.parse(localStorage.getItem('ta_progress') || '{}').beck;
+    return k && k.ep === 1 && k.t > 5;
+  }, null, { timeout: 15000 }).catch(() => {});
+  const kayit = await p.evaluate(() => JSON.parse(localStorage.getItem('ta_progress') || '{}').beck || null);
+  check('§7.1 izleme konumu kaydediliyor', !!kayit && kayit.ep === 1 && kayit.t > 5 && kayit.d > 0, JSON.stringify(kayit));
+
+  // modalı kapat, aynı bölümü yeniden aç: kaldığı yerden devam etmeli
+  await p.locator('#player-modal-close').click();
+  await p.waitForTimeout(300);
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.ep');
+  await bolumAc(1);
+  await p.waitForTimeout(600);
+  const devamT = await p.evaluate(() => document.getElementById('player-modal-video').currentTime);
+  check('§7.1 kaldığı yerden devam ediyor', devamT > 4, devamT.toFixed(1) + ' sn');
+
+  // %90'ı geçince bölüm otomatik izlendi işaretleniyor (duraklatılmış hâlde, sadece sarma ile)
+  await p.evaluate(() => { const v = document.getElementById('player-modal-video'); v.pause(); v.currentTime = v.duration - 0.4; });
+  await p.waitForFunction(() => {
+    const k = JSON.parse(localStorage.getItem('ta_progress') || '{}').beck;
+    return k && Array.isArray(k.izlendi) && k.izlendi.includes(1);
+  }, null, { timeout: 15000 }).catch(() => {});
+  const otomatik = await p.evaluate(() => (JSON.parse(localStorage.getItem('ta_progress') || '{}').beck || {}).izlendi || []);
+  check('§7.2 %90 geçilince bölüm otomatik izlendi sayılıyor', otomatik.includes(1), JSON.stringify(otomatik));
+  await p.locator('#player-modal-close').click();
+  await p.waitForTimeout(200);
+
+  // tik düğmesi: tekil işaretleme
+  await p.locator('.ep[data-i="4"] .ep-izle').click({ force: true });
+  await p.waitForTimeout(250);
+  const tekil = await p.evaluate(() => ({
+    sinif: document.querySelector('.ep[data-i="4"]').classList.contains('ep-izlendi'),
+    kayit: (JSON.parse(localStorage.getItem('ta_progress') || '{}').beck || {}).izlendi || [],
+  }));
+  check('§7.2 tik düğmesi bölümü izlendi işaretliyor', tekil.sinif && tekil.kayit.includes(4), JSON.stringify(tekil));
+
+  // Shift+tık: buraya kadar hepsi
+  await p.locator('.ep[data-i="9"] .ep-izle').click({ force: true, modifiers: ['Shift'] });
+  await p.waitForTimeout(300);
+  const toplu = await p.evaluate(() => ({
+    kayit: (JSON.parse(localStorage.getItem('ta_progress') || '{}').beck || {}).izlendi || [],
+    isaretli: document.querySelectorAll('.ep.ep-izlendi').length,
+    rozet: (document.getElementById('ep-izlenen') || {}).hidden === false
+      ? document.querySelector('#ep-izlenen span').textContent : '',
+  }));
+  check('§7.2 Shift+tık buraya kadar hepsini işaretliyor',
+    toplu.kayit.length === 10 && toplu.isaretli === 10 && /10 \/ 26/.test(toplu.rozet), JSON.stringify(toplu));
+
+  // ana sayfada "İzlemeye devam et" şeridi ve kartta ilerleme çubuğu
+  await p.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.card');
+  const devamSerit = await p.evaluate(() => {
+    const basliklar = [...document.querySelectorAll('.section-title')].map(e => e.firstChild.textContent.trim());
+    const cubuk = document.querySelector('.ilerleme i');
+    return { basliklar, cubukVar: !!cubuk, genislik: cubuk ? cubuk.style.width : '' };
+  });
+  check('§7.1 ana sayfada "İzlemeye devam et" şeridi çıkıyor',
+    devamSerit.basliklar[0] === 'İzlemeye devam et', devamSerit.basliklar.join(' | '));
+  check('§7.1 kartta ilerleme çubuğu var', devamSerit.cubukVar && /%$/.test(devamSerit.genislik), devamSerit.genislik);
+
+  await ctx.close();
+}
+
 async function run(page, base) {
   // Üçüncü taraf istekleri engelleniyor: test bizim uygulamamızı ölçüyor, AniList CDN'ini ya da
   // sayacı değil. Böylece internetli (CI) ve internetsiz ortamlarda aynı biçimde çalışıyor.
@@ -544,8 +643,11 @@ async function run(page, base) {
     janrCip: document.querySelectorAll('.janr-chip').length,
     janrHref: (document.querySelector('.janr-chip') || {}).getAttribute
       ? document.querySelector('.janr-chip').getAttribute('href') : '',
-    enIyiPuanlar: [...document.querySelectorAll('.recent-row')].slice(1, 2)
-      .flatMap(r => [...r.querySelectorAll('.rating-badge')].map(e => parseFloat(e.textContent))),
+    enIyiPuanlar: (() => {
+      const serit = [...document.querySelectorAll('.recent-row')]
+        .find(r => r.querySelector('.section-title').firstChild.textContent.trim() === 'En yüksek puanlı');
+      return serit ? [...serit.querySelectorAll('.rating-badge')].map(e => parseFloat(e.textContent)) : [];
+    })(),
   }));
   check('§6.2 "En yüksek puanlı" ve "Janra göre keşfet" şeritleri var',
     kesif.basliklar.includes('En yüksek puanlı') && kesif.basliklar.includes('Janra göre keşfet'),
@@ -590,7 +692,7 @@ async function run(page, base) {
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v9');
+      const c = await caches.open('tka-shell-v11');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -604,7 +706,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v9');
+      const sh = await caches.open('tka-shell-v11');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });
@@ -637,6 +739,7 @@ async function run(page, base) {
     await run(await ctx.newPage(), base);
     await temaTestleri(browser, base);
     await oynaticiTestleri(browser, base);
+    await ilerlemeTestleri(browser, base);
   } finally {
     await browser.close();
     server.close();
