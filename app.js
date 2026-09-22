@@ -16,9 +16,10 @@ const ic = (name, cls = '') => `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidd
 // Her sağlayıcı embed URL'inden resolver'a atılacak querystring'i (id, gerekiyorsa host) çıkarır;
 // çıkaramazsa (regex tutmazsa) o link için "Reklamsız izle" butonu hiç gösterilmez, klasik embed kalır.
 // Sibnet Vercel'de (bkz. api/sibnet.js), Uqload Cloudflare Workers'ta (bkz. cf/uqload) çalışıyor —
-// uqload.com'u Vercel'in IP'leri engelliyordu, Cloudflare Workers'ınkiler engellenmiyor. Sendvid ve
-// Doodstream için de api/*.js dosyaları yazıldı ama production'da (Vercel'de de Cloudflare Workers'ta
-// da denendi) ikisi de hedef sitenin anti-bot/routing sorunlarından çalışmıyor, o yüzden aktif değiller.
+// uqload.com'u Vercel'in IP'leri engelliyordu, Cloudflare Workers'ınkiler engellenmiyor.
+// Sendvid ve Doodstream için de resolver yazılmıştı ama production'da (Vercel'de de Cloudflare
+// Workers'ta da) hedef sitenin anti-bot/routing korumaları yüzünden hiç çalışmadı; deploy edilen
+// ölü kod bırakmamak için api/sendvid.js ve api/doodstream.js silindi (git geçmişinde duruyorlar).
 const DIRECT_PROVIDERS = {
   SIBNET: { resolver: 'https://tka-sibnet.vercel.app/api/sibnet', params: url => { const m = /videoid=(\d+)/.exec(url); return m && `id=${m[1]}`; } },
   UQLOAD: { resolver: 'https://tka-uqload.turkanime-arsiv.workers.dev', params: url => { const m = /uqload\.[a-z]+\/embed-([a-z0-9]+)\.html/i.exec(url); return m && `id=${m[1]}`; } },
@@ -65,7 +66,7 @@ const ANIME = (window.INDEX || []).map(r => {
   const n = norm(baslik + ' ' + r[0]);
   const m = META[r[0]] || ['', [], 0, null];
   return {
-    slug: r[0], baslik, eps: r[2], urls: r[3], masks: r[4], top: r[5] || [],
+    slug: r[0], baslik, eps: r[2], urls: r[3],
     kategori: m[0], tur: m[1], puan: m[2], poster: m[3] || null,
     n, tok: n.split(' ').filter(Boolean)
   };

@@ -151,9 +151,12 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   ~350 KB indirilmesi gerekiyor.
 
 - **Yapılacak (ucuzdan pahalıya):**
-  1. **Kullanılmayan alanları at.** `data.js`'in 6. alanı (`top`, anime başına sağlayıcı adları
-     dizisi) ve 5. alanı (`masks`) `app.js:63`'te okunuyor ama **hiçbir yerde kullanılmıyor**.
-     Çıkarınca: 658 KB → 392 KB, gzip 173 KB → **131 KB**. Tek satırlık kazanç: `-42 KB gzip`.
+  1. **Kullanılmayan alanları at.** — **(TAMAM, 2026-09-22)** `data.js`'in 6. alanı (`top`) ve
+     5. alanı (`masks`) `app.js`'te okunuyordu ama hiçbir yerde kullanılmıyordu.
+     `scripts/trim-data.js` yazıldı (idempotent, veri tazelendikten sonra tekrar çalıştırılabilir);
+     kayıt biçimi artık `[slug, baslik, eps, urls]`.
+     Ölçüldü: **658 KB → 392 KB ham, 174.7 KB → 130.9 KB gzip (−43.8 KB)**. `build-posters.js`
+     yalnız `r[0]`/`r[1]` okuduğu için etkilenmiyor.
   2. **Poster URL'lerini kısalt.** `meta.js`'teki 5204 poster URL'inin neredeyse hepsi
      `https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/` ile başlıyor — 320 KB'ı
      sadece tekrar eden önek. Ön eki sabite al, meta'da yalnız dosya adını tut, `posterPlaceholder`
@@ -259,14 +262,17 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
      hem bilgi hem de arama için değerli.
 - **Kabul:** "2015 aksiyon" araması ya da yıl filtresi çalışır; kartta yıl görünür.
 
-### 3.4 Ölü/kullanılmayan kod
-- `api/sendvid.js`, `api/doodstream.js`: `app.js:22` `DIRECT_PROVIDERS`'ta **kayıtlı değiller**
-  (README ve `app.js` yorumu "production'da çalışmıyor" diyor) ama `vercel.json` hâlâ ikisi için
-  `maxDuration` tanımlıyor ve deploy ediyor. → Ya `DIRECT_PROVIDERS`'a bağla ya da her ikisini de
-  `vercel.json` ile birlikte sil, gerekçeyi `.claude/progress.md`'ye yaz.
-- `app.js:33` `PREFERRED_PLAYERS` içinde `'OK.RU'` var ama veride o ad hiç geçmiyor
-  (veride `ODNOKLASSNIKI`). Ölü giriş, sil.
-- `app.js:63` `masks` ve `top` alanları: okunuyor, kullanılmıyor (§2.1.1).
+### 3.4 Ölü/kullanılmayan kod — **(TAMAM)**
+- `api/sendvid.js`, `api/doodstream.js` — **(TAMAM, 2026-09-22)** İkisi de silindi ve
+  `vercel.json`'daki `maxDuration` girdileri kaldırıldı; `DIRECT_PROVIDERS`'a kayıtlı değillerdi,
+  hedef sitelerin anti-bot/routing korumaları yüzünden hiç çalışmamışlardı. Deploy edilen ölü kod
+  kalmadı; dosyalar git geçmişinde duruyor. `app.js` başındaki yorum gerekçeyi anlatacak biçimde
+  güncellendi.
+- ~~`app.js:33` `PREFERRED_PLAYERS` içinde `'OK.RU'` var ama veride o ad hiç geçmiyor.~~
+  **Bu madde yanlıştı (2026-09-22'de doğrulandı):** `kaynak/b/*.js` taramasında `"player":"OK.RU"`
+  **3.238 kez** geçiyor ve **hepsi canlı `url` tipinde** (`ODNOKLASSNIKI` ayrıca 137.194 kez var,
+  ikisi farklı kayıtlar). Giriş ölü değil, **silinmedi**.
+- `masks` ve `top` alanları: **(TAMAM)** §2.1.1 ile veriden ve `app.js`'ten kaldırıldı.
 
 ---
 
@@ -571,3 +577,5 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §1.6 | Rota geçişleri sayfa başına, animasyonsuz kaydırıyor |
 | 2026-09-22 | §1.5 | SW: kabuk/veri cache'leri ayrıldı, veri LRU'lu (40), gezinme network-first, çevrimdışı açılış dolu |
 | 2026-09-22 | §5.1 | Kartlar ve Günün Animesi gerçek `<a>`; iç içe etkileşimli öğe kalmadı |
+| 2026-09-22 | §2.1.1 | `data.js` 4 alana kırpıldı: 658→392 KB ham, 174.7→130.9 KB gzip |
+| 2026-09-22 | §3.4 | `api/sendvid.js` + `api/doodstream.js` silindi; OK.RU maddesinin yanlış olduğu ölçümle saptandı |

@@ -165,6 +165,21 @@ async function run(page, base) {
   // --- §5.1: kartlar gerçek bağlantı, favori butonu iç içe değil ---
   await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
   await page.waitForSelector('.card');
+
+  // --- §2.1.1: data.js yalnız kullanılan 4 alanı taşıyor ---
+  const indexAlan = await page.evaluate(() => ({
+    kayit: window.INDEX.length,
+    fazla: window.INDEX.filter(r => r.length !== 4).length,
+    ornek: window.INDEX[0],
+  }));
+  check('§2.1.1 data.js kayıtları 4 alanlı', indexAlan.fazla === 0 && indexAlan.kayit > 6000,
+    `${indexAlan.kayit} kayıt, ${indexAlan.fazla} fazla alanlı`);
+  const kartMeta = await page.evaluate(() => {
+    const c = document.querySelector('.grid:not(.recent-grid) .card');
+    return c ? c.querySelector('.meta').textContent.trim() : '';
+  });
+  check('§2.1.1 kartta bölüm/link sayısı hâlâ doğru basılıyor', /\d+ bölüm · \d+ link|bölüm verisi yok/.test(kartMeta), kartMeta);
+
   const kartYapi = await page.evaluate(() => {
     const c = document.querySelector('.grid:not(.recent-grid) .card');
     const fav = document.querySelector('.grid:not(.recent-grid) .fav-btn');
