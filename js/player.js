@@ -69,7 +69,14 @@ function openEpisode(epEl) {
   if (linksEl.dataset.filled) return;
   linksEl.dataset.filled = '1';
   const i = Number(epEl.dataset.i);
-  const links = currentEpisodes[i].links;
+  const ep = currentEpisodes[i];
+  const links = ep.links;
+
+  // Ölü linkler veride tek bir sayıya indirgeniyor (bkz. scripts/trim-b.js, GELISTIRME-PLANI §3.2):
+  // ekranı üstü çizili butonlarla doldurmak yerine tek satırda kaç tanesinin öldüğü yazılıyor.
+  const oluNot = ep.olu
+    ? `<p class="ep-olu">${ep.olu} arşiv linki artık çalışmıyor <span class="meta">(turkanime sunucusu gerekiyordu)</span></p>`
+    : '';
 
   const groups = new Map();
   links.forEach(l => {
@@ -79,7 +86,7 @@ function openEpisode(epEl) {
   });
 
   if (groups.size <= 1) {
-    linksEl.innerHTML = `<div class="fansub-players">${epLinksHtml(links)}</div>`;
+    linksEl.innerHTML = `<div class="fansub-players">${epLinksHtml(links)}</div>${oluNot}`;
     wireEmbedButtons(linksEl, i);
     return;
   }
@@ -88,7 +95,7 @@ function openEpisode(epEl) {
     const empty = groupLinks.every(l => OLU(l.tip));
     return `<button type="button" class="fansub-chip${empty ? ' fansub-chip-empty' : ''}" data-fansub="${esc(name)}">${esc(name)}<span class="meta">${groupLinks.length}</span></button>`;
   }).join('');
-  linksEl.innerHTML = `<div class="fansub-chips">${chipsHtml}</div><div class="fansub-players"></div>`;
+  linksEl.innerHTML = `<div class="fansub-chips">${chipsHtml}</div><div class="fansub-players"></div>${oluNot}`;
   const playersEl = linksEl.querySelector('.fansub-players');
   linksEl.querySelectorAll('.fansub-chip').forEach(chip => {
     chip.addEventListener('click', () => {

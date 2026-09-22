@@ -37,6 +37,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { bolumleriKirp } = require("./trim-b");
 
 const ROOT = path.join(__dirname, "..");
 const HAM = path.join(ROOT, "kaynak", "animeler");
@@ -108,9 +109,12 @@ function bolumleriUret(slug) {
   // Hiç linki olmayan bölümler çıktıya girmiyor (ham veride boş .json olarak duruyorlar),
   // kalanlar bölüm numarasına, eşitlikte slug'a göre sıralanıyor. bolumler.json sitedeki
   // sırayı taşıyor ve özel bölümlerde ters olabiliyor; çıktı her zaman artan sırada.
-  return uretilen
+  const sirali = uretilen
     .filter(b => b.links.length)
     .sort((a, b) => (a.no ?? Infinity) - (b.no ?? Infinity) || (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
+  // Son adım: ölü linkler tek sayıya iniyor (§3.2). kaynak/b'deki biçim bu; iki script aynı
+  // çıktıyı üretsin diye kırpma işlevi scripts/trim-b.js'ten çağrılıyor.
+  return bolumleriKirp(sirali);
 }
 
 const dosyaIcerigi = (slug, bolumler) =>

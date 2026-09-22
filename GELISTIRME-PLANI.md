@@ -321,7 +321,7 @@ değişiklik günlüğünde ve commit mesajında durur.
   `kaynak/b`'den **daha fakir** olduğu ölçüldü (1b). Yani sahibi isterse bu adımlar artık
   güvenle atılabilir; karar verildiğinde bu işaret kaldırılsın.
 
-### 3.2 Linklerin %25'i ölü ama yine de gönderiliyor
+### 3.2 Linklerin %25'i ölü ama yine de gönderiliyor — **(TAMAM)**
 - **Ölçüm:** Örneklemde 69.298 `url`, 23.032 `mask`, 35 `yol`. `kaynak/b/` baytlarının **%32.5'i**
   ölü linklerden oluşuyor (örneklem: 18.0 MB'ın 5.8 MB'ı).
 - **Kimler tamamen ölü:** `AMATERASU(BETA)`, `ALUCARD(BETA)`, `BANKAI(BETA)`, `HDVID` (%98) —
@@ -332,7 +332,35 @@ değişiklik günlüğünde ve commit mesajında durur.
     `{"olu": 4}` gibi bir sayı yeterli; arayüzde "4 arşiv linki artık çalışmıyor" diye tek satır göster.
     Böylece arşivin bütünlüğü kaybolmaz, ekran da 15 tane üstü çizili butonla dolmaz.
   - Her iki durumda da `scripts/build-b.js` (§3.1) bu ayıklamayı yapsın, ham veri dokunulmadan kalsın.
-- **Kabul:** One Piece detay sayfasında bir bölüm açıldığında en fazla 6–8 buton görünür.
+- **Kabul:** ~~One Piece detay sayfasında bir bölüm açıldığında en fazla 6–8 buton görünür.~~
+  Bu ölçüt tutmuyor, çünkü varsayımı yanlıştı: One Piece 1. bölümde ölü linkler atıldıktan sonra
+  bile **46 canlı** link kalıyor (tek fansub'da 25'e kadar). Yerine geçen ölçüt: **ekranda tek bir
+  ölü buton kalmaması** ve buton sayısının "o fansub'ın canlı linkleri + Reklamsız izle" toplamına
+  eşit olması — duman testi bunu doğruluyor.
+- **Yapıldı (2026-09-22):** Önerilen (b) seçeneği uygulandı.
+  - `scripts/trim-b.js` — ölü linkleri (`mask` + `yol`) atıp bölüme `"olu": <sayı>` yazıyor.
+    Idempotent; varsayılan **rapor modu**, yazmak için `--yaz`.
+  - `scripts/build-b.js` aynı kırpma işlevini çağırıyor, böylece iki script aynı çıktıyı üretiyor
+    (yeniden doğrulandı: **%98.2 birebir**, kırpmadan önceki oranla aynı).
+  - Arayüz: `openEpisode` bölüm başına tek satır basıyor —
+    *"6 arşiv linki artık çalışmıyor (turkanime sunucusu gerekiyordu)"*.
+    `epLinksHtml`'deki ölü link dalları savunma amaçlı duruyor (kırpılmamış veri gelirse çalışsın).
+
+  **Ölçüm:**
+
+  | | önce | sonra |
+  |---|---|---|
+  | `kaynak/b` toplam | 192.0 MB | **129.4 MB** (−%32.6) |
+  | `one-piece.js` | 3.4 MB | **1.95 MB** |
+  | link | 1.165.204 canlı + 389.227 ölü | 1.165.204 canlı + sayaç |
+  | hiç canlı linki olmayan bölüm | — | 19 (71.573 bölümde) |
+
+- **Maliyet (dikkat):** Bu değişiklik 6007 dosyayı yeniden yazdığı için `.git` kalıcı olarak
+  büyüyor. §3.1'in geçmiş temizliği **(YAPILMAYACAK)** olduğundan bu geri alınamaz.
+  Çalışma ağacı küçülüyor (GitHub Pages'ten inen bayt azalıyor), klon boyutu artıyor.
+  Ölçüm commit sonrası değişiklik günlüğünde.
+- **Geri alınabilirlik:** Atılan ölü linkler `kaynak/animeler`'deki ham veride duruyor;
+  `kaynak/b` gerekirse `scripts/build-b.js` ile yeniden üretilebilir.
 
 ### 3.3 `meta.js` şeması eksik: yıl yok — **(TAMAM)**
 - **Ölçüm:** `info.json` şu alanları taşıyor: `Kategori`, `Japonca`, `Anime Türü`, `Bölüm Sayısı`,
@@ -699,7 +727,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 **Tur 3 — veri**
 9. §3.1 — 1. adım (`scripts/build-b.js`) ~~yazıldı~~; **2–4. adımlar (YAPILMAYACAK)**, bkz. §3.1
 10. ~~§2.4 eksik 903 posteri Japonca başlıkla tara~~ → **903'ten 92'ye indi**
-11. §3.2 ölü linkleri özete indir → `kaynak/b/` %32 küçülür ← **sırada**
+11. ~~§3.2 ölü linkleri özete indir~~ → `kaynak/b` **192 → 129 MB (−%32.6)**
 12. ~~§3.3 `meta.js`'e yıl + stüdyo ekle~~ (+ §2.1.2 poster öneki)
 
 **Tur 4 — tasarım**

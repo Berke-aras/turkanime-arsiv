@@ -29,8 +29,9 @@ const sluglar = INDEX.map(r => r[0]);
 const ORNEK = Number(process.env.TKA_TEST_ORNEK) || 0;
 const taranacak = ORNEK ? sluglar.filter((_, i) => i % Math.ceil(sluglar.length / ORNEK) === 0) : sluglar;
 
-// Veride bilinen üç link tipi var; 'url' dışındakiler ölü sayılır (app.js OLU()).
-const BILINEN_TIPLER = new Set(["url", "mask", "yol"]);
+// kaynak/b artık yalnız "url" tipi taşıyor: ölü linkler (mask/yol) bölüm başına tek bir
+// "olu" sayısına indirgendi (scripts/trim-b.js, §3.2). Ham veride üç tip de duruyor.
+const BILINEN_TIPLER = new Set(["url"]);
 
 test("data.js kayıtları [slug, baslik, eps, urls] biçiminde", () => {
   assert.ok(INDEX.length > 6000, `beklenenden az kayıt: ${INDEX.length}`);
@@ -101,8 +102,8 @@ test("her slug için bölüm dosyası var", () => {
 });
 
 test("bölüm dosyalarında bilinmeyen link tipi yok", { timeout: 600000 }, () => {
-  // §1.1'i yakalayan test: veriye yeni bir tip (ör. 'yol') girerse app.js'in OLU() eşlemesi
-  // güncellenmeden fark edilmez; burada kırmızıya düşer.
+  // §1.1'i yakalayan test: veriye yeni bir tip girerse (ya da kırpılmamış bir dosya eklenirse)
+  // app.js'in OLU() eşlemesi güncellenmeden fark edilmez; burada kırmızıya düşer.
   const bulunan = new Map();
   for (const slug of taranacak) {
     const metin = fs.readFileSync(path.join(ROOT, "kaynak/b", `${slug}.js`), "utf8");
@@ -120,6 +121,19 @@ test("bölüm dosyaları kendi slug'ları altına yazıyor", { timeout: 600000 }
     if (!bas.includes(`window.__TKA__[${JSON.stringify(slug)}]`)) yanlis.push(slug);
   }
   assert.deepEqual(yanlis.slice(0, 5), [], `${yanlis.length} dosya beklenen anahtarı kullanmıyor`);
+});
+
+test("ölü linkler bölüm başına tek sayıya indirgenmiş (§3.2)", { timeout: 600000 }, () => {
+  // "olu" alanı bir sayı olmalı ve 0 yazılmamalı (yoksa alan hiç bulunmaz).
+  const kotu = [];
+  for (const slug of taranacak) {
+    const metin = fs.readFileSync(path.join(ROOT, "kaynak/b", `${slug}.js`), "utf8");
+    for (const m of metin.matchAll(/"olu":([^,}]*)/g)) {
+      const v = Number(m[1]);
+      if (!Number.isInteger(v) || v < 1) kotu.push(`${slug}: ${m[1]}`);
+    }
+  }
+  assert.deepEqual(kotu.slice(0, 5), [], `${kotu.length} geçersiz "olu" değeri`);
 });
 
 test("'url' tipindeki linkler mutlak adres taşıyor", { timeout: 600000 }, () => {

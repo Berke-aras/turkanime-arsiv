@@ -80,13 +80,32 @@ async function run(page, base) {
   // --- §1.1: 'yol' tipi linkler pasif basılmalı, tıklanabilir buton olmamalı ---
   await page.locator('.ep[data-i="0"] .ep-head').click();
   await page.waitForTimeout(400);
-  const alucard = page.locator('.ep[data-i="0"] .ep-links').getByText('ALUCARD(BETA)', { exact: true });
-  const varMi = await alucard.count();
-  const etiket = varMi ? await alucard.first().evaluate(el => el.tagName + '.' + el.className) : '';
-  check("§1.1 'yol' linki pasif basılıyor", varMi > 0 && /^SPAN/.test(etiket) && /mask/.test(etiket), etiket || 'link bulunamadı');
+  // §3.2 sonrası ölü linkler veride yok; ekranda ne pasif buton ne de göreli adres kalmalı.
+  const alucard = await page.locator('.ep[data-i="0"] .ep-links').getByText('ALUCARD(BETA)', { exact: true }).count();
+  const maskeli = await page.locator('.ep[data-i="0"] .ep-links .link-btn.mask').count();
+  check("§1.1 ölü sağlayıcı butonu basılmıyor", alucard === 0 && maskeli === 0, `ALUCARD ${alucard}, mask ${maskeli}`);
   const embeds = await page.locator('.ep[data-i="0"] .ep-links [data-embed-url]').evaluateAll(e => e.map(x => x.dataset.embedUrl));
   const goreli = embeds.filter(u => !/^https?:/i.test(u));
-  check("§1.1 göreli (ajax/) embed URL'i yok", goreli.length === 0, goreli.join(', '));
+  check("§1.1 göreli (ajax/) embed URL'i yok", goreli.length === 0 && embeds.length > 0, `${embeds.length} embed, ${goreli.length} göreli`);
+
+  // §3.2: ölü linkler tek satırlık özete indi
+  const oluNot = await page.locator('.ep[data-i="0"] .ep-olu').textContent().catch(() => '');
+  check('§3.2 ölü linkler tek satırda özetleniyor', /^\d+ arşiv linki artık çalışmıyor/.test(oluNot.trim()), oluNot.trim().slice(0, 60));
+  // Asıl ölçüt: ekranda tek bir ölü buton kalmaması. Buton sayısı, o fansub'ın canlı link
+  // sayısı + "Reklamsız izle" butonları kadar olmalı — ne eksik ne fazla.
+  const butonDurum = await page.evaluate(() => {
+    const kok = document.querySelector('.ep[data-i="0"] .ep-links');
+    return {
+      toplam: kok.querySelectorAll('.link-btn').length,
+      olu: kok.querySelectorAll('.link-btn.mask').length,
+      reklamsiz: kok.querySelectorAll('.link-btn.direct').length,
+      embed: kok.querySelectorAll('[data-embed-url]:not(.direct)').length,
+      disLink: kok.querySelectorAll('a.link-btn').length,
+    };
+  });
+  check('§3.2 ekranda ölü buton kalmadı',
+    butonDurum.olu === 0 && butonDurum.toplam === butonDurum.reklamsiz + butonDurum.embed + butonDurum.disLink,
+    JSON.stringify(butonDurum));
 
   // --- §1.2: detay sayfasındayken arama listeye dönmeli ---
   await page.fill('#search', 'beck');

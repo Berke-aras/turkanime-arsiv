@@ -185,6 +185,8 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .card:focus-visible,.featured:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .card-empty{opacity:.55}
+/* bölüm: ölü arşiv linklerinin tek satırlık özeti (§3.2) */
+.ep-olu{margin:8px 2px 2px;font-size:12px;color:var(--muted)}
 /* detay: özgün Japonca başlık, ana başlığın hemen altında ince gri satır */
 .detail-japonca{margin:2px 0 8px;color:var(--text-2);font-size:14px;font-weight:500;letter-spacing:.02em}
 .card-empty .meta{color:var(--bad)}
