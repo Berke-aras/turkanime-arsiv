@@ -1,67 +1,111 @@
 <div align="center">
 
-# 📺 TürkAnime Arşivi
+<img src="docs/assets/hero.jpg" width="820" alt="">
 
-**turkanime.tv kapandıktan sonra geride bıraktığı arşivi yaşatan, sunucusuz (statik) bir web uygulaması.**
+# TürkAnime Arşivi
 
-~6100 anime · bölüm/izleme linkleri · AniList kapak görselleri — tek sayfalık bir viewer.
+**トルコアニメ・アーカイブ**
 
-![Static Site](https://img.shields.io/badge/mimari-statik-6c8dff?style=flat-square)
-![No Backend](https://img.shields.io/badge/backend-yok-8f6cff?style=flat-square)
+turkanime.tv kapandı. Geriye kalan arşiv burada yaşıyor:
+tek sayfalık, sunucusuz, build adımı olmayan bir görüntüleyici.
+
+![Mimari](https://img.shields.io/badge/mimari-statik-6c8dff?style=flat-square)
+![Backend](https://img.shields.io/badge/backend-yok-8f6cff?style=flat-square)
 ![Anime](https://img.shields.io/badge/anime-~6100-3ddc84?style=flat-square)
+![Kurulum](https://img.shields.io/badge/kurulum-gerekmez-ff6c8d?style=flat-square)
 
-**[👉 Canlı demo](https://berke-aras.github.io/turkanime-arsiv/)**
-
-![Önizleme](og-image.png)
+[![Arşivi aç](https://img.shields.io/badge/ar%C5%9Fivi_a%C3%A7-berke--aras.github.io-0a0c11?style=for-the-badge&labelColor=6c8dff)](https://berke-aras.github.io/turkanime-arsiv/)
 
 </div>
 
-## ✨ Özellikler
+---
 
-- 🔎 Yazım hatasına toleranslı arama (Levenshtein tabanlı)
-- 🎛️ Kategori / tür / puana göre filtreleme ve sıralama
-- ⭐ Favoriler ve son bakılanlar (localStorage)
-- 🌟 Günün Animesi (puanı 7+ olanlardan, gün boyunca sabit kalan seçim)
-- 🎲 Rastgele anime butonu
-- ⚡ Tamamen statik: build adımı olmadan doğrudan açılabilir
+## Genel bakış
 
-## 🚀 Çalıştırma
+Arşivde ~6100 anime var; her biri için bölüm listesi, izleme linkleri, AniList'ten çekilmiş kapak
+görseli ve özet bilgisi. Uygulamanın tamamı `index.html` + `app.js` + `style.css` ve iki veri
+dosyasından ibaret — paket yöneticisi, derleme adımı, veritabanı ya da kullanıcı hesabı yok.
+Dosyayı açtığın anda çalışır.
+
+## Özellikler
+
+| | |
+|---|---|
+| **Arama** | Yazım hatasına toleranslı (Levenshtein tabanlı); sonuç çıkmazsa "bunu mu demek istedin" önerileri |
+| **Filtre ve sıralama** | Kategori, tür ve puana göre |
+| **Favoriler** | Yıldızlananlar ve son bakılanlar `localStorage`'da tutulur, hiçbir yere gönderilmez |
+| **Günün Animesi** | Puanı 7 ve üzerindekilerden, gün boyunca değişmeyen bir seçim |
+| **Rastgele** | Tek tuşla arşivden rastgele bir başlık |
+| **Reklamsız oynatıcı** | Sibnet ve Uqload bölümleri sitenin kendi oynatıcısında, reklamsız açılır |
+| **Klavye** | Oynatıcıda `Esc` kapatır, `←` ve `→` bölüm değiştirir |
+| **Çevrimdışı** | Service worker uygulama kabuğunu önbelleğe alır; PWA olarak kurulabilir |
+
+## Çalıştırma
 
 ```bash
-python3 -m http.server 8000
-# veya
-npx serve .
+git clone https://github.com/berke-aras/turkanime-arsiv.git
+cd turkanime-arsiv
+python3 -m http.server 8000     # ya da: npx serve .
 ```
 
-`index.html`'i açman yeterli.
+Ardından `http://localhost:8000` adresini aç. Kurulacak bağımlılık yok.
 
-## ⚡ Reklamsız Sibnet oynatıcı
+## Reklamsız oynatıcı
 
-Sibnet videoları iframe yerine sitenin kendi `<video>` oynatıcısında reklamsız açılır ("Reklamsız izle" butonu, önerilen). Orijinal SIBNET butonları da durur.
+Sibnet ve Uqload bölümlerinde "Reklamsız izle" seçeneği, videoyu sağlayıcının reklamlı iframe'i
+yerine sitenin kendi oynatıcısında açar. Orijinal gömülü oynatıcı butonları da yerinde durur.
 
-Bunun için `api/sibnet.js` küçük bir Vercel serverless function olarak çalışır (proje: `tka-sibnet`, `https://tka-sibnet.vercel.app/api/sibnet?id=<videoid>`): sibnet sayfasından mp4 yolunu alır, Referer ile yönlendirmeleri takip edip Referer gerektirmeyen nihai CDN linkini döndürür. Video trafiği fonksiyondan geçmez. (Cloudflare Workers denendi; sibnet CF IP'lerini 403 ile engelliyor.)
+Bunun için iki küçük yardımcı fonksiyon var:
 
-## 🗂️ Yapı
+| Sağlayıcı | Nerede | Dosya |
+|---|---|---|
+| Sibnet | Vercel function (`tka-sibnet.vercel.app`) | `api/sibnet.js` |
+| Uqload | Cloudflare Worker (`tka-uqload.turkanime-arsiv.workers.dev`) | `cf/uqload/worker.js` |
+
+Fonksiyon yalnızca video numarasını alır, gerekiyorsa Referer ile yönlendirmeleri takip eder ve
+Referer istemeyen nihai video adresini döndürür. Video trafiği fonksiyondan geçmez; tarayıcı
+videoyu doğrudan sağlayıcının sunucusundan çeker. (Sibnet için Cloudflare denendi, Cloudflare
+IP'lerini 403 ile engellediği için Vercel'de duruyor.)
+
+## Proje yapısı
 
 ```
-index.html / app.js / style.css / meta.js   → viewer uygulaması
-kaynak/data.js                               → anime listesi (slug, başlık, bölüm/link sayısı)
-kaynak/b/<slug>.js                           → her anime için bölüm + izleme linkleri
-kaynak/animeler/<slug>/info.json             → özet, kategori, puan gibi detay bilgisi
-scripts/build-meta.js                        → info.json'lardan meta.js üretir
-scripts/build-posters.js                     → AniList'ten poster URL'lerini çekip meta.js'e gömer
+index.html · app.js · style.css · meta.js   viewer uygulaması
+kaynak/data.js                              anime listesi (slug, başlık, bölüm/link sayısı)
+kaynak/b/<slug>.js                          her anime için bölüm ve izleme linkleri
+kaynak/animeler/<slug>/info.json            özet, kategori, puan gibi detay bilgisi
+scripts/build-meta.js                       info.json'lardan meta.js üretir
+scripts/build-posters.js                    AniList kapaklarını meta.js'e gömer
+api/ · cf/                                  reklamsız oynatıcı yardımcıları
 ```
 
-Veride bir değişiklik olursa sırayla `node scripts/build-meta.js` ve `node scripts/build-posters.js` çalıştırılır.
+Veride bir değişiklik olduğunda sırasıyla:
 
-## 📝 Not
+```bash
+node scripts/build-meta.js
+node scripts/build-posters.js
+```
 
-Bölüm linkleri farklı video sağlayıcılara (GDrive, Mp4upload, vb.) ait; bu proje sadece arşivlenmiş linkleri düzenli bir arayüzde sunar, dosyaları barındırmaz.
+## Yol haritası
+
+Performans, veri boyutu ve ölü link temizliği gibi başlıklar için ölçüm tabanlı plan:
+[`GELISTIRME-PLANI.md`](GELISTIRME-PLANI.md).
+
+## Yasal not
+
+Bölüm linkleri GDrive, Mp4upload, Sibnet gibi üçüncü taraf sağlayıcılara ait. Bu proje arşivlenmiş
+linkleri düzenli bir arayüzde gösterir; hiçbir video dosyası barındırmaz. Ayrıntı için sitedeki
+[yasal ve gizlilik sayfası](https://berke-aras.github.io/turkanime-arsiv/#/yasal).
 
 ---
 
 <div align="center">
 
-Special thanks to **[Kerim Demirkaynak](https://github.com/KerimDemirkaynak)** — turkanime.tv kapanmadan önce bu arşivi (bölüm/izleme linkleri) derleyip paylaştığı için.
+<img src="docs/assets/loop-1.gif" height="230" alt=""> &nbsp;&nbsp; <img src="docs/assets/loop-2.gif" height="230" alt="">
+
+**さようなら、turkanime.tv**
+
+Arşivi site kapanmadan önce derleyip paylaştığı için
+**[Kerim Demirkaynak](https://github.com/KerimDemirkaynak)**'a teşekkürler.
 
 </div>
