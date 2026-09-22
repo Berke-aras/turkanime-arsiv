@@ -127,7 +127,11 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .grid.recent-grid{display:flex;grid-template-columns:none;gap:12px;overflow-x:auto;padding:2px 2px 12px;margin:0 -2px;scroll-snap-type:x mandatory;scrollbar-width:none;
   -webkit-overflow-scrolling:touch}
 .recent-grid::-webkit-scrollbar{display:none}
-.recent-grid .card{flex:0 0 128px;scroll-snap-align:start}
+.recent-grid .card{--recent-card-w:140px;flex:0 0 var(--recent-card-w);width:var(--recent-card-w);min-width:0;scroll-snap-align:start}
+/* h3/meta nowrap olduğu için kartın min-content genişliği başlık kadar oluyordu; flex item'ın
+   otomatik min-width:auto'su flex-basis'i ezip kartları başlık uzunluğuna göre farklı
+   genişlikte yapıyordu (poster yüksekliği = genişliğin %150'si olduğundan posterler de
+   kaçıyordu). min-width:0 bunu kapatır, ellipsis de böylece çalışır. */
 .recent-grid .card h3{font-size:12.5px;min-height:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset;display:block}
 .recent-grid .card .meta{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .recent-grid .badges,.recent-grid .fav-btn{display:none}
@@ -378,7 +382,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .featured-info h2{font-size:18px;margin:6px 0 4px}
   .featured-info .meta{font-size:12px}
   .featured-cta{margin-top:10px;padding:7px 13px;font-size:12.5px}
-  .recent-grid .card{flex-basis:110px}
+  .recent-grid .card{--recent-card-w:124px}
   .archive-title{font-size:18px}
 
   .filterbar{flex-wrap:nowrap;overflow-x:auto;margin:0 -12px 14px;padding:2px 12px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
