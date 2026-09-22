@@ -67,6 +67,12 @@ Referer istemeyen nihai video adresini döndürür. Video trafiği fonksiyondan 
 videoyu doğrudan sağlayıcının sunucusundan çeker. (Sibnet için Cloudflare denendi, Cloudflare
 IP'lerini 403 ile engellediği için Vercel'de duruyor.)
 
+<div align="center">
+
+<img src="docs/assets/loop-1.gif" height="280" alt="">
+
+</div>
+
 ## Proje yapısı
 
 ```
@@ -101,7 +107,7 @@ linkleri düzenli bir arayüzde gösterir; hiçbir video dosyası barındırmaz.
 
 <div align="center">
 
-<img src="docs/assets/loop-1.gif" height="230" alt=""> &nbsp;&nbsp; <img src="docs/assets/loop-2.gif" height="230" alt="">
+<img src="docs/assets/loop-2.gif" height="240" alt="">
 
 **さようなら、turkanime.tv**
 
