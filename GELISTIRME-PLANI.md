@@ -321,7 +321,7 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
      `frame-src` embed sağlayıcıları için geniş kalmak zorunda (`https:`).
   3. Yeni kod yazarken şablonları küçük fonksiyonlara böl, `esc` zorunluluğunu yorumla işaretle.
 
-### 4.3 Test, lint, CI yok
+### 4.3 Test, lint, CI yok — **(KISMEN TAMAM)**
 - **Yapılacak:**
   1. `package.json` ekle (bağımlılık gerektirmeden `node --test` yeterli).
   2. **Saf mantık için birim testleri** — bunlar DOM gerektirmiyor, kolay:
@@ -334,6 +334,23 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   4. `.github/workflows/ci.yml`: push'ta `node --test` + `npx eslint` + basit bir HTML/link kontrolü.
   5. GitHub Pages deploy'u Actions'a al ki `kaynak/animeler/` hariç tutulabilsin (deploy süresi düşer).
 - **Kabul:** CI yeşil; bozuk bir slug eklenince kırmızı.
+- **Yapıldı (2026-09-22):**
+  - `package.json` (bağımlılık yalnız eslint) + `package-lock.json`. Komutlar:
+    `npm run lint`, `npm test` (veri bütünlüğü), `npm run test:smoke` (tarayıcı).
+  - `test/veri-butunlugu.test.js` — 9 test, `node --test`, DOM/ağ gerekmez, ~1.4 sn:
+    kayıt biçimi, benzersiz slug, `meta.js` ↔ `INDEX` örtüşmesi, `info.json` ve `kaynak/b`
+    varlığı, **bilinmeyen `tip` değeri** (§1.1'i yakalayan test), bölüm dosyasının kendi
+    anahtarını kullanması, `url` tipinin mutlak adres taşıması.
+    Ayırt edicilik doğrulandı: `beck.js`'e uydurma bir tip enjekte edilince test kırmızıya düştü.
+    Yavaş ortamlar için `TKA_TEST_ORNEK=200` ile örnekleme yapılabilir.
+  - `eslint.config.js` (flat config): `app.js`/`sw.js` tarayıcı, `scripts/`+`test/` Node CommonJS,
+    `api/` CommonJS + Fetch API, `cf/` ESM. `npx eslint .` temiz.
+  - `.github/workflows/ci.yml`: iki iş — *lint + veri bütünlüğü* ve *tarayıcı duman testi*
+    (Playwright + Chromium). push/PR/manuel tetikleme.
+- **Kalan:** Saf mantık birim testleri (`norm`, `levenshtein`, `matchScore`, `animeOfDay`, `esc`)
+  bu fonksiyonlar `app.js` içinde global olduğu için henüz yazılamadı — §4.1'deki `js/util.js`
+  ayrımından sonra doğrudan import edilip eklenecekler. Ayrıca CI'da tam checkout ~900 MB;
+  §3.1 (ham veriyi ayırma) CI süresini ciddi düşürür.
 
 ### 4.4 Resolver'lar (Vercel/Cloudflare)
 - `api/sibnet.js` ve `cf/uqload/worker.js` iyi yazılmış (geri çekilme, deadline, cache başlıkları,
@@ -589,3 +606,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §2.1.1 | `data.js` 4 alana kırpıldı: 658→392 KB ham, 174.7→130.9 KB gzip |
 | 2026-09-22 | §3.4 | `api/sendvid.js` + `api/doodstream.js` silindi; OK.RU maddesinin yanlış olduğu ölçümle saptandı |
 | 2026-09-22 | §1.7 | Bilinmeyen slug artık "bulunamadı" gösteriyor, 404 isteği atmıyor (plan dışı, çalışırken bulundu) |
+| 2026-09-22 | §4.3 | package.json, 9 veri bütünlüğü testi, eslint flat config, GitHub Actions CI |
