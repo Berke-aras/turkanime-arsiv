@@ -17,7 +17,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8' };
+const MIME = { '.webm': 'video/webm', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8' };
 
 function loadPlaywright() {
   for (const id of ['playwright', '/opt/node22/lib/node_modules/playwright']) {
@@ -32,10 +32,25 @@ function serve() {
     const rel = decodeURIComponent(req.url.split('?')[0].split('#')[0]).replace(/^\/+/, '');
     const file = path.join(ROOT, rel === '' ? 'index.html' : rel);
     if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
-    fs.readFile(file, (err, buf) => {
-      if (err) { res.writeHead(404, { 'content-type': 'text/plain' }).end('404'); return; }
-      res.writeHead(200, { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
-      res.end(buf);
+    const tip = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    fs.stat(file, (err, st) => {
+      if (err || !st.isFile()) { res.writeHead(404, { 'content-type': 'text/plain' }).end('404'); return; }
+      // Range desteği: <video> sarma (seek) yapabilmek için şart. GitHub Pages de destekliyor.
+      const range = req.headers.range;
+      const m = range && /^bytes=(\d*)-(\d*)$/.exec(range);
+      if (m) {
+        const bas = m[1] ? Number(m[1]) : 0;
+        const son = m[2] ? Math.min(Number(m[2]), st.size - 1) : st.size - 1;
+        if (bas > son) { res.writeHead(416, { 'content-range': `bytes */${st.size}` }).end(); return; }
+        res.writeHead(206, {
+          'content-type': tip, 'accept-ranges': 'bytes',
+          'content-range': `bytes ${bas}-${son}/${st.size}`, 'content-length': son - bas + 1,
+        });
+        fs.createReadStream(file, { start: bas, end: son }).pipe(res);
+        return;
+      }
+      res.writeHead(200, { 'content-type': tip, 'accept-ranges': 'bytes', 'content-length': st.size });
+      fs.createReadStream(file).pipe(res);
     });
   });
   return new Promise(r => server.listen(0, '127.0.0.1', () => r({ server, base: `http://127.0.0.1:${server.address().port}` })));
@@ -105,6 +120,121 @@ async function temaTestleri(browser, base) {
   const modal = await p3.evaluate(() => getComputedStyle(document.getElementById('player-modal')).colorScheme);
   check('§6.1 oynatıcı modalı açık temada da koyu', modal === 'dark', modal);
   await c2.close(); await c3.close();
+}
+
+// §6.6: oynatıcı modalı. Resolver isteği yerel test videosuna yönlendirilerek gerçek <video>
+// yolu uçtan uca sınanıyor (reklamsız oynatma, klavye, ses/hız hatırlama, otomatik gizlenme).
+async function oynaticiTestleri(browser, base) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.route('**/*', r => {
+    const u = r.request().url();
+    if (/tka-sibnet|tka-uqload|api\/sibnet/.test(u)) {
+      return r.fulfill({ status: 200, contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ url: base + '/test/fixtures/video.webm' }) });
+    }
+    const host = new URL(u).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+
+  await p.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.ep');
+  await p.locator('.ep[data-i="0"] .ep-head').click();
+  await p.waitForTimeout(400);
+  await p.locator('.ep[data-i="0"] .ep-links .link-btn.direct').first().click();
+
+  // video gerçekten oynamaya başlasın
+  let oynadi = false;
+  try {
+    await p.waitForFunction(() => {
+      const v = document.getElementById('player-modal-video');
+      return !v.hidden && v.readyState >= 2 && v.currentTime > 0;
+    }, null, { timeout: 20000 });
+    oynadi = true;
+  } catch (e) { /* aşağıda FAIL */ }
+  check('§6.6 reklamsız oynatma <video> ile çalışıyor', oynadi);
+  if (!oynadi) { await ctx.close(); return; }
+
+  const v = () => p.evaluate(() => {
+    const x = document.getElementById('player-modal-video');
+    return { t: x.currentTime, paused: x.paused, muted: x.muted, volume: Math.round(x.volume * 100) / 100, rate: x.playbackRate };
+  });
+
+  // --- klavye: boşluk duraklatır ---
+  await p.keyboard.press('Space');
+  await p.waitForTimeout(250);
+  const durakladi = await v();
+  check('§6.6 Boşluk oynat/duraklat', durakladi.paused === true, JSON.stringify(durakladi));
+
+  // --- klavye: ok tuşları SARIYOR, bölüm değiştirmiyor ---
+  const once = await v();
+  await p.keyboard.press('ArrowRight');
+  await p.waitForTimeout(250);
+  const sagSonra = await v();
+  const epLabel = await p.locator('#player-modal-eplabel').textContent();
+  check('§6.6 Sağ ok 10 sn ileri sarıyor (bölüm değiştirmiyor)',
+    sagSonra.t > once.t + 5 && epLabel.trim() === '1 / 26', `${once.t.toFixed(1)} -> ${sagSonra.t.toFixed(1)}, ${epLabel.trim()}`);
+  await p.keyboard.press('ArrowLeft');
+  await p.waitForTimeout(250);
+  const solSonra = await v();
+  check('§6.6 Sol ok 10 sn geri sarıyor', solSonra.t < sagSonra.t, `${sagSonra.t.toFixed(1)} -> ${solSonra.t.toFixed(1)}`);
+
+  // --- Shift+Ok bölüm değiştiriyor ---
+  await p.keyboard.press('Shift+ArrowRight');
+  await p.waitForTimeout(900);
+  const yeniLabel = await p.locator('#player-modal-eplabel').textContent();
+  check('§6.6 Shift+Sağ bölüm değiştiriyor', yeniLabel.trim() === '2 / 26', yeniLabel.trim());
+
+  // --- M sessize alır, ses ve hız hatırlanır ---
+  await p.waitForFunction(() => { const x = document.getElementById('player-modal-video'); return !x.hidden && x.readyState >= 2; }, null, { timeout: 20000 }).catch(() => {});
+  await p.keyboard.press('m');
+  await p.waitForTimeout(200);
+  await p.locator('#player-modal-speed').click();   // 1x -> 1.25x
+  await p.waitForTimeout(200);
+  const ayar = await v();
+  const saklanan = await p.evaluate(() => ({ ses: localStorage.getItem('ta_ses'), sessiz: localStorage.getItem('ta_sessiz'), hiz: localStorage.getItem('ta_hiz') }));
+  check('§6.6 M sessize alıyor, tercih localStorage\'a yazılıyor',
+    ayar.muted === true && saklanan.sessiz === 'true', JSON.stringify({ ayar, saklanan }));
+  check('§6.6 oynatma hızı değişip saklanıyor', ayar.rate !== 1 && Number(saklanan.hiz) === ayar.rate, `${ayar.rate}x / ${saklanan.hiz}`);
+
+  // --- yeniden açılışta hatırlanıyor mu ---
+  await p.locator('#player-modal-close').click();
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.ep');
+  await p.locator('.ep[data-i="0"] .ep-head').click();
+  await p.waitForTimeout(400);
+  await p.locator('.ep[data-i="0"] .ep-links .link-btn.direct').first().click();
+  await p.waitForFunction(() => { const x = document.getElementById('player-modal-video'); return !x.hidden && x.readyState >= 2; }, null, { timeout: 20000 }).catch(() => {});
+  await p.waitForTimeout(400);
+  const yeniden = await v();
+  check('§6.6 ses ve hız tercihi yeni açılışta geri geliyor',
+    yeniden.muted === true && yeniden.rate !== 1, JSON.stringify(yeniden));
+
+  // --- kontrol çubuğu hareketsizlikte gizleniyor ---
+  await p.evaluate(() => document.getElementById('player-modal-video').play().catch(() => {}));
+  await p.mouse.move(640, 300);
+  await p.waitForTimeout(3600);
+  const gizli = await p.evaluate(() => document.getElementById('player-modal-viewport').classList.contains('kontrol-gizli'));
+  await p.mouse.move(640, 320);
+  await p.waitForTimeout(250);
+  const geriGeldi = await p.evaluate(() => !document.getElementById('player-modal-viewport').classList.contains('kontrol-gizli'));
+  check('§6.6 kontrol çubuğu 3 sn sonra gizlenip harekette geri geliyor', gizli && geriGeldi, `gizlendi=${gizli} geriGeldi=${geriGeldi}`);
+
+  // --- tam ekran <video> değil viewport'u alıyor ---
+  const tamEkranHedefi = await p.evaluate(async () => {
+    const vp = document.getElementById('player-modal-viewport');
+    let hedef = null;
+    const asil = Element.prototype.requestFullscreen;
+    Element.prototype.requestFullscreen = function () { hedef = this.id; return Promise.resolve(); };
+    document.getElementById('player-modal-fullscreen').click();
+    Element.prototype.requestFullscreen = asil;
+    void vp;
+    return hedef;
+  });
+  check('§6.6 tam ekran viewport\'u alıyor (<video> değil)', tamEkranHedefi === 'player-modal-viewport', String(tamEkranHedefi));
+
+  await ctx.close();
 }
 
 async function run(page, base) {
@@ -373,7 +503,7 @@ async function run(page, base) {
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v6');
+      const c = await caches.open('tka-shell-v7');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -387,7 +517,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v6');
+      const sh = await caches.open('tka-shell-v7');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });
@@ -419,6 +549,7 @@ async function run(page, base) {
   try {
     await run(await ctx.newPage(), base);
     await temaTestleri(browser, base);
+    await oynaticiTestleri(browser, base);
   } finally {
     await browser.close();
     server.close();

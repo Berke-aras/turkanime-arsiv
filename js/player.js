@@ -7,7 +7,7 @@ import { OLU, directParams, epLinksHtml } from './links.js';
 import { playerModal, playerFrame, playerVideo, playerNewTab, playerPrevBtn, playerNextBtn,
   playerEpLabel, playerLoading, playerLoadingHint, playerControls,
   startLoadHint, clearLoadHint } from './player-dom.js';
-import { playDirect, stopVideo, bumpDirectToken } from './player-video.js';
+import { playDirect, stopVideo, bumpDirectToken, videoKlavye, kontrolleriGoster } from './player-video.js';
 
 let currentEpisodes = [];
 let currentEpIndex = null;
@@ -131,10 +131,22 @@ const hasEp = i => i >= 0 && i < currentEpisodes.length;
 playerPrevBtn.addEventListener('click', () => { const i = neighborEp(-1); if (hasEp(i)) jumpToEpisode(i); });
 playerNextBtn.addEventListener('click', () => { const i = neighborEp(1); if (hasEp(i)) jumpToEpisode(i); });
 
+// Klavye: reklamsız <video> açıkken ok tuşları videoyu sarıyor (bkz. videoKlavye); bölüm
+// değiştirmek için N/P ya da Shift+Ok. iframe embed'de ok tuşları yine bölüm değiştiriyor.
 window.addEventListener('keydown', e => {
   if (playerModal.hidden) return;
-  if (e.key === 'Escape') closePlayerModal();
-  else if (e.key === 'ArrowLeft') playerPrevBtn.click();
+  if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return; // metin kutusuna yazılıyorsa karışma
+  if (e.key === 'Escape') { closePlayerModal(); return; }
+
+  const k = e.key.toLowerCase();
+  const oncekiBolum = k === 'p' || (e.shiftKey && e.key === 'ArrowLeft');
+  const sonrakiBolum = k === 'n' || (e.shiftKey && e.key === 'ArrowRight');
+  if (oncekiBolum) { e.preventDefault(); playerPrevBtn.click(); return; }
+  if (sonrakiBolum) { e.preventDefault(); playerNextBtn.click(); return; }
+
+  if (videoKlavye(e)) { e.preventDefault(); kontrolleriGoster(); return; }
+  // iframe modunda video kısayolu yok; ok tuşları bölüm değiştirmeye devam etsin
+  if (e.key === 'ArrowLeft') playerPrevBtn.click();
   else if (e.key === 'ArrowRight') playerNextBtn.click();
 });
 

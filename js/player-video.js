@@ -1,17 +1,25 @@
 // "Reklamsız izle": linki resolver'dan çözüp <video> ile oynatma, HLS kurtarma ve embed'e düşme.
 // Modal kabuğu ayrı (player.js); burası yalnız oynatma katmanı.
+import { readLS, writeLS } from './util.js';
 import { DIRECT_PROVIDERS, NO_EMBED_PLAYERS } from './links.js';
-import { playerVideo, playerFrame, playerControls, playerLoading, playerLoadingHint,
+import { playerVideo, playerFrame, playerViewport, playerControls, playerLoading, playerLoadingHint,
   playerNewTab, playerNextBtn, playerProgress, playerPlayToggle, playerMuteBtn, playerVolume,
   playerTime, playerSpeedBtn, playerFullscreenBtn, fmtTime, setIcon, clearLoadHint } from './player-dom.js';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-let playerSpeed = 1;
+// Hız ve ses seviyesi oturumlar arası hatırlanıyor; her açılışta 1x'e ve tam sese dönmüyor.
+let playerSpeed = SPEEDS.includes(readLS('ta_hiz', 1)) ? readLS('ta_hiz', 1) : 1;
 function applySpeed() { playerVideo.playbackRate = playerSpeed; playerSpeedBtn.textContent = playerSpeed + 'x'; }
 playerSpeedBtn.addEventListener('click', () => {
   playerSpeed = SPEEDS[(SPEEDS.indexOf(playerSpeed) + 1) % SPEEDS.length];
+  writeLS('ta_hiz', playerSpeed);
   applySpeed();
 });
+
+const sesOku = () => { const v = Number(readLS('ta_ses', 1)); return v >= 0 && v <= 1 ? v : 1; };
+const sessizOku = () => readLS('ta_sessiz', false) === true;
+// <video> her yeni kaynakta varsayılana döndüğü için oynatmadan hemen önce uygulanıyor.
+export function applySesTercihi() { playerVideo.volume = sesOku(); playerVideo.muted = sessizOku(); }
 playerPlayToggle.addEventListener('click', () => { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); });
 playerVideo.addEventListener('click', () => { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); });
 playerVideo.addEventListener('play', () => setIcon(playerPlayToggle, 'i-pause'));
@@ -25,9 +33,54 @@ playerMuteBtn.addEventListener('click', () => { playerVideo.muted = !playerVideo
 playerVideo.addEventListener('volumechange', () => {
   setIcon(playerMuteBtn, playerVideo.muted || playerVideo.volume === 0 ? 'i-volume-mute' : 'i-volume');
   playerVolume.value = playerVideo.muted ? 0 : playerVideo.volume;
+  writeLS('ta_ses', playerVideo.volume);
+  writeLS('ta_sessiz', playerVideo.muted);
 });
 playerVolume.addEventListener('input', () => { playerVideo.muted = false; playerVideo.volume = playerVolume.value; });
-playerFullscreenBtn.addEventListener('click', () => { playerVideo.requestFullscreen?.(); });
+// Tam ekrana <video> yerine viewport alınıyor: aksi hâlde özel kontrol çubuğu (video'nun kardeşi)
+// tam ekranda görünmüyor ve tarayıcının kendi kontrolleri devreye giriyordu.
+function tamEkranDegistir() {
+  if (document.fullscreenElement) document.exitFullscreen?.();
+  else (playerViewport || playerVideo).requestFullscreen?.();
+}
+playerFullscreenBtn.addEventListener('click', tamEkranDegistir);
+document.addEventListener('fullscreenchange', () => {
+  setIcon(playerFullscreenBtn, document.fullscreenElement ? 'i-minimize' : 'i-maximize');
+  kontrolleriGoster();
+});
+
+// --- kontrol çubuğu otomatik gizlenmesi ---
+// Video oynarken 3 sn hareketsizlikte çubuk kayboluyor; fare/dokunma/klavye onu geri getiriyor.
+let gizleTimer = 0;
+function kontrolleriGoster() {
+  playerViewport.classList.remove('kontrol-gizli');
+  clearTimeout(gizleTimer);
+  if (!playerVideo.paused && !playerVideo.hidden) {
+    gizleTimer = setTimeout(() => {
+      // fare çubuğun üstündeyse gizleme
+      if (!playerControls.matches(':hover')) playerViewport.classList.add('kontrol-gizli');
+    }, 3000);
+  }
+}
+export { kontrolleriGoster };
+for (const olay of ['mousemove', 'pointerdown', 'touchstart']) playerViewport.addEventListener(olay, kontrolleriGoster, { passive: true });
+playerVideo.addEventListener('pause', kontrolleriGoster);
+playerVideo.addEventListener('play', kontrolleriGoster);
+
+// --- klavye: video kontrolleri ---
+// Ok tuşları artık ±10 sn sarıyor (bölüm değiştirmiyor); bölüm geçişi N/P ya da Shift+Ok.
+export function videoKlavye(e) {
+  if (playerVideo.hidden) return false;
+  const k = e.key.toLowerCase();
+  if (e.key === ' ' || k === 'k') { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); return true; }
+  if (e.key === 'ArrowLeft') { playerVideo.currentTime = Math.max(0, playerVideo.currentTime - 10); return true; }
+  if (e.key === 'ArrowRight') { playerVideo.currentTime = Math.min(playerVideo.duration || Infinity, playerVideo.currentTime + 10); return true; }
+  if (e.key === 'ArrowUp') { playerVideo.muted = false; playerVideo.volume = Math.min(1, playerVideo.volume + 0.1); return true; }
+  if (e.key === 'ArrowDown') { playerVideo.volume = Math.max(0, playerVideo.volume - 0.1); return true; }
+  if (k === 'm') { playerVideo.muted = !playerVideo.muted; return true; }
+  if (k === 'f') { tamEkranDegistir(); return true; }
+  return false;
+}
 
 
 let hlsInstance = null;
@@ -128,6 +181,7 @@ async function playDirect(direct, embedUrl) {
       playerVideo.src = data.url;
     }
     applySpeed();
+    applySesTercihi();
     playerVideo.play().catch(() => {});
     playerLoading.hidden = true; clearLoadHint();
   } catch (e) {

@@ -657,7 +657,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   slug ön ekiyle "aynı seri" tespiti yapılabilir (`naruto`, `naruto-shippuuden`).
 - **Özet 4 satırda clamp** — iyi; ama `ozet-more` düğmesi metinle aynı hizada değil, biraz kopuk duruyor.
 
-### 6.6 Oynatıcı modalı
+### 6.6 Oynatıcı modalı — **(TAMAM)**
 - Özel kontrol çubuğu (`index.html` `#player-modal-controls`) sadece "reklamsız" `<video>` modunda
   görünüyor, iframe modunda gizli — doğru karar. Eksikler:
   1. **Klavye:** Boşluk (oynat/duraklat), ok tuşları ±5 sn, `F` tam ekran, `M` sessiz.
@@ -671,6 +671,26 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
      tam ekrana alıyor, özel kontrol çubuğu (`<video>`'nun kardeşi) görünmüyor → tam ekranda
      tarayıcının kendi kontrolleri devreye giriyor, tutarsız. `#player-modal-viewport`'u tam ekrana al.
 - **Bu 6 madde, projenin "reklamsız izleme" iddiasının vitrini — en görünür tasarım işi burası.**
+- **Yapıldı (2026-09-22), altı maddenin tamamı:**
+  1. **Klavye.** Ok tuşları artık videoyu **±10 sn sarıyor**; bölüm değiştirme `N`/`P` ya da
+     `Shift+Ok`'a taşındı. Ayrıca `Boşluk`/`K` oynat-duraklat, `↑`/`↓` ses ±%10, `M` sessiz,
+     `F` tam ekran. iframe embed modunda video kısayolu olmadığı için ok tuşları orada
+     eskisi gibi bölüm değiştiriyor.
+  2. **Ses seviyesi hatırlanıyor** (`ta_ses`, `ta_sessiz`). `<video>` her yeni kaynakta
+     varsayılana döndüğü için tercih oynatmadan hemen önce uygulanıyor.
+  3. **Oynatma hızı hatırlanıyor** (`ta_hiz`).
+  4. **Dokunmatik hedefler**: kontrol düğmeleri 32 → 36px, mobil kırılımda **44px**.
+  5. **Otomatik gizlenme**: video oynarken 3 sn hareketsizlikte çubuk ve imleç kayboluyor;
+     fare/dokunma/klavye geri getiriyor. Fare çubuğun üstündeyken gizlenmiyor.
+  6. **Tam ekran** artık `#player-modal-viewport`'u alıyor (eskiden yalnız `<video>`), böylece
+     özel kontrol çubuğu tam ekranda da görünüyor. İkon tam ekranda `i-minimize`'a dönüyor.
+- **Doğrulama:** duman testine **10 uçtan uca kontrol** eklendi. Resolver isteği
+  `test/fixtures/video.webm`'e yönlendirilerek gerçek `<video>` yolu sınanıyor (reklamsız
+  oynatma, boşluk, sarma, Shift+Ok, sessiz, hız, yeniden açılışta hatırlama, otomatik gizlenme,
+  tam ekran hedefi).
+  **Yan bulgu:** duman testinin HTTP sunucusu Range isteklerini desteklemiyordu, bu yüzden
+  `<video>` sarma yapamıyordu — sunucuya `206 Partial Content` desteği eklendi
+  (GitHub Pages de destekliyor, yani test artık gerçeğe daha yakın).
 
 ### 6.7 Küçük dokunuşlar
 - Yükleme iskeletleri var ama detay sayfasında `fetch info.json` + `loadScript` sırayla (await
@@ -751,7 +771,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 
 **Tur 4 — tasarım**
 13. ~~§6.1 açık tema~~
-14. §6.6 oynatıcı modalı (6 madde)
+14. ~~§6.6 oynatıcı modalı (6 madde)~~
 15. §6.2 ana sayfa keşif şeritleri
 16. §6.4 bölüm ızgarası
 
@@ -801,3 +821,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §2.4 | Çok turlu poster taraması: postersiz 903 → 92; `scripts/meta-io.js` ile meta.js yazımı tek yere alındı |
 | 2026-09-22 | §3.2 | Ölü linkler bölüm başına tek sayıya indi: `kaynak/b` 192 → 129 MB (−%32.6), `.git` +35 MB |
 | 2026-09-22 | §6.1 | Açık tema + üç durumlu tema düğmesi; sabit renkler token'a alındı |
+| 2026-09-22 | §6.6 | Oynatıcı modalının altı maddesi: klavye, ses/hız hatırlama, 44px hedefler, otomatik gizlenme, tam ekran |
