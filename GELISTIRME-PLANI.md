@@ -34,19 +34,20 @@ kendi "Ölçüm" satırlarında duruyor.)*
 
 | | |
 |---|---|
-| Mimari | Tamamen statik, build adımı yok. `index.html` + `js/` altında **22 ES modülü** (2.119 satır) + `style.css` + iki global veri dosyası |
+| Mimari | Tamamen statik, build adımı yok. `index.html` + `js/` altında **23 ES modülü** (2.133 satır) + `style.css` + iki global veri dosyası |
 | Barındırma | GitHub Pages (site) + Vercel (`api/sibnet.js`, `api/okru.js`) + Cloudflare Workers (`cf/uqload`) |
 | Veri | `kaynak/data.js` **396 KB** (658'di) ve `meta.js` **524 KB** (924'tü) — ikisi de `<script>` ile senkron |
 | Bölüm verisi | `kaynak/b/<slug>.js` — 6107 dosya, **143 MB** (205'ti), detayda talep üzerine |
 | Ham veri | `kaynak/animeler/` — 697 MB, 89.597 dosya; sadece `info.json` runtime'da kullanılıyor |
 | Router | `location.hash` (`#/`, `#/anime/<slug>`, `#/yasal`) |
-| Test / lint / CI | **53 birim testi** (`node --test`), **112 duman testi** (Playwright), ESLint, GitHub Actions (2 iş) |
+| Test / lint / CI | **72 birim testi** (`node --test`), **114 duman testi** (Playwright), ESLint, GitHub Actions (2 iş) |
+| Yazı tipi | Inter self-host (`fonts/`, 63 KB, değişken font) — üçüncü taraf istek yok |
 
 ---
 
 ## 0.1 Geriye kalanlar (tek bakışta)
 
-Planın **40 başlığından 35'i tamamen kapandı**; kalan 5 başlıkta toplam **12 açık madde** var
+Planın **40 başlığından 36'sı tamamen kapandı**; kalan 4 başlıkta toplam **10 açık madde** var
 ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazılı.
 
 ### A. Repo sahibinin kararını bekleyenler — **(YAPILMAYACAK)** işaretli
@@ -67,11 +68,10 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
 | madde | ne | not |
 |---|---|---|
 | §2.1.3 | `data.js` + `meta.js`'i tek bir `index.json`'a birleştirip `fetch` ile al | JSON parse, JS parse'tan hızlı; `<script>` zincirini kırar. §2.2/§2.3'ten sonra kazanç küçüldü. |
-| §2.1.5 | Google Fonts render-blocking: `Inter`'i self-host et ya da `preload` kalıbı | ~15 KB woff2 subset yeter |
 | §2.1 kabul | Lighthouse mobil skoru (önce/sonra), LCP < 2.5 s (Slow 4G) | Bu ortamda Lighthouse yok; ölçüm repo sahibinde |
 | §4.4 madde 2 | Deploy'un elle yapılması kırılgan — repoyu Vercel projesine bağla ya da `.github/workflows/deploy-api.yml` yaz | Wrangler için de aynısı |
 | §7.5 | Fansub'a göre filtre (veride `fansub` alanı var, hiç kullanılmıyor) | "sadece TAÇE çevirileri" gibi |
-| §4.3 kalan | `matchScore`/`animeOfDay` birim testleri | İkisi de tepe seviyede `window.INDEX`/`window.META` okuyor; önce veri yüklemesi bir fonksiyona alınmalı |
+| §4.3 kalan | CI'da tam checkout ~900 MB sürüyor | §3.1'e bağlı (ham veri ayrılırsa CI hızlanır) |
 
 ---
 
@@ -245,9 +245,31 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
      | 25 tıklamanın toplam düzen maliyeti | 410 ms | **163 ms (−%60)** |
 
      §1.6'daki kaydırma konumu korunması bozulmadı (duman testi geçiyor).
-  5. Google Fonts render-blocking. Ya `Inter`'i self-host et (`woff2`, ~15 KB subset, `font-display:swap`)
-     ya da `<link rel=preload as=style onload="this.rel='stylesheet'">` kalıbını kullan. Türkçe için
-     `unicode-range` subset'i yeterli.
+  5. **Google Fonts render-blocking.** — **(TAMAM, 2026-09-22)** `Inter` self-host edildi
+     (`fonts/`, ayrıntı: `fonts/README.md`). İki `preconnect` + bir render-blocking stylesheet
+     kalktı; `index.html`'de yalnız latin dosyası `preload` ediliyor, latin-ext'i tarayıcı
+     ancak `ğ/ş/İ` gibi bir harf geçtiğinde indiriyor. İkisi de değişken font (wght 100–900),
+     yani beş ayrı ağırlık dosyası yerine tek dosya.
+
+     **Alt küme kırpması:** Türkçe için latin-1 dışında yalnız `ğ Ğ ş Ş İ` gerekiyor
+     (`ı` zaten latin alt kümesinde). Google'ın `latin-ext` dosyası bunların yanında fonetik
+     alfabe (U+1D00-1DBF), Latin Extended Additional ve U+A720-A7FF bloklarını da taşıyordu;
+     `pyftsubset` ile Latin Extended-A'ya indirildi.
+
+     | | önce (Google Fonts) | sonra (self-host) |
+     |---|---|---|
+     | latin | 48.3 KB | 48.3 KB (aynı dosya) |
+     | latin-ext | 85.1 KB | **14.7 KB** |
+     | toplam yazı tipi | 133.4 KB | **63.0 KB (−%53)** |
+     | üçüncü taraf istek | 2 preconnect + 1 CSS + 2 woff2 | **0** |
+     | FCP (5 açılış ortancası) | 396 ms | **100 ms** |
+
+     FCP farkının tamamını gerçek kullanıcı görmez: ölçüm ortamında Google'a giden istek
+     bir vekil sunucudan geçiyor ve yavaş. **Her ortamda geçerli olan** kısım yapısal:
+     render-blocking bir üçüncü taraf isteği ortadan kalktı ve yazı tipi baytları yarıya indi.
+     Ek olarak ziyaretçinin tarayıcısı artık Google'a hiçbir istek atmıyor — yasal metne de
+     bu not eklendi. CSP daraltıldı: `font-src 'self'`, `style-src`'den `fonts.googleapis.com` çıktı.
+     Yazı tipleri service worker kabuk cache'inde, yani çevrimdışında da duruyor.
 
 - **Kabul:** Lighthouse mobil performans skoru ölç, önce/sonra yaz. Hedef: LCP < 2.5 s (Slow 4G).
 
@@ -581,10 +603,21 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
   9 birim testi (toplam 18 test): `norm` (Türkçe `ı/İ/I/ş/ğ/ü/ö/ç` eşlemesi, noktalama, boş girdi),
   `esc` (beş karakter + çift kaçış davranışı), `levenshtein` (bilinen mesafeler, simetri, boş dize),
   `initials`, `hue` (kararlılık ve 0–359 aralığı).
-- **Kalan:** `matchScore`/`animeOfDay` testleri (`js/search.js` ve `js/data.js`, ikisi de tepe
-  seviyede `window.INDEX`/`window.META` okuduğu için Node'da import edilemiyor — önce veri
-  yüklemesini bir fonksiyona almak gerekiyor). Ayrıca CI'da tam checkout ~900 MB;
-  §3.1 (ham veriyi ayırma) CI süresini ciddi düşürür.
+- **`matchScore`/`animeOfDay` testleri — (TAMAM, 2026-09-22).** İkisi de Node'da import
+  edilemiyordu. Çözüm iki adımda:
+  1. Arama puanlaması ve arama anahtarı üretimi saf bir modüle alındı: **`js/eslesme.js`**
+     (`aramaAnahtari`, `aramaKelimeleri`, `matchScore`). DOM'a, `state`'e ve `store`'a
+     bağlı değil; `js/search.js` artık bunu import ediyor ve `matchScore`'u yeniden dışa
+     veriyor, çağıranlar bozulmadı. → `test/eslesme.test.mjs` (10 test: tam eşleşme,
+     eşikteki yazım hatası, eşiği aşan, çok kelimeli AND, Türkçe karakterler, tembel
+     anahtar üretiminin bir kez çalışması).
+  2. `js/data.js` globalleri `window.*` yerine **`globalThis.*`** üzerinden okuyor.
+     Tarayıcıda ikisi aynı şey; Node'da ise test veriyi global'e koyup modülü import
+     edebiliyor (her senaryo için `import('../js/data.js?t=N')` ile önbellek atlatılıyor).
+     → `test/data.test.mjs` (9 test: INDEX+META katlanması, başlıksız/metasız kayıt,
+     poster öneki, NSFW bayrağı, Türkçe sıralama, türetilmiş listeler, Günün Animesi'nin
+     havuzu/kararlılığı, veri hiç yokken çökmemesi).
+- **Kalan:** CI'da tam checkout ~900 MB; §3.1 (ham veriyi ayırma) CI süresini ciddi düşürür.
 
 ### 4.4 Resolver'lar (Vercel/Cloudflare)
 - `api/sibnet.js` ve `cf/uqload/worker.js` iyi yazılmış (geri çekilme, deadline, cache başlıkları,
@@ -1060,10 +1093,12 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 20. ~~§7.6 keşfedilebilirlik~~ — repodaki kısım bitti; About/topics/Search Console elle
 21. ~~§7.3 yedek al / geri yükle~~ + ~~§7.5 "/" kısayolu~~
 
-**Tur 6 — performans** — TAMAM (kalan iki madde isteğe bağlı)
+**Tur 6 — performans** — TAMAM (kalan tek madde isteğe bağlı)
 22. ~~§2.2 açılış hazırlığı~~ + ~~§2.3 arama~~ → `naruto` 31.6 → 1.0 ms
 23. ~~§2.1.4 sanal liste (`content-visibility`)~~ → 1560 kartta düzen maliyeti −%60
-24. §2.1.3 bölünmüş veri / tek `index.json` · 25. §2.1.5 Google Fonts render-blocking
+24. ~~§2.1.5 Inter self-host~~ → yazı tipi 133 → 63 KB, üçüncü taraf istek 0
+25. ~~§4.3 kalan birim testleri~~ (`js/eslesme.js` + `globalThis` ile) → 53 → 72 test
+26. §2.1.3 bölünmüş veri / tek `index.json` — tek kalan performans maddesi
 
 **Kalanlar (öncelik sırasıyla)**
 26. ~~§4.4.2 ok.ru resolver'ı~~ — kod + testler hazır, **deploy ve tek bölüm doğrulaması bekliyor**
@@ -1127,3 +1162,5 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §4.4.2 | ok.ru resolver'ı (140.428 link, örneklemde %48 canlı): `api/okru.js` + 9 test; `OKRU_ETKIN` bayrağı deploy'u bekliyor |
 | 2026-09-22 | §6.8 + §7.7 | Yaş kapısı (onayla / buradan çıkar), 18+ rozeti kapağın sağ üstüne, yasal metne 4 yeni bölüm + KVKK kanalı |
 | 2026-09-22 | belge | §0 güncel ölçümlerle tazelendi, **§0.1 "Geriye kalanlar"** tablosu eklendi; §6.8/§7.5–7.7 sıralaması düzeltildi |
+| 2026-09-22 | §2.1.5 | Inter self-host (133 → 63 KB, 0 üçüncü taraf istek, FCP 396 → 100 ms); CSP daraltıldı |
+| 2026-09-22 | §4.3 | `js/eslesme.js` ayrıldı + `data.js` `globalThis`'e geçti; `matchScore` ve `animeOfDay` artık birim testli (53 → 72 test) |

@@ -148,3 +148,23 @@ test("'url' tipindeki linkler mutlak adres taşıyor", { timeout: 600000 }, () =
   }
   assert.deepEqual(kotu.slice(0, 5), [], `${kotu.length} 'url' tipi link göreli`);
 });
+
+test("service worker kabuk listesi js/ altındaki her modülü kapsıyor (§1.5)", () => {
+  // Eksik kalan bir modül uygulamayı çevrimdışıyken hiç açılmaz hale getiriyor; liste elle
+  // tutulduğu için yeni modül eklendiğinde unutulması en olası şey bu.
+  const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
+  const liste = new Set([...sw.matchAll(/'([^']+\.(?:js|woff2|css|png|svg|json))'/g)].map(m => m[1]));
+  const diskte = [];
+  for (const dizin of ["js", "js/views"]) {
+    for (const ad of fs.readdirSync(path.join(ROOT, dizin))) {
+      if (ad.endsWith(".js")) diskte.push(`${dizin}/${ad}`);
+    }
+  }
+  const eksik = diskte.filter(f => !liste.has(f));
+  assert.deepEqual(eksik, [], `kabuk cache'inde olmayan modül: ${eksik.join(", ")}`);
+
+  // Yazı tipleri de kabukta olmalı (§2.1.5): yoksa çevrimdışında sistem fontuna düşer.
+  for (const f of fs.readdirSync(path.join(ROOT, "fonts")).filter(a => a.endsWith(".woff2"))) {
+    assert.ok(liste.has(`fonts/${f}`), `fonts/${f} kabuk cache'inde yok`);
+  }
+});

@@ -88,10 +88,13 @@ IP'lerini 403 ile engellediği için Vercel'de duruyor.)
 
 ```
 index.html · style.css · meta.js            uygulama kabuğu ve katalog metası
+fonts/                                      Inter (self-host, değişken font) + lisans
 js/                                         ES modülleri (giriş: js/main.js)
   util · dom · store · data · search        yardımcılar, durum, veri, arama
+  eslesme · yedek                           arama puanlaması, JSON yedek al/geri yükle
   state · router · main                     liste durumu, hash router, bağlama
   links · cards · views/                    link butonları, kart, liste/detay/yasal görünümleri
+  views/yas-kapisi                          18+ onay ekranı ve uyarı paneli
   player · player-dom · player-video        reklamsız oynatıcı modalı
 kaynak/data.js                              anime listesi (slug, başlık, bölüm/link sayısı)
 kaynak/b/<slug>.js                          her anime için bölüm ve izleme linkleri
@@ -101,7 +104,7 @@ scripts/build-posters.js                    AniList kapaklarını meta.js'e göm
 scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
 scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
 test/                                       birim ve veri bütünlüğü testleri
-api/ · cf/                                  reklamsız oynatıcı yardımcıları
+api/ · cf/                                  reklamsız oynatıcı yardımcıları (sibnet · okru · uqload)
 ```
 
 ## Geliştirme

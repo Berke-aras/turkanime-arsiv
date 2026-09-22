@@ -1,28 +1,9 @@
 // Arama ve filtreleme. Liste durumu (state) ayrı modülde; burada sadece saf eleme/sıralama var.
-import { norm, levenshtein } from './util.js';
-import { ANIME, TR_SIRA, aramaAnahtari, aramaKelimeleri } from './data.js';
+import { norm } from './util.js';
+import { ANIME, TR_SIRA } from './data.js';
+import { aramaAnahtari, matchScore } from './eslesme.js';
 import { isFav } from './store.js';
 import { state } from './state.js';
-
-// Her sorgu kelimesi anime'nin bir kelimesine ~%35 hata payıyla uymalı (AND).
-function matchScore(queryTokens, a) {
-  if (!queryTokens.length) return 0;
-  let score = 0;
-  for (const qt of queryTokens) {
-    if (aramaAnahtari(a).includes(qt)) continue;
-    const threshold = Math.max(1, Math.ceil(qt.length / 3));
-    let best = Infinity;
-    for (const tok of aramaKelimeleri(a)) {
-      if (Math.abs(tok.length - qt.length) > threshold) continue;
-      const d = levenshtein(qt, tok);
-      if (d < best) best = d;
-      if (best === 0) break;
-    }
-    if (best > threshold) return null;
-    score += best;
-  }
-  return score;
-}
 
 function filterAndSort() {
   const qTokens = norm(state.query).split(' ').filter(Boolean);
@@ -76,4 +57,5 @@ export function pickRandomAnime() {
   location.hash = '#/anime/' + pool[Math.floor(Math.random() * pool.length)].slug;
 }
 
+// matchScore js/eslesme.js'te; eski çağıranlar bozulmasın diye buradan da veriliyor.
 export { matchScore, filterAndSort };

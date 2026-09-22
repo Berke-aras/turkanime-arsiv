@@ -18,7 +18,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const MIME = { '.webm': 'video/webm', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8' };
+const MIME = { '.webm': 'video/webm', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2' };
 
 function loadPlaywright() {
   for (const id of ['playwright', '/opt/node22/lib/node_modules/playwright']) {
@@ -499,6 +499,26 @@ async function run(page, base) {
     return w ? getComputedStyle(w).contentVisibility : '';
   });
   check('§2.1.4 kartlarda content-visibility:auto', cv === 'auto', cv);
+
+  // --- §2.1.5: yazı tipi kendi sunucumuzdan, üçüncü taraf istek yok ---
+  const yaziTipi = await page.evaluate(async () => {
+    const ucuncuTaraf = [...document.querySelectorAll('link[href],script[src]')]
+      .map(e => e.href || e.src).filter(u => u && !u.startsWith(location.origin));
+    // document.fonts yüklenen yüzleri sayar; Inter gelmemişse liste boş kalır
+    await document.fonts.ready;
+    const inter = [...document.fonts].filter(f => f.family === 'Inter');
+    const govde = getComputedStyle(document.body).fontFamily;
+    return {
+      ucuncuTaraf: ucuncuTaraf.filter(u => /fonts\.(googleapis|gstatic)\.com/.test(u)),
+      yuklu: inter.filter(f => f.status === 'loaded').length,
+      yuz: inter.length,
+      govde,
+    };
+  });
+  check('§2.1.5 Google Fonts isteği kalmadı', yaziTipi.ucuncuTaraf.length === 0, yaziTipi.ucuncuTaraf.join(', '));
+  check('§2.1.5 Inter kendi sunucumuzdan yükleniyor',
+    yaziTipi.yuz >= 2 && yaziTipi.yuklu >= 1 && /Inter/.test(yaziTipi.govde),
+    JSON.stringify(yaziTipi));
   await page.fill('#search', '');
   await page.waitForTimeout(400);
 

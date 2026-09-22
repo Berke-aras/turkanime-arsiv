@@ -1,7 +1,8 @@
 // Liste görünümü: istatistik şeridi, Günün Animesi, son bakılanlar, filtre çubuğu ve kart ızgarası.
 import { esc, ic, levenshtein, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
-import { ANIME, KATEGORILER, TURLER, ONYILLAR, aramaAnahtari, aramaKelimeleri, statsStripHtml, animeOfDay } from '../data.js';
+import { ANIME, KATEGORILER, TURLER, ONYILLAR, statsStripHtml, animeOfDay } from '../data.js';
+import { aramaAnahtari, aramaKelimeleri } from '../eslesme.js';
 import { listHash } from '../state.js';
 import { devamListesi } from '../progress.js';
 import { wireSeritler } from '../serit.js';

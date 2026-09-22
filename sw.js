@@ -3,7 +3,7 @@
 //  - DATA_CACHE:  kaynak/b/<slug>.js ve info.json gibi talep üzerine gelen bölüm verisi. Tek bir
 //    kaynak/b dosyası 3.4 MB'a kadar çıkabiliyor (one-piece), sınırsız biriktirilirse cihazda
 //    yüzlerce MB'a ulaşıp kota hatasıyla SW'yi sessizce düşürüyordu. Bu yüzden LRU ile sınırlı.
-const SHELL_CACHE = 'tka-shell-v18';
+const SHELL_CACHE = 'tka-shell-v19';
 const DATA_CACHE = 'tka-data-v1';
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);
 const DATA_CAP = 40;
@@ -11,12 +11,15 @@ const DATA_CAP = 40;
 // Katalog dosyaları da kabukta: bunlar olmadan çevrimdışı ilk açılış boş liste gösteriyordu.
 const SHELL = ['./', 'index.html', 'style.css', 'kaynak/data.js', 'meta.js',
   'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png',
-  // ES modülleri (bkz. js/main.js). Biri eksik kalırsa uygulama çevrimdışı açılmaz,
-  // o yüzden hepsi kabuk cache'inde.
-  'js/main.js', 'js/util.js', 'js/dom.js', 'js/store.js', 'js/data.js', 'js/search.js',
-  'js/state.js', 'js/links.js', 'js/cards.js', 'js/router.js', 'js/theme.js', 'js/progress.js', 'js/serit.js',
-  'js/player.js', 'js/player-dom.js', 'js/player-video.js',
-  'js/views/list.js', 'js/views/detail.js', 'js/views/legal.js', 'js/views/bolum-listesi.js'];
+  // Yazı tipleri (§2.1.5): çevrimdışıyken de sistem fontuna düşmesin.
+  'fonts/inter-latin.woff2', 'fonts/inter-latin-ext.woff2',
+  // ES modülleri (bkz. js/main.js). Biri eksik kalırsa uygulama çevrimdışı açılmaz, o yüzden
+  // hepsi kabuk cache'inde. Listenin eksiksizliğini test/veri-butunlugu.test.js doğruluyor.
+  'js/main.js', 'js/cards.js', 'js/data.js', 'js/dom.js', 'js/eslesme.js', 'js/links.js',
+  'js/player-dom.js', 'js/player-video.js', 'js/player.js', 'js/progress.js', 'js/router.js', 'js/search.js',
+  'js/serit.js', 'js/state.js', 'js/store.js', 'js/theme.js', 'js/util.js', 'js/yedek.js',
+  'js/views/bolum-listesi.js', 'js/views/detail.js', 'js/views/legal.js', 'js/views/list.js',
+  'js/views/yas-kapisi.js'];
 
 const isData = url => /\/kaynak\/b\/[^/]+\.js$/.test(url.pathname) || /\/kaynak\/animeler\/[^/]+\/info\.json$/.test(url.pathname);
 

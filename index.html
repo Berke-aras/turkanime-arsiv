@@ -29,8 +29,8 @@
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   script-src 'self' https://cdn.jsdelivr.net https://gc.zgo.at;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src https://fonts.gstatic.com;
+  style-src 'self' 'unsafe-inline';
+  font-src 'self';
   img-src 'self' data: https://s4.anilist.co;
   media-src 'self' https: blob:;
   worker-src 'self' blob:;
@@ -46,9 +46,10 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%236c8dff'/%3E%3Cstop offset='1' stop-color='%238f6cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='22' fill='url(%23g)'/%3E%3Ctext x='50' y='70' font-size='58' font-family='system-ui,sans-serif' font-weight='800' fill='white' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<!-- §2.1.5: Inter artık kendi sunucumuzda (bkz. fonts/README.md). Google Fonts'a giden iki
+     preconnect ve render-blocking stylesheet kalktı. Latin alt kümesi hemen gerekiyor, o yüzden
+     preload; latin-ext'i tarayıcı yalnız ğ/ş/İ gibi bir harf geçtiğinde indiriyor. -->
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 <!-- Yapısal veri (§7.6). WebSite + SearchAction: Google arama sonucunda site içi arama kutusu
      gösterebiliyor; hash rotası query parametresini olduğu gibi alıyor (#/?q=...). -->
