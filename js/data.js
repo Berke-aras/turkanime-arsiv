@@ -11,16 +11,23 @@ const META_STUDYOLAR = window.META_STUDYOLAR || [];
 // Tarayıcı tarafındaki eş: scripts/poster-onek.js. İkisi birlikte değişmeli.
 const POSTER_ONEK = 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/';
 
+// Yetişkin içerik türleri. Bu türlerden birini taşıyan anime kartında "18+" rozeti,
+// detay sayfasında da uyarı paneli çıkar; ana sayfadaki keşif şeritlerine ve Günün
+// Animesi'ne hiç girmez. ("Erotica" veride ayrı bir tür olarak duruyor.)
+const NSFW_TURLER = new Set(['Ecchi', 'Hentai', 'Erotica']);
+
 const BOS_META = ['', [], 0, null, 0, -1];
 const ANIME = (window.INDEX || []).map(r => {
   const baslik = r[1] || r[0]; // kaynak veride bazı başlıklar null, slug'a düş
   const n = norm(baslik + ' ' + r[0]);
   const m = META[r[0]] || BOS_META;
+  const tur = m[1].map(i => META_TURLER[i]).filter(Boolean);
   return {
     slug: r[0], baslik, eps: r[2], urls: r[3],
     kategori: m[0],
     // indeksten çözülen adlar sözlükteki tek dize örneğini paylaşır (bellek ve karşılaştırma ucuz)
-    tur: m[1].map(i => META_TURLER[i]).filter(Boolean),
+    tur,
+    nsfw: tur.some(t => NSFW_TURLER.has(t)),
     puan: m[2],
     poster: m[3] ? (/^https?:\/\//i.test(m[3]) ? m[3] : POSTER_ONEK + m[3]) : null,
     yil: m[4] || 0,
@@ -43,9 +50,8 @@ function statsStripHtml() {
 }
 
 // Gün boyunca aynı kalsın diye tarihi tohum olarak kullanan basit seçim (puanı 7 üstü animelerden).
-const SFW_EXCLUDED_TUR = new Set(['Ecchi', 'Hentai']);
 function animeOfDay() {
-  const pool = ANIME.filter(a => a.puan > 7 && !a.tur.some(t => SFW_EXCLUDED_TUR.has(t)));
+  const pool = ANIME.filter(a => a.puan > 7 && !a.nsfw);
   if (!pool.length) return null;
   const seed = new Date().toISOString().slice(0, 10);
   let h = 0;
@@ -80,4 +86,4 @@ function loadScript(slug) {
 }
 
 
-export { META, ANIME, KATEGORILER, TURLER, ONYILLAR, TOPLAM_BOLUM, TOPLAM_LINK, statsStripHtml, animeOfDay, loadScript };
+export { META, ANIME, KATEGORILER, TURLER, ONYILLAR, NSFW_TURLER, TOPLAM_BOLUM, TOPLAM_LINK, statsStripHtml, animeOfDay, loadScript };

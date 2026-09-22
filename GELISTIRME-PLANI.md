@@ -696,13 +696,18 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 - **Ölçüm (One Piece, 1280×900):** ekranda görünen bölüm sayısı **2 → 457**.
 - **Not:** §7.2'deki "izlendi" işareti geldiğinde ızgara kutucuklarına doğrudan oturur.
 
-### 6.5 Detay sayfasındaki boşluklar
+### 6.5 Detay sayfasındaki boşluklar — **(TAMAM)**
 - **Japonca başlık gösterilmiyor** (§3.3) — `<h2>` altına `--text-2` renginde küçük satır.
 - **Yayın yılı/tarihi gösterilmiyor** — `info-stats` şeridine ekle.
 - **İlgili animeler yok** — aynı janr + yakın puandan 6 kart "Benzer animeler" olarak altta göster.
   Veri zaten bellekte (`ANIME`), maliyeti sıfır. Uzun serilerde sezonlar arası geçiş için de
   slug ön ekiyle "aynı seri" tespiti yapılabilir (`naruto`, `naruto-shippuuden`).
 - **Özet 4 satırda clamp** — iyi; ama `ozet-more` düğmesi metinle aynı hizada değil, biraz kopuk duruyor.
+- **Yapıldı (2026-09-22):** Japonca başlık ve yayın yılı §3.3 ile gelmişti; kalan ikisi:
+  - **Benzer animeler** şeridi eklendi: önce **aynı seri** (slug ön eki, en az 6 karakter — kısa
+    ön ekler alakasız yüzlerce sonuç getiriyordu), sonra **ortak janr sayısı** ve **puan yakınlığı**
+    sırasına göre 12 kart. Veri zaten bellekte, ek istek yok. Şerit ok düğmeleriyle kaydırılıyor.
+  - `ozet-more` düğmesi metinle aynı hizaya alındı (`padding` ve `line-height` özetle eşitlendi).
 
 ### 6.6 Oynatıcı modalı — **(TAMAM)**
 - Özel kontrol çubuğu (`index.html` `#player-modal-controls`) sadece "reklamsız" `<video>` modunda
@@ -739,7 +744,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   `<video>` sarma yapamıyordu — sunucuya `206 Partial Content` desteği eklendi
   (GitHub Pages de destekliyor, yani test artık gerçeğe daha yakın).
 
-### 6.7 Küçük dokunuşlar
+### 6.7 Küçük dokunuşlar — **(TAMAM)**
 - Yükleme iskeletleri var ama detay sayfasında `fetch info.json` + `loadScript` sırayla (await
   ardı ardına) çalışıyor — `Promise.all` ile paralelleştir, iskelet süresi yarıya iner.
 - `.filterbar` mobilde yatay kaydırmalı (`style.css` @640px) ama kaydırılabilir olduğuna dair
@@ -748,6 +753,31 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   "filtreleri temizle" butonu koy (kullanıcı çoğu zaman filtre yüzünden boş sonuç alıyor).
 - `#random-btn` mobilde sadece ikon; rastgele animeye gitmek keşfin en eğlenceli parçası —
   ana sayfada "Günün Animesi" kartının yanına ikinci bir giriş noktası koy.
+- **Yapıldı (2026-09-22):** Dördü de.
+  - `info.json` ve bölüm dosyası artık `Promise.all` ile paralel yükleniyor; iskelet süresi
+    ikisinin toplamı değil uzun olanı kadar.
+  - `.filterbar` mobilde sağ kenarda yumuşak maske ile kaydırılabilir olduğunu belli ediyor.
+  - Filtre kaynaklı boş sonuçta **"Filtreleri temizle"** düğmesi çıkıyor.
+  - Günün Animesi kartının altına ikinci bir **"Rastgele bir anime"** girişi kondu.
+- **Ek (plan dışı, kullanıcı isteği):** Yatay şeritler masaüstünde kaydırılamıyordu — dokunmatik
+  yok, kaydırma çubuğu da gizli. Şeritlere **sol/sağ ok düğmeleri** eklendi (`js/serit.js`):
+  yalnız taşma varsa görünüyorlar, uçlara gelince ilgili düğme kayboluyor, mobilde hiç çıkmıyorlar.
+  Ana sayfa şeritleri ve "Benzer animeler" aynı bileşeni kullanıyor.
+
+### 6.8 Yetişkin içerik uyarısı — **(TAMAM)** *(plan dışı, kullanıcı isteği)*
+- **Sorun:** Ecchi/Hentai türündeki başlıklar hiçbir uyarı olmadan, diğerleriyle aynı biçimde
+  listeleniyordu.
+- **Ölçüm:** `Ecchi` 531 anime, `Hentai` 1, ayrıca veride `Erotica` türü de var. (`Yaoi` 22 ve
+  `Yuri` 2 bu kapsama alınmadı — yetişkin içerik göstergesi değiller.)
+- **Yapıldı (2026-09-22):** `js/data.js` içinde `NSFW_TURLER` (`Ecchi`, `Hentai`, `Erotica`);
+  her anime `nsfw` bayrağı taşıyor.
+  - Kartta kapak üstünde **18+** rozeti.
+  - Detay sayfasında hero'nun altında uyarı paneli: *"Yetişkin içerik — Bu başlık … türünde;
+    cinsel içerik ya da çıplaklık barındırabilir. 18 yaşından küçükseniz devam etmeyin,
+    iş yerinde açmayın."*
+  - Ana sayfadaki **keşif şeritlerine ve Günün Animesi'ne hiç girmiyorlar**
+    (`animeOfDay` zaten hariç tutuyordu, "En yüksek puanlı" de artık tutuyor).
+  - Arama ve filtreler değişmedi: arayan bulabiliyor, uyarıyı görüyor.
 
 ---
 
@@ -894,3 +924,5 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §6.4 | Bölüm ızgarası: One Piece'te ekranda görünen bölüm 2 → 457 |
 | 2026-09-22 | §7.1 + §7.2 | İzlemeye devam et (konum kaydı, şerit, ilerleme çubuğu) ve izlendi işareti |
 | 2026-09-22 | §4.2 + §5.2–5.5 | Satır içi olay işleyicileri kalktı, CSP eklendi; modal odak tuzağı, canlı bölgeler, kontrast, noscript + atlama bağlantısı |
+| 2026-09-22 | §6.5 + §6.7 | Benzer animeler şeridi, paralel yükleme, filtre temizleme, ikinci rastgele girişi, şerit ok düğmeleri |
+| 2026-09-22 | §6.8 | Ecchi/Hentai/Erotica için 18+ rozeti ve detay sayfasında yetişkin içerik uyarısı |

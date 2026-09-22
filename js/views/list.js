@@ -4,9 +4,10 @@ import { app, fadeApp } from '../dom.js';
 import { ANIME, KATEGORILER, TURLER, ONYILLAR, statsStripHtml, animeOfDay } from '../data.js';
 import { listHash } from '../state.js';
 import { devamListesi } from '../progress.js';
+import { wireSeritler } from '../serit.js';
 import { getRecent } from '../store.js';
 import { cardHtml, wireCards, posterPlaceholder } from '../cards.js';
-import { filterAndSort } from '../search.js';
+import { filterAndSort, pickRandomAnime } from '../search.js';
 import { PAGE_SIZE, state, syncListHash } from '../state.js';
 
 function filterBarHtml(count) {
@@ -48,11 +49,18 @@ function wireFilterBar() {
 // Yatay kaydırmalı kart şeridi. Ana sayfadaki keşif bölümlerinin tamamı bunu kullanıyor.
 function seritHtml(baslik, items, altBaslik = '') {
   if (!items.length) return '';
+  // Masaüstünde şerit yatay kaydırmalı ama dokunmatik yok ve kaydırma çubuğu gizli: ok
+  // düğmeleri olmadan kaydırılamıyordu. Düğmeler yalnız taşma varsa görünür (bkz. wireSeritler).
   return `<section class="recent-row">
       <h2 class="section-title">${esc(baslik)}${altBaslik ? `<span class="meta">${esc(altBaslik)}</span>` : ''}</h2>
-      <div class="grid recent-grid">${items.map(cardHtml).join('')}</div>
+      <div class="serit-sar">
+        <button type="button" class="serit-ok serit-ok-sol" aria-label="Sola kaydır" hidden>${ic('chevron-left')}</button>
+        <div class="grid recent-grid">${items.map(cardHtml).join('')}</div>
+        <button type="button" class="serit-ok serit-ok-sag" aria-label="Sağa kaydır" hidden>${ic('chevron-right')}</button>
+      </div>
     </section>`;
 }
+
 
 // Puanı 8+ olanların en tepesinden, gün içinde değişmeyen 12'lik bir seçki.
 // Havuz puana göre sıralanıp ilk EN_IYI_HAVUZ tanesine iniliyor, sonra günün tohumuyla
@@ -62,7 +70,7 @@ const EN_IYI_ESIK = 8;
 const EN_IYI_HAVUZ = 120;
 const EN_IYI_SAYI = 12;
 function enIyiler() {
-  const havuz = ANIME.filter(a => a.puan >= EN_IYI_ESIK)
+  const havuz = ANIME.filter(a => a.puan >= EN_IYI_ESIK && !a.nsfw)
     .sort((x, y) => y.puan - x.puan)
     .slice(0, EN_IYI_HAVUZ);
   if (havuz.length <= EN_IYI_SAYI) return havuz;
@@ -124,7 +132,8 @@ function renderList() {
             <div class="meta">${featured.eps} bölüm · ${ic('star','ic-star')} ${featured.puan}</div>
             <span class="featured-cta">${ic('play')}İzlemeye başla</span>
           </div>
-        </a>`;
+        </a>
+        <button type="button" id="featured-random" class="link-btn featured-random" title="Arşivden rastgele bir anime aç">${ic('dice')}Rastgele bir anime</button>`;
     }
   }
 
@@ -159,9 +168,19 @@ function renderList() {
       .sort((x, y) => x.d - y.d).slice(0, 4) : [];
     const suggestHtml = suggestions.length
       ? `<div class="suggest">Bunu mu demek istedin?${suggestions.map(x => `<a class="link-btn" href="#/anime/${x.a.slug}">${esc(x.a.baslik)}</a>`).join('')}</div>` : '';
-    app.innerHTML = `${bar}<div class="empty">Sonuç bulunamadı.${suggestHtml}</div>`;
+    // Boş sonucun en sık sebebi arama değil, açık kalmış bir filtre.
+    const filtreVar = state.kategori || state.tur || state.onyil || state.favOnly;
+    const temizleHtml = filtreVar
+      ? `<div class="suggest"><button type="button" id="filtre-temizle" class="link-btn">${ic('x')}Filtreleri temizle</button></div>` : '';
+    app.innerHTML = `${bar}<div class="empty">Sonuç bulunamadı.${suggestHtml}${temizleHtml}</div>`;
     fadeApp();
     wireFilterBar();
+    const temizleBtn = document.getElementById('filtre-temizle');
+    if (temizleBtn) temizleBtn.addEventListener('click', () => {
+      Object.assign(state, { kategori: '', tur: '', onyil: 0, favOnly: false, page: 1 });
+      syncListHash();
+      renderList();
+    });
     return;
   }
 
@@ -175,6 +194,9 @@ function renderList() {
   fadeApp();
   wireFilterBar();
   wireCards(app);
+  wireSeritler(app);
+  const rastgeleBtn = document.getElementById('featured-random');
+  if (rastgeleBtn) rastgeleBtn.addEventListener('click', pickRandomAnime);
   // tam yeniden çizim yerine yeni kartları ekle; kaydırma konumu korunur
   app.querySelector('.pager').addEventListener('click', e => {
     if (e.target.closest('#load-more') == null) return;

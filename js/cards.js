@@ -35,6 +35,7 @@ function cardHtml(a) {
       <a class="card${a.eps ? '' : ' card-empty'}" href="#/anime/${encodeURIComponent(a.slug)}">
         ${posterPlaceholder(a, oran)}
         ${a.puan ? `<span class="rating-badge">${ic('star','ic-star')}${a.puan}</span>` : ''}
+        ${a.nsfw ? '<span class="yas-rozet" title="Yetişkin içerik">18+</span>' : ''}
         <h3>${esc(a.baslik)}</h3>
         <div class="meta">${a.yil ? `${a.yil} · ` : ''}${a.eps ? `${a.eps} bölüm · ${a.urls} link` : 'bölüm verisi yok'}</div>
         <div class="badges">${a.tur.slice(0, 3).map(t => `<span class="badge">${esc(t)}</span>`).join('')}</div>

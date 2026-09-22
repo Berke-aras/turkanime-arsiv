@@ -300,6 +300,14 @@ async function ilerlemeTestleri(browser, base) {
   await p.locator('#player-modal-close').click();
   await p.waitForTimeout(200);
 
+  // hiç izlenmemişken rozet gerçekten gizli olmalı ([hidden] ile display çakışması)
+  const rozetBaslangic = await p.evaluate(() => {
+    const r = document.getElementById('ep-izlenen');
+    return r ? { hidden: r.hidden, display: getComputedStyle(r).display } : null;
+  });
+  check('§7.2 izlenen rozeti hiç izlenmemişken görünmüyor',
+    !!rozetBaslangic && rozetBaslangic.display === 'none', JSON.stringify(rozetBaslangic));
+
   // tik düğmesi: tekil işaretleme
   await p.locator('.ep[data-i="4"] .ep-izle').click({ force: true });
   await p.waitForTimeout(250);
@@ -596,6 +604,97 @@ async function run(page, base) {
   await page.locator('.grid:not(.recent-grid) .fav-btn').first().click(); // geri al
   await page.waitForTimeout(200);
 
+  // --- §6.5: benzer animeler · §6.7: küçük dokunuşlar · şerit okları ---
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.ep');
+  const benzer = await page.evaluate(() => {
+    const bolum = document.querySelector('.benzer-row');
+    if (!bolum) return null;
+    const kartlar = [...bolum.querySelectorAll('.card')];
+    return {
+      sayi: kartlar.length,
+      kendisiVar: kartlar.some(k => k.getAttribute('href') === '#/anime/beck'),
+      ilk: kartlar[0] ? kartlar[0].getAttribute('href') : '',
+      okVar: !!bolum.querySelector('.serit-ok'),
+    };
+  });
+  check('§6.5 detayda "Benzer animeler" şeridi var ve kendisini içermiyor',
+    !!benzer && benzer.sayi >= 6 && !benzer.kendisiVar && benzer.okVar, JSON.stringify(benzer));
+
+  // §6.7: şerit okları taşma varken görünür, tıklayınca kaydırır
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card');
+  await page.waitForTimeout(500);
+  // Taşan bir şerit seç: kısa şeritlerde (ör. birkaç kartlık "Son bakılanlar") ok düğmeleri
+  // bilerek gizli, onları tıklamaya çalışmak yanlış olur.
+  const tasanIndeks = await page.evaluate(() => [...document.querySelectorAll('.serit-sar')]
+    .findIndex(s => { const g = s.querySelector('.recent-grid'); return g.scrollWidth - g.clientWidth > 50; }));
+  const serit = page.locator('.serit-sar').nth(Math.max(0, tasanIndeks));
+  const okDurum = i => page.evaluate(n => {
+    const s = document.querySelectorAll('.serit-sar')[n];
+    const g = s.querySelector('.recent-grid');
+    return { sol: s.querySelector('.serit-ok-sol').hidden, sag: s.querySelector('.serit-ok-sag').hidden,
+      tasma: g.scrollWidth - g.clientWidth, kaydi: Math.round(g.scrollLeft) };
+  }, i);
+  const okOnce = await okDurum(Math.max(0, tasanIndeks));
+  await serit.locator('.serit-ok-sag').click();
+  await page.waitForTimeout(900);
+  const okSonra = await okDurum(Math.max(0, tasanIndeks));
+  check('§6.7 şerit okları görünüyor ve kaydırıyor',
+    tasanIndeks >= 0 && okOnce.sol === true && okOnce.sag === false && okOnce.tasma > 50
+    && okSonra.kaydi > okOnce.kaydi && okSonra.sol === false,
+    `şerit#${tasanIndeks} ${JSON.stringify(okOnce)} -> ${JSON.stringify(okSonra)}`);
+
+  // §6.7: filtre yüzünden boş sonuçta "filtreleri temizle"
+  await page.goto(base + '/index.html#/?kategori=TV&tur=Hentai', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.empty', { timeout: 10000 });
+  const bosVar = await page.evaluate(() => !!document.getElementById('filtre-temizle'));
+  check('§6.7 filtre kaynaklı boş sonuçta "filtreleri temizle" düğmesi var', bosVar);
+  if (bosVar) {
+    await page.click('#filtre-temizle');
+    await page.waitForTimeout(400);
+    const temiz = await page.evaluate(() => ({ hash: location.hash, kart: document.querySelectorAll('.card').length }));
+    check('§6.7 "filtreleri temizle" listeyi geri getiriyor',
+      temiz.kart > 10 && !/tur=|kategori=/.test(temiz.hash), JSON.stringify(temiz));
+  }
+
+  // §6.7: Günün Animesi yanında ikinci rastgele girişi
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card');
+  const rastgeleVar = await page.evaluate(() => !!document.getElementById('featured-random'));
+  check('§6.7 ana sayfada ikinci "rastgele" girişi var', rastgeleVar);
+  if (rastgeleVar) {
+    await page.click('#featured-random');
+    await page.waitForTimeout(600);
+    const gitti = await page.evaluate(() => location.hash);
+    check('§6.7 rastgele düğmesi bir animeye götürüyor', /^#\/anime\/.+/.test(gitti), gitti);
+  }
+
+  // --- NSFW uyarıları ---
+  await page.goto(base + '/index.html#/anime/high-school-dxd', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.ep', { timeout: 20000 });
+  const nsfw = await page.evaluate(() => {
+    const u = document.querySelector('.nsfw-uyari');
+    return u ? { metin: u.textContent.replace(/\s+/g, ' ').trim(), rozet: !!u.querySelector('.nsfw-rozet') } : null;
+  });
+  check('NSFW: Ecchi animesinin detayında 18+ uyarısı var',
+    !!nsfw && /18\+/.test(nsfw.metin) && /Yetişkin içerik/.test(nsfw.metin) && nsfw.rozet,
+    nsfw ? nsfw.metin.slice(0, 70) : 'uyarı yok');
+
+  await page.goto(base + '/index.html#/?tur=Ecchi', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card');
+  const rozetSayi = await page.evaluate(() => ({
+    rozet: document.querySelectorAll('.yas-rozet').length,
+    kart: document.querySelectorAll('.grid:not(.recent-grid) .card').length,
+  }));
+  check('NSFW: Ecchi listesindeki her kartta 18+ rozeti var',
+    rozetSayi.rozet === rozetSayi.kart && rozetSayi.kart > 10, JSON.stringify(rozetSayi));
+
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.ep');
+  const temizAnime = await page.evaluate(() => !!document.querySelector('.nsfw-uyari'));
+  check('NSFW: normal animede uyarı çıkmıyor', !temizAnime);
+
   // --- §6.4: bölüm ızgarası ---
   await page.goto(base + '/index.html#/anime/one-piece', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.ep', { timeout: 30000 });
@@ -692,7 +791,7 @@ async function run(page, base) {
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v12');
+      const c = await caches.open('tka-shell-v14');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -706,7 +805,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v12');
+      const sh = await caches.open('tka-shell-v14');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });

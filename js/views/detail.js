@@ -1,7 +1,10 @@
 // Detay görünümü: kapak/bilgi paneli, özet ve bölüm listesi.
 import { esc, ic, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
-import { ANIME, loadScript } from '../data.js';
+import { ANIME, loadScript, NSFW_TURLER } from '../data.js';
+import { cardHtml, wireCards } from '../cards.js';
+import { wireSeritler } from '../serit.js';
+import { epListHtml } from './bolum-listesi.js';
 import { isFav, favLabel, toggleFav, pushRecent, getEpReverse, setEpReverse, getEpIzgara, setEpIzgara } from '../store.js';
 import { posterPlaceholder } from '../cards.js';
 import { OLU } from '../links.js';
@@ -28,15 +31,13 @@ async function renderDetail(slug, token) {
     </div>
     <div class="skel-eps">${Array.from({ length: 6 }, () => '<div class="skel skel-ep"></div>').join('')}</div>`;
 
-  let info = null;
-  try {
-    const r = await fetch(`kaynak/animeler/${slug}/info.json`);
-    if (r.ok) info = await r.json();
-  } catch (e) { /* bilgi paneli olmadan devam */ }
+  // §6.7: iki istek birbirini beklemiyor — bilgi paneli ve bölüm listesi paralel yükleniyor,
+  // iskelet süresi ikisinin toplamı değil uzun olanı kadar.
+  const [info] = await Promise.all([
+    fetch(`kaynak/animeler/${slug}/info.json`).then(r => r.ok ? r.json() : null).catch(() => null),
+    loadScript(slug).catch(() => {}),
+  ]);
   if (token !== getRouteToken()) return; // kullanıcı beklerken başka rotaya geçti, eski yanıtı çizme
-
-  await loadScript(slug).catch(() => {});
-  if (token !== getRouteToken()) return;
   pushRecent(slug); // render kesinleşmeden "son bakılanlar"a yazma
   const episodes = (window.__TKA__ && window.__TKA__[slug]) || [];
   setCurrentEpisodes(episodes, slug);
@@ -69,45 +70,50 @@ async function renderDetail(slug, token) {
       ${ozetLong ? '<button type="button" class="ozet-more">Devamını göster</button>' : ''}
     </div>` : '';
 
-  // link butonları binlerce olabildiğinden (ör. One Piece: 1166 bölüm/~27000 link),
-  // baştan basmak yerine bölüm ilk açıldığında dolduruluyor (bkz. aşağıdaki ep-head handler'ı).
-  // Aynı DOM iki görünümü de besliyor (§6.4): liste modunda tam başlık, ızgara modunda yalnız
-  // bölüm numarası görünür; hangisinin görüneceğine CSS karar veriyor. Açılan bölüm ızgarada
-  // tüm satırı kaplar (grid-column:1/-1), böylece link listesi yine tam genişlikte çıkar.
-  const epItemHtml = i => {
-    const ep = episodes[i];
-    const empty = !ep.links.length;
-    const kisa = ep.no != null ? String(ep.no) : '•';
-    const izlendi = izlendiMi(slug, i);
-    return `
-    <div class="ep${empty ? ' ep-empty' : ''}${izlendi ? ' ep-izlendi' : ''}" data-i="${i}">
-      <div class="ep-head">
-        <span class="ep-arrow">${ic('chevron-right')}</span>
-        <span class="ep-kisa" aria-hidden="true">${esc(kisa)}</span>
-        <span class="ep-ad">${esc(ep.ad)}</span>
-        <span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span>
-        <button type="button" class="ep-izle" data-i="${i}"
-          title="İzlendi olarak işaretle (Shift ile buraya kadar hepsi)"
-          aria-label="İzlendi olarak işaretle">${ic('check')}</button>
-      </div>
-      <div class="ep-links"></div>
-    </div>`;
+  // §6.5 "Benzer animeler": önce aynı seri (slug ön eki), sonra ortak janr + yakın puan.
+  // Veri zaten bellekte, maliyeti sıfır.
+  const benzerler = () => {
+    if (!meta) return [];
+    // "naruto" ile "naruto-shippuuden" aynı seri sayılır; ön ek en az 6 karakter olmalı ki
+    // "one" gibi kısa parçalar yüzlerce alakasız anime getirmesin.
+    const kok = slug.split('-').slice(0, 2).join('-');
+    const ayniSeri = kok.length >= 6
+      ? ANIME.filter(a => a.slug !== slug && (a.slug.startsWith(kok + '-') || slug.startsWith(a.slug + '-')))
+      : [];
+    const turKume = new Set(meta.tur);
+    const puanli = ANIME
+      .filter(a => a.slug !== slug && a.eps && !ayniSeri.includes(a) && a.tur.some(t => turKume.has(t)))
+      .map(a => ({
+        a,
+        ortak: a.tur.filter(t => turKume.has(t)).length,
+        puanFarki: Math.abs((a.puan || 0) - (meta.puan || 0)),
+      }))
+      .sort((x, y) => (y.ortak - x.ortak) || (x.puanFarki - y.puanFarki) || (y.a.puan - x.a.puan))
+      .map(x => x.a);
+    return [...ayniSeri, ...puanli].slice(0, 12);
   };
-  // uzun serilerde (100+) bölümler 50'lik katlanır gruplara bölünüyor; sadece ilk grup açık gelir
-  const EP_GROUP = 50;
-  const epListHtml = () => {
-    let order = episodes.map((_, i) => i);
-    if (getEpReverse()) order.reverse();
-    const kutular = g => `<div class="ep-kutular">${g.map(epItemHtml).join('')}</div>`;
-    if (order.length <= 100) return kutular(order);
-    const groups = [];
-    for (let k = 0; k < order.length; k += EP_GROUP) groups.push(order.slice(k, k + EP_GROUP));
-    return groups.map((g, gi) => `
-      <details class="ep-group"${gi === 0 ? ' open' : ''}>
-        <summary>${g[0] + 1}–${g[g.length - 1] + 1}<span class="meta">${g.length} bölüm</span></summary>
-        ${kutular(g)}
-      </details>`).join('');
-  };
+  const benzerListe = benzerler();
+  const benzerHtml = benzerListe.length ? `
+      <section class="recent-row benzer-row">
+        <h2 class="section-title">Benzer animeler</h2>
+        <div class="serit-sar">
+          <button type="button" class="serit-ok serit-ok-sol" aria-label="Sola kaydır" hidden>${ic('chevron-left')}</button>
+          <div class="grid recent-grid">${benzerListe.map(cardHtml).join('')}</div>
+          <button type="button" class="serit-ok serit-ok-sag" aria-label="Sağa kaydır" hidden>${ic('chevron-right')}</button>
+        </div>
+      </section>` : '';
+
+  // Yetişkin içerik uyarısı: türü Ecchi/Hentai/Erotica olan animelerde (bkz. js/data.js NSFW_TURLER)
+  const nsfwTurleri = meta ? meta.tur.filter(t => NSFW_TURLER.has(t)) : [];
+  const nsfwHtml = nsfwTurleri.length ? `
+      <div class="nsfw-uyari" role="note">
+        <span class="nsfw-rozet">18+</span>
+        <div>
+          <strong>Yetişkin içerik</strong>
+          <p>Bu başlık <strong>${esc(nsfwTurleri.join(', '))}</strong> türünde; cinsel içerik ya da
+          çıplaklık barındırabilir. 18 yaşından küçükseniz devam etmeyin, iş yerinde açmayın.</p>
+        </div>
+      </div>` : '';
 
   const titleObj = { slug, baslik: meta ? meta.baslik : slug, poster: meta ? meta.poster : null };
   document.title = `${titleObj.baslik} · TürkAnime Arşivi`;
@@ -124,6 +130,7 @@ async function renderDetail(slug, token) {
           ${firstPlayable >= 0 ? `<button type="button" id="detail-start" class="start-btn">${ic('play')}İzlemeye başla</button>` : ''}
         </div>
       </div>
+      ${nsfwHtml}
       ${ozetHtml}
       ${episodes.length ? `
       <div class="ep-toolbar">
@@ -133,9 +140,13 @@ async function renderDetail(slug, token) {
         <button type="button" id="ep-reverse" class="link-btn${getEpReverse() ? ' active' : ''}" title="Sıralamayı tersine çevir">${ic('sort')}Tersten</button>
       </div>` : ''}
       ${episodes.length > 20 ? `<input id="ep-search" class="ep-search" placeholder="Bölüm ara... (örn. 12 veya final)">` : ''}
-      <div id="ep-list"${getEpIzgara() ? ' class="izgara"' : ''}>${epListHtml() || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
+      <div id="ep-list"${getEpIzgara() ? ' class="izgara"' : ''}>${epListHtml(episodes, slug) || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
+      ${benzerHtml}
     </div>`;
   fadeApp();
+
+  wireCards(app);       // benzer animeler şeridindeki favori düğmeleri
+  wireSeritler(app);    // ve ok düğmeleri
 
   const epListEl = document.getElementById('ep-list');
   // §7.2: tik düğmesi — normal tık tekil, Shift+tık "buraya kadar hepsi".
@@ -184,7 +195,7 @@ async function renderDetail(slug, token) {
     setEpReverse(!getEpReverse());
     revBtn.classList.toggle('active', getEpReverse());
     if (!playerModal.hidden) syncEpNavButtons(); // modal açıkken yön değişirse butonlar tazelensin
-    epListEl.innerHTML = epListHtml();
+    epListEl.innerHTML = epListHtml(episodes, slug);
     izlenenleriCiz();
     const epSearchEl = document.getElementById('ep-search');
     if (epSearchEl && epSearchEl.value) epSearchEl.dispatchEvent(new Event('input'));
