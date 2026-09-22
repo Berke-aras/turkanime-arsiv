@@ -297,6 +297,46 @@ async function resolveDirect(provider, params, stillWanted) {
   }
   return null;
 }
+// mp4 yolunda <video>'nun kendi 'error' olayı embed'e düşürüyor, ama hls.js kendi hatalarını oraya
+// taşımıyor: manifest yüklendikten sonra gelen fatal hata (süresi dolmuş token, ölü segment,
+// desteklenmeyen codec) yakalanmazsa oynatıcı boş ekranda asılı kalıyordu. hls.js'in önerdiği
+// kurtarmayı her hata türü için bir kez deniyoruz; o da tutmazsa reklamlı embed'e düşüyoruz.
+function wireHlsRecovery(Hls, hls, player, embedUrl, stillWanted) {
+  const denendi = { net: false, media: false };
+  let manifestGeldi = false;
+  let vazgecTimer = null;
+  const vazgec = () => {
+    clearTimeout(vazgecTimer);
+    if (!stillWanted()) return;
+    hls.destroy();
+    if (hlsInstance === hls) hlsInstance = null;
+    fallbackToEmbed(player, embedUrl);
+  };
+  // Kurtarma çağrısı sessizce hiçbir şey yapmayabiliyor (ör. manifest hiç yüklenmediyse startLoad'ın
+  // yeniden deneyeceği bir seviye yok), o zaman ikinci bir hata da gelmiyor ve oynatıcı asılı kalıyor.
+  // Bu yüzden kurtarmadan sonra oynatma gerçekten ilerliyor mu diye bakıp ilerlemiyorsa vazgeçiyoruz.
+  const kurtarmayiIzle = () => {
+    clearTimeout(vazgecTimer);
+    const t = playerVideo.currentTime;
+    vazgecTimer = setTimeout(() => {
+      if (!stillWanted()) return;
+      if (playerVideo.currentTime > t + 0.1 && !playerVideo.paused) return; // toparlandı
+      vazgec();
+    }, 6000);
+  };
+  hls.on(Hls.Events.MANIFEST_PARSED, () => { manifestGeldi = true; });
+  hls.on(Hls.Events.ERROR, (_e, d) => {
+    if (!d || !d.fatal || !stillWanted()) return;
+    // Manifest hiç gelmediyse (404, ayrıştırma hatası, desteklenmeyen codec) kurtarılacak bir şey yok.
+    if (manifestGeldi && d.type === Hls.ErrorTypes.NETWORK_ERROR && !denendi.net) {
+      denendi.net = true; hls.startLoad(); kurtarmayiIzle(); return;
+    }
+    if (manifestGeldi && d.type === Hls.ErrorTypes.MEDIA_ERROR && !denendi.media) {
+      denendi.media = true; hls.recoverMediaError(); kurtarmayiIzle(); return;
+    }
+    vazgec();
+  });
+}
 // resolver'dan mp4/m3u8 linkini alıp <video> ile oynatır; olmazsa sessizce klasik iframe embed'e düşer.
 let currentDirectPlayer = null;
 async function playDirect(direct, embedUrl) {
@@ -312,6 +352,7 @@ async function playDirect(direct, embedUrl) {
       if (token !== directToken) return;
       if (!Hls || !Hls.isSupported()) throw new Error('hls unsupported');
       hlsInstance = new Hls();
+      wireHlsRecovery(Hls, hlsInstance, direct.player, embedUrl, () => token === directToken);
       hlsInstance.loadSource(data.url);
       hlsInstance.attachMedia(playerVideo);
     } else {
