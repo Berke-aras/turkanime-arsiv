@@ -9,6 +9,14 @@
 
 ---
 
+## Durum takibi
+
+Tamamlanan maddeler başlıklarında **(TAMAM)** ile işaretlenir ve en altta *Değişiklik günlüğü*
+bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; öncesinde
+`node scripts/smoke-test.js` (tarayıcı duman testi) yeşil olmalı.
+
+---
+
 ## 0. Projenin bugünkü hâli (özet)
 
 | | |
@@ -28,7 +36,7 @@
 
 ## 1. Acil — hatalar (önce bunlar)
 
-### 1.1 `tip: "yol"` linkleri kırık iframe açıyor
+### 1.1 `tip: "yol"` linkleri kırık iframe açıyor — **(TAMAM)**
 - **Dosya:** `app.js:40` `epLinksHtml()`
 - **Sorun:** Fonksiyon sadece `l.tip === 'mask'` kontrolü yapıyor. Veride üçüncü bir tip var: `yol`.
   URL'si mutlak değil, turkanime'nin kendi ajax yolu:
@@ -39,14 +47,22 @@
   `epItemHtml` (`app.js:666`), `openEpisode` (`app.js:412`) ve `firstPlayable`
   (`app.js` renderDetail içi) hepsi bu yardımcıyı kullansın.
 - **Kabul:** `grep '"tip":"yol"' kaynak/b/*.js` ile bulunan bir animede o buton üstü çizili/pasif görünür.
+- **Yapıldı (2026-09-22):** `app.js`'e `const OLU = tip => tip !== 'url'` yardımcısı eklendi;
+  `epLinksHtml`, `openEpisode` (fansub çipi + önerilen seçim), `epItemHtml` ve `firstPlayable`
+  hepsi bu yardımcıyı kullanıyor. Repo genelinde ölçüm: 1.165.204 `url`, 387.519 `mask`,
+  **1.708 `yol`** (plandaki 35 örneklem tahminiydi). `beck` 1. bölümde ALUCARD(BETA) artık
+  `<span class="link-btn mask">`; hiçbir `data-embed-url` göreli değil (duman testiyle doğrulandı).
 
-### 1.2 Detay sayfasındayken arama kutusu hiçbir şey yapmıyor
+### 1.2 Detay sayfasındayken arama kutusu hiçbir şey yapmıyor — **(TAMAM)**
 - **Dosya:** `app.js:836` → `if (location.hash.startsWith('#/anime/')) return;`
 - **Sorun:** Kullanıcı detay sayfasında üstteki arama kutusuna yazıyor, hiçbir şey olmuyor. Sessiz ölüm.
 - **Yapılacak:** `return` yerine listeye dön:
   `state.query = searchEl.value; state.page = 1; if (location.hash !== '#/') location.hash = '#/'; else renderList();`
   (hash değişimi `route()` → `renderList()` tetikler.)
 - **Kabul:** Bir anime detayındayken "naruto" yazınca liste sayfasına düşüp sonuçlar gelir.
+- **Yapıldı (2026-09-22):** `return` kaldırıldı; `state.query`/`state.page` her durumda güncelleniyor,
+  hash `#/` değilse `location.hash = '#/'` (route() -> renderList() tetikler), değilse doğrudan
+  `renderList()`. Yasal sayfası için de çalışır. Duman testi: detaydayken yazınca `hash=#/`, 60 kart.
 
 ### 1.3 Geri tuşunda liste konumu ve filtreler kayboluyor
 - **Dosya:** `app.js:822` `route()`, `app.js:468` `state`
@@ -507,3 +523,13 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 - Ölçüm yapmadan "hızlandı" deme: önce/sonra Lighthouse veya `performance.mark` sayısı yaz.
 - Türkçe metinlerde `norm()`'un `ı/İ/ş/ğ/ü/ö/ç` eşlemesi var (`app.js:3`) — yeni arama kodu
   yazarken onu atlama.
+
+---
+
+## Değişiklik günlüğü
+
+| tarih | madde | özet |
+|---|---|---|
+| 2026-09-22 | §1.1 | `tip:"yol"` linkleri artık pasif basılıyor (1.708 kırık iframe linki) |
+| 2026-09-22 | §1.2 | Detay/yasal sayfasında arama kutusu listeye dönüyor |
+| 2026-09-22 | altyapı | `scripts/smoke-test.js` — Playwright tabanlı tarayıcı duman testi eklendi |

@@ -1,0 +1,115 @@
+#!/usr/bin/env node
+// TürkAnime Arşivi — tarayıcı duman testi.
+//
+// Statik siteyi geçici bir HTTP sunucusunda yayınlar, headless Chromium'da açar ve GELISTIRME-PLANI.md
+// maddelerinin kabul kriterlerini doğrular. Bir maddeyi bitirdikten sonra push etmeden önce çalıştır:
+//
+//   node scripts/smoke-test.js
+//
+// Playwright gerekir (küresel ya da yerel kurulum ikisi de olur):
+//   npm i -D playwright   ·   ya da: npm i -g playwright
+// Tarayıcı indirilmemişse: npx playwright install chromium
+// (Claude Code web ortamında Chromium hazır gelir, indirme gerekmez.)
+
+'use strict';
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.resolve(__dirname, '..');
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif', '.webmanifest': 'application/manifest+json', '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8' };
+
+function loadPlaywright() {
+  for (const id of ['playwright', '/opt/node22/lib/node_modules/playwright']) {
+    try { return require(id); } catch { /* sıradakini dene */ }
+  }
+  console.error('Playwright bulunamadı. Kur: npm i -D playwright && npx playwright install chromium');
+  process.exit(2);
+}
+
+function serve() {
+  const server = http.createServer((req, res) => {
+    const rel = decodeURIComponent(req.url.split('?')[0].split('#')[0]).replace(/^\/+/, '');
+    const file = path.join(ROOT, rel === '' ? 'index.html' : rel);
+    if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
+    fs.readFile(file, (err, buf) => {
+      if (err) { res.writeHead(404, { 'content-type': 'text/plain' }).end('404'); return; }
+      res.writeHead(200, { 'content-type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+      res.end(buf);
+    });
+  });
+  return new Promise(r => server.listen(0, '127.0.0.1', () => r({ server, base: `http://127.0.0.1:${server.address().port}` })));
+}
+
+const results = [];
+const check = (ad, kosul, detay = '') => results.push({ ad, ok: !!kosul, detay });
+
+async function run(page, base) {
+  const errors = [];
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+
+  // --- ana sayfa ---
+  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.card', { timeout: 20000 });
+  const kart = await page.locator('.card').count();
+  check('ana sayfa kart basıyor', kart > 10, kart + ' kart');
+  const stat = await page.locator('.stats-strip .stat-num').first().textContent();
+  check('istatistik şeridi dolu', /\d/.test(stat || ''), stat);
+
+  // --- arama (liste sayfasında) ---
+  await page.fill('#search', 'naruto');
+  await page.waitForTimeout(500);
+  const ilk = await page.locator('.card').first().innerText().catch(() => '');
+  check('ana sayfada arama', /naruto|boruto/i.test(ilk), ilk.split('\n')[0]);
+
+  // --- detay sayfası ---
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.ep', { timeout: 20000 });
+  const bolum = await page.locator('.ep').count();
+  check('detay bölümleri basıyor', bolum > 5, bolum + ' bölüm');
+
+  // --- §1.1: 'yol' tipi linkler pasif basılmalı, tıklanabilir buton olmamalı ---
+  await page.locator('.ep[data-i="0"] .ep-head').click();
+  await page.waitForTimeout(400);
+  const alucard = page.locator('.ep[data-i="0"] .ep-links').getByText('ALUCARD(BETA)', { exact: true });
+  const varMi = await alucard.count();
+  const etiket = varMi ? await alucard.first().evaluate(el => el.tagName + '.' + el.className) : '';
+  check("§1.1 'yol' linki pasif basılıyor", varMi > 0 && /^SPAN/.test(etiket) && /mask/.test(etiket), etiket || 'link bulunamadı');
+  const embeds = await page.locator('.ep[data-i="0"] .ep-links [data-embed-url]').evaluateAll(e => e.map(x => x.dataset.embedUrl));
+  const goreli = embeds.filter(u => !/^https?:/i.test(u));
+  check("§1.1 göreli (ajax/) embed URL'i yok", goreli.length === 0, goreli.join(', '));
+
+  // --- §1.2: detay sayfasındayken arama listeye dönmeli ---
+  await page.fill('#search', 'beck');
+  await page.waitForTimeout(600);
+  const hash = await page.evaluate(() => location.hash);
+  const kartSonra = await page.locator('.card').count();
+  check('§1.2 detayda arama listeye dönüyor', hash === '#/' && kartSonra > 0, `hash=${hash} kart=${kartSonra}`);
+
+  // --- yasal sayfası ---
+  await page.goto(base + '/index.html#/yasal', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.legal', { timeout: 10000 });
+  check('yasal sayfası açılıyor', true);
+
+  // --- konsol temiz mi (dış kaynak/ağ hataları hariç) ---
+  const gercek = errors.filter(e => !/favicon|net::ERR|ERR_INTERNET|anilist|zgo\.at/i.test(e));
+  check('konsol hatası yok', gercek.length === 0, gercek.slice(0, 3).join(' | '));
+}
+
+(async () => {
+  const { chromium } = loadPlaywright();
+  const { server, base } = await serve();
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    await run(await ctx.newPage(), base);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+  let hata = 0;
+  for (const r of results) { if (!r.ok) hata++; console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.ad}${r.detay ? '  — ' + r.detay : ''}`); }
+  console.log(`\n${results.length - hata}/${results.length} geçti`);
+  process.exit(hata ? 1 : 0);
+})().catch(e => { console.error('TEST ÇÖKTÜ:', e); process.exit(2); });

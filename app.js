@@ -36,19 +36,24 @@ function playerRank(player) {
   return i === -1 ? PREFERRED_PLAYERS.length : i;
 }
 
+// Veride üç link tipi var: 'url' (mutlak, çalışabilir), 'mask' (turkanime sunucusu gerektiren maskeli
+// link) ve 'yol' (turkanime'nin kendi ajax yolu, ör. "ajax/videosec&b=..."). Site kapalı olduğu için
+// 'url' dışındaki her tip ölüdür; 'yol' mutlak olmadığından iframe'e basılırsa kendi sayfamızda 404 açar.
+const OLU = tip => tip !== 'url';
+
 // fansub bilgisi çağıran taraftan (fansub grubu zaten seçilmiş) geldiği için buton üstünde tekrar edilmiyor.
 function epLinksHtml(links) {
   // çalışmayan (mask) linkler sona, bilinen güvenilir sağlayıcılar öne alınıyor.
   const sorted = [...links].sort((a, b) => {
-    if ((a.tip === 'mask') !== (b.tip === 'mask')) return (a.tip === 'mask') - (b.tip === 'mask');
+    if (OLU(a.tip) !== OLU(b.tip)) return OLU(a.tip) - OLU(b.tip);
     return playerRank(a.player) - playerRank(b.player);
   });
   // reklamsız butonları en başa (önerilen); orijinal embed butonları aynen kalır
-  const direct = sorted.filter(l => l.tip !== 'mask' && directParams(l)).map((l, i, arr) =>
+  const direct = sorted.filter(l => !OLU(l.tip) && directParams(l)).map((l, i, arr) =>
     `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct-player="${l.player}" data-direct-params="${esc(directParams(l))}" title="${esc(l.player)} videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`);
   return direct.concat(sorted.map(l => {
     const label = esc(l.player);
-    if (l.tip === 'mask') return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
+    if (OLU(l.tip)) return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
     if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label}${ic('external')}</a>`;
     return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
   })).join('');
@@ -431,7 +436,7 @@ function openEpisode(epEl) {
   }
 
   const chipsHtml = [...groups.entries()].map(([name, groupLinks]) => {
-    const empty = groupLinks.every(l => l.tip === 'mask');
+    const empty = groupLinks.every(l => OLU(l.tip));
     return `<button type="button" class="fansub-chip${empty ? ' fansub-chip-empty' : ''}" data-fansub="${esc(name)}">${esc(name)}<span class="meta">${groupLinks.length}</span></button>`;
   }).join('');
   linksEl.innerHTML = `<div class="fansub-chips">${chipsHtml}</div><div class="fansub-players"></div>`;
@@ -445,7 +450,7 @@ function openEpisode(epEl) {
     });
   });
   // reklamsız linki olan ilk fansub otomatik seçilir ki önerilen buton hemen görünsün
-  const preferred = [...groups.entries()].find(([, ls]) => ls.some(l => l.tip !== 'mask' && directParams(l)));
+  const preferred = [...groups.entries()].find(([, ls]) => ls.some(l => !OLU(l.tip) && directParams(l)));
   if (preferred) linksEl.querySelector(`.fansub-chip[data-fansub="${CSS.escape(preferred[0])}"]`).click();
 }
 // bölümün önerilen (reklamsız) butonu varsa onu döndürür
@@ -642,7 +647,7 @@ async function renderDetail(slug, token) {
   // özette gelen <br /> gibi ham HTML etiketlerini gerçek satır sonuna çevir
   const escBr = s => esc(s).replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/\n/g, '<br>');
 
-  const firstPlayable = episodes.findIndex(ep => ep.links.some(l => l.tip !== 'mask'));
+  const firstPlayable = episodes.findIndex(ep => ep.links.some(l => !OLU(l.tip)));
   const heroInfoHtml = info ? `
       <div class="info-tags">
         ${info['Kategori'] ? `<span class="tag tag-main">${esc(info['Kategori'])}</span>` : ''}
@@ -665,7 +670,7 @@ async function renderDetail(slug, token) {
   // baştan basmak yerine bölüm ilk açıldığında dolduruluyor (bkz. aşağıdaki ep-head handler'ı).
   const epItemHtml = i => {
     const ep = episodes[i];
-    const empty = ep.links.every(l => l.tip === 'mask');
+    const empty = ep.links.every(l => OLU(l.tip));
     return `
     <div class="ep${empty ? ' ep-empty' : ''}" data-i="${i}">
       <div class="ep-head"><span class="ep-arrow">${ic('chevron-right')}</span>${esc(ep.ad)}<span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span></div>
@@ -833,10 +838,11 @@ let t;
 searchEl.addEventListener('input', () => {
   clearTimeout(t);
   t = setTimeout(() => {
-    if (location.hash.startsWith('#/anime/')) return;
     state.query = searchEl.value;
     state.page = 1;
-    renderList();
+    // detay ya da yasal sayfasındayken yazılırsa listeye dön; hash değişimi route() -> renderList() tetikler
+    if (location.hash && location.hash !== '#/') location.hash = '#/';
+    else renderList();
   }, 150);
 });
 document.getElementById('random-btn').addEventListener('click', pickRandomAnime);
