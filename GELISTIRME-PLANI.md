@@ -462,7 +462,7 @@ değişiklik günlüğünde ve commit mesajında durur.
   `yasal.en.html` dosyalarına çıkarmak (planın önerisi) yapılmadı — artık kendi modülünde
   olduğu için bir yazım düzeltmesi yalnız o dosyanın cache'ini bozuyor.
 
-### 4.2 `innerHTML` + string şablon riski
+### 4.2 `innerHTML` + string şablon riski — **(TAMAM)**
 - **Sorun:** Tüm görünümler `innerHTML` ile basılıyor. `esc()` (`app.js:8`) doğru yazılmış ve
   tutarlı kullanılıyor — **bugün bir XSS açığı görmedim** — ama her yeni özellikte `esc` unutmak
   tek satırlık bir hata. Ayrıca `posterPlaceholder` (`app.js:159`) satır içi `onload=`/`onerror=`
@@ -474,6 +474,15 @@ değişiklik günlüğünde ve commit mesajında durur.
      `https://cdn.jsdelivr.net` (hls.js), `https://gc.zgo.at` (sayaç); `img-src` `https://s4.anilist.co`;
      `frame-src` embed sağlayıcıları için geniş kalmak zorunda (`https:`).
   3. Yeni kod yazarken şablonları küçük fonksiyonlara böl, `esc` zorunluluğunu yorumla işaretle.
+- **Yapıldı (2026-09-22):**
+  - Satır içi `onload`/`onerror` kaldırıldı; yerine belgede tek bir yakalama fazlı dinleyici var
+    (`js/cards.js`), maliyeti sabit. Duman testi sayfada satır içi olay işleyicisi kalmadığını ölçüyor.
+  - `index.html`'e **CSP meta etiketi** eklendi: `script-src 'self' cdn.jsdelivr.net gc.zgo.at`,
+    `img-src 'self' data: s4.anilist.co`, `media-src 'self' https: blob:`, `worker-src 'self' blob:`
+    (hls.js blob worker kullanıyor), `frame-src https:`, `object-src 'none'`, `form-action 'none'`.
+  - **CSP bir sorun yakaladı:** sayaç scripti protokolsüz (`//gc.zgo.at/...`) yazılmıştı;
+    `https://` olarak sabitlendi. Veride hiç `http://` link olmadığı da ölçüldü (0 adet),
+    yani `frame-src https:` hiçbir bölümü engellemiyor.
 
 ### 4.3 Test, lint, CI yok — **(TAMAM)**
 - **Yapılacak:**
@@ -553,32 +562,42 @@ değişiklik günlüğünde ve commit mesajında durur.
   Test: Ctrl+tık gerçekten yeni sekmede detayı açıyor, favori butonu gezinmeyi tetiklemiyor,
   kart genişliği sarmalayıcıyla birebir (düzen bozulmadı), masaüstü + mobil ekran görüntüsüyle doğrulandı.
 
-### 5.2 Modal odak tuzağı yok
+### 5.2 Modal odak tuzağı yok — **(TAMAM)**
 - **Dosya:** `index.html` `#player-modal`, `app.js:246` `openPlayerModal()`
 - **Sorun:** Modal açıkken Tab tuşu arkadaki sayfada dolaşıyor. `aria-modal`, `role="dialog"`,
   `aria-label` yok. Kapatınca odak, açan butona dönmüyor.
 - **Yapılacak:** `<div id="player-modal" role="dialog" aria-modal="true" aria-label="Bölüm oynatıcı">`,
   açılışta ilk odaklanabilir öğeye odaklan, Tab'ı modal içinde döndür, kapanışta `lastFocused.focus()`.
   Modal açıkken `body { overflow: hidden }` da ekle (şu an arka plan kayıyor).
+- **Yapıldı (2026-09-22):** Hepsi. `role="dialog" aria-modal="true" aria-label="Bölüm oynatıcı"`,
+  açılışta odak modalın ilk öğesine, Tab/Shift+Tab modalın içinde dönüyor, kapanışta odak açan
+  öğeye geri veriliyor, `body.modal-acik{overflow:hidden}`.
+  Test 30 kez Tab'a basıp odağın bir kez bile dışarı kaçmadığını ölçüyor.
 
-### 5.3 Canlı bölge (live region) yok
+### 5.3 Canlı bölge (live region) yok — **(TAMAM)**
 - Arama sonucu sayısı değiştiğinde ekran okuyucu hiçbir şey duymuyor.
 - **Yapılacak:** `.filter-count`'a `aria-live="polite"` ekle. Oynatıcı yüklenirken
   `#player-modal-loading`'e `role="status"`.
+- **Yapıldı (2026-09-22):** İkisi de.
 
-### 5.4 Kontrast
+### 5.4 Kontrast — **(TAMAM)**
 - **Dosya:** `style.css:6` `--muted:#848a9c`
 - `--muted` (#848a9c) `--surface` (#12151d) üzerinde ~5.4:1 — normal metin için geçer,
   ama `.card .meta` 11.5px ve `.badge` 10.5px'te kullanılıyor. 12px altı metinde bu oran yorucu.
 - **Yapılacak:** Küçük metinlerde `--text-2` (#b7bccb) kullan ya da `--muted`'i bir tık aydınlat.
   `.link-btn.mask` `opacity:.55` + `var(--bad)` birleşimi ~2.5:1 — "bilgi" taşıyan bir öğe için
   çok düşük; §3.2'deki özet satırı bunu zaten çözer.
+- **Yapıldı (2026-09-22):** `.card .meta` (11.5px) artık `--text-2` kullanıyor.
+  Üstü çizili `.link-btn.mask` sorunu §3.2 ile kendiliğinden çözüldü: ölü linkler hiç basılmıyor.
+  Açık tema (§6.1) da kendi kontrast setiyle geldi.
 
-### 5.5 Diğer
+### 5.5 Diğer — **(TAMAM)**
 - `index.html`'e `<noscript>` yok — JS kapalıysa boş iskelet kalıyor. Kısa bir açıklama ekle.
 - Kaydırma/atlama bağlantısı ("İçeriğe geç") yok.
 - `#top-btn` `opacity:0; pointer-events:none` ile gizleniyor ama yine de odak sırasında —
   `visibility:hidden` ekle.
+- **Yapıldı (2026-09-22):** Üçü de: `<noscript>` uyarısı, "İçeriğe geç" atlama bağlantısı
+  (ilk Tab'da görünür hâle geliyor) ve `#top-btn`'e `visibility:hidden`.
 
 ---
 
@@ -874,3 +893,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §6.2 + §6.3 | Ana sayfaya "En yüksek puanlı" ve "Janra göre keşfet" şeritleri; postersiz kart tasarımı yenilendi |
 | 2026-09-22 | §6.4 | Bölüm ızgarası: One Piece'te ekranda görünen bölüm 2 → 457 |
 | 2026-09-22 | §7.1 + §7.2 | İzlemeye devam et (konum kaydı, şerit, ilerleme çubuğu) ve izlendi işareti |
+| 2026-09-22 | §4.2 + §5.2–5.5 | Satır içi olay işleyicileri kalktı, CSP eklendi; modal odak tuzağı, canlı bölgeler, kontrast, noscript + atlama bağlantısı |
