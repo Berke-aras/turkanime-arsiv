@@ -111,7 +111,6 @@ linkleri düzenli bir arayüzde gösterir; hiçbir video dosyası barındırmaz.
 
 **さようなら、turkanime.tv**
 
-Arşivi site kapanmadan önce derleyip paylaştığı için
-**[Kerim Demirkaynak](https://github.com/KerimDemirkaynak)**'a teşekkürler.
+Arşiv için [Kerim Demirkaynak](https://github.com/KerimDemirkaynak)'a teşekkürler.
 
 </div>
