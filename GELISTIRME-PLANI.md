@@ -132,6 +132,15 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   yardımcısı kaydırma sırasında `scroll-behavior`'ı geçici olarak `auto` yapıyor; `#top-btn`'in
   yumuşak kaydırması korundu.
 
+### 1.7 Arşivde olmayan slug boş detay sayfası açıyor — **(TAMAM)**
+- **Dosya:** `app.js` `renderDetail()`
+- **Bulundu:** §5.1 çalışılırken, `#/anime/<olmayan-slug>` adresinin iskeletten sonra boş bir detay
+  sayfası açtığı ve `kaynak/animeler/<slug>/info.json` ile `kaynak/b/<slug>.js` için iki 404 isteği
+  attığı görüldü. Eski ya da yanlış yazılmış paylaşılan linklerde kullanıcının gördüğü hâl bu.
+- **Yapıldı (2026-09-22):** `renderDetail()` başında `meta` bulunamazsa "Bu anime arşivde
+  bulunamadı" ekranı basılıyor ve hiçbir veri isteği atılmıyor. Test: `.empty` metni doğru,
+  o slug için 0 ağ isteği.
+
 ---
 
 ## 2. Yükleme performansı
@@ -579,3 +588,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §5.1 | Kartlar ve Günün Animesi gerçek `<a>`; iç içe etkileşimli öğe kalmadı |
 | 2026-09-22 | §2.1.1 | `data.js` 4 alana kırpıldı: 658→392 KB ham, 174.7→130.9 KB gzip |
 | 2026-09-22 | §3.4 | `api/sendvid.js` + `api/doodstream.js` silindi; OK.RU maddesinin yanlış olduğu ölçümle saptandı |
+| 2026-09-22 | §1.7 | Bilinmeyen slug artık "bulunamadı" gösteriyor, 404 isteği atmıyor (plan dışı, çalışırken bulundu) |

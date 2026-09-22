@@ -693,6 +693,16 @@ function renderList() {
 
 async function renderDetail(slug, token) {
   const meta = ANIME.find(a => a.slug === slug);
+  // Arşivde olmayan bir slug (eski/bozuk paylaşılan link) iskeletten sonra boş bir detay sayfası
+  // açıp kaynak/animeler/<slug>/info.json ve kaynak/b/<slug>.js için 404 isteği atıyordu.
+  if (!meta) {
+    document.title = 'Bulunamadı · TürkAnime Arşivi';
+    app.innerHTML = `
+      <a class="back" href="#/">${ic('arrow-left')}Listeye dön</a>
+      <div class="empty">Bu anime arşivde bulunamadı.<div class="meta">Aradığın: ${esc(slug)}</div></div>`;
+    fadeApp();
+    return;
+  }
   app.innerHTML = `
     <div class="skel-detail">
       <div class="skel skel-poster"></div>

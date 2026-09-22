@@ -157,6 +157,18 @@ async function run(page, base) {
   await page.locator('#player-modal-close').click();
   await page.locator('#ep-reverse').click(); // varsayılana dön (localStorage'da kalıcı)
 
+  // --- §1.7: arşivde olmayan slug temiz bir "bulunamadı" gösteriyor, 404 isteği atmıyor ---
+  const istekler = [];
+  const dinle = r => istekler.push(new URL(r.url()).pathname);
+  page.on('request', dinle);
+  await page.goto(base + '/index.html#/anime/boyle-bir-anime-yok', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.empty', { timeout: 10000 }).catch(() => {});
+  page.off('request', dinle);
+  const bulunamadi = await page.locator('.empty').textContent().catch(() => '');
+  const bosIstek = istekler.filter(u => /boyle-bir-anime-yok/.test(u));
+  check('§1.7 bilinmeyen slug "bulunamadı" gösteriyor', /bulunamadı/i.test(bulunamadi), bulunamadi.slice(0, 60));
+  check('§1.7 bilinmeyen slug için veri isteği atılmıyor', bosIstek.length === 0, bosIstek.join(', '));
+
   // --- yasal sayfası ---
   await page.goto(base + '/index.html#/yasal', { waitUntil: 'networkidle' });
   await page.waitForSelector('.legal', { timeout: 10000 });
