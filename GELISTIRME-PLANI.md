@@ -587,7 +587,7 @@ değişiklik günlüğünde ve commit mesajında durur.
 Mevcut tasarım iyi durumda: tutarlı token seti (`style.css:2-18`), düzgün mobil kırılımlar,
 iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağıdakiler bunun üzerine.
 
-### 6.1 Açık tema yok
+### 6.1 Açık tema yok — **(TAMAM)**
 - **Ölçüm:** `style.css`'te `prefers-color-scheme` **hiç geçmiyor**; `:root`'ta `color-scheme:dark` sabit.
 - **Sorun:** Gündüz kullanan ve sistemi açık temada olan kullanıcı için zorlayıcı.
 - **Yapılacak:** Token'lar zaten değişkende — iş büyük ölçüde değer değiştirmek:
@@ -601,6 +601,24 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   **Dikkat edilecekler:** `.featured::after` ve `.detail-head::after` gradyanlarında `rgba(10,12,17,…)`
   sabit kodlu — token'a çevir. `.fav-btn`, `.rating-badge`, `#top-btn` arka planlarında da sabit
   `rgba(10,12,17,…)` var. `<meta name="theme-color">` de temaya göre değişmeli.
+- **Yapıldı (2026-09-22):**
+  - Sabit renkler token'a alındı: `--scrim-rgb` (yapışkan başlık + hero gradyanları), `--film`
+    (hover zemini), `--hairline`, `--float-bg`, `--accent-ink` / `--accent-ink-2`
+    (accent zeminli çip ve etiketlerin yazı rengi — açık temada `#c3cdff` okunmuyordu).
+  - **Kapak görselinin üstündeki öğeler bilerek koyu bırakıldı** (`--on-art-bg`, `--on-art-fg`,
+    `--on-art-border`): favori düğmesi ve puan rozeti iki temada da aynı görselin üstünde duruyor,
+    tema ile dönmeleri okunaklılığı bozardı.
+  - **Oynatıcı modalı her iki temada da koyu**: bir video yüzeyi olduğu için `#player-modal`
+    token'ları yerel olarak koyu değerlere geri alıyor (`color-scheme:dark` dâhil).
+  - `@media (prefers-color-scheme:light)` + `:root:not([data-theme="dark"])` ve
+    `:root[data-theme="light"]` blokları; başlıkta üç durumlu düğme (sistem/açık/koyu),
+    seçim `localStorage['ta_tema']`'da, `js/theme.js`.
+  - `<meta name="theme-color">` etkin temaya göre güncelleniyor; "sistem" seçiliyken işletim
+    sistemi teması değişirse de takip ediyor.
+  - Yeni ikonlar: `i-sun`, `i-moon`, `i-monitor`.
+- **Doğrulama:** duman testine 5 kontrol eklendi (sistem açık/koyu paleti, düğmenin üç durumu +
+  `theme-color`, seçimin yenilemede kalması, modalın koyu kalması). Açık temada liste ve detay
+  sayfası ekran görüntüsüyle de gözden geçirildi.
 
 ### 6.2 Ana sayfa hiyerarşisi
 - Şu an: istatistik şeridi → Günün Animesi → Son bakılanlar → Tüm Arşiv. Mantıklı ama
@@ -732,7 +750,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 12. ~~§3.3 `meta.js`'e yıl + stüdyo ekle~~ (+ §2.1.2 poster öneki)
 
 **Tur 4 — tasarım**
-13. §6.1 açık tema
+13. ~~§6.1 açık tema~~
 14. §6.6 oynatıcı modalı (6 madde)
 15. §6.2 ana sayfa keşif şeritleri
 16. §6.4 bölüm ızgarası
@@ -782,3 +800,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | belge | Ölçümle yanlış çıkan OK.RU maddesi silindi, §1.1 ve §3.1'in eskimiş ölçümleri düzeltildi; §3.1.2–4 ve §7.4 **(YAPILMAYACAK)** işaretlendi |
 | 2026-09-22 | §2.4 | Çok turlu poster taraması: postersiz 903 → 92; `scripts/meta-io.js` ile meta.js yazımı tek yere alındı |
 | 2026-09-22 | §3.2 | Ölü linkler bölüm başına tek sayıya indi: `kaynak/b` 192 → 129 MB (−%32.6), `.git` +35 MB |
+| 2026-09-22 | §6.1 | Açık tema + üç durumlu tema düğmesi; sabit renkler token'a alındı |

@@ -11,6 +11,7 @@ const tarayiciGlobals = {
   setTimeout: "readonly", clearTimeout: "readonly", setInterval: "readonly", clearInterval: "readonly",
   requestAnimationFrame: "readonly", console: "readonly", CSS: "readonly", Event: "readonly",
   Hls: "readonly", performance: "readonly", self: "writable", AbortController: "readonly",
+  getComputedStyle: "readonly", matchMedia: "readonly",
 };
 
 const nodeGlobals = {

@@ -6,6 +6,9 @@ import { isListHash, listHash, syncListHash, state, saveListScroll, writeListScr
 import { pickRandomAnime } from './search.js';
 import { renderList } from './views/list.js';
 import { route } from './router.js';
+import { initTheme } from './theme.js';
+
+initTheme();
 
 let t;
 searchEl.addEventListener('input', () => {

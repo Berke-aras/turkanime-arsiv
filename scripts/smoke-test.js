@@ -44,6 +44,69 @@ function serve() {
 const results = [];
 const check = (ad, kosul, detay = '') => results.push({ ad, ok: !!kosul, detay });
 
+// §6.1: tema kendi tarayıcı bağlamlarını gerektiriyor (colorScheme), o yüzden ayrı fonksiyon.
+async function temaTestleri(browser, base) {
+  const ac = async sema => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: sema });
+    const p = await ctx.newPage();
+    await p.route('**/*', r => {
+      const host = new URL(r.request().url()).hostname;
+      return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+    });
+    await p.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+    await p.waitForSelector('.card');
+    return { ctx, p };
+  };
+  const durum = p => p.evaluate(() => ({
+    dataTheme: document.documentElement.getAttribute('data-theme'),
+    bg: getComputedStyle(document.body).backgroundColor,
+    themeColor: (document.querySelector('meta[name="theme-color"]') || {}).content,
+    baslik: (document.getElementById('theme-btn') || {}).title || '',
+  }));
+
+  const { ctx: c1, p: p1 } = await ac('light');
+  const acik = await durum(p1);
+  check('§6.1 sistem açık temada açık palet',
+    acik.dataTheme === null && acik.bg === 'rgb(246, 247, 251)' && acik.themeColor === '#f6f7fb',
+    JSON.stringify(acik));
+
+  // düğme: sistem -> açık -> koyu
+  await p1.click('#theme-btn'); await p1.waitForTimeout(150);
+  const zorlaAcik = await durum(p1);
+  await p1.click('#theme-btn'); await p1.waitForTimeout(150);
+  const zorlaKoyu = await durum(p1);
+  check('§6.1 düğme üç durumu dönüyor ve theme-color takip ediyor',
+    zorlaAcik.dataTheme === 'light' && zorlaKoyu.dataTheme === 'dark'
+    && zorlaKoyu.bg === 'rgb(10, 12, 17)' && zorlaKoyu.themeColor === '#0a0c11'
+    && /koyu/i.test(zorlaKoyu.baslik),
+    `${zorlaAcik.dataTheme} -> ${zorlaKoyu.dataTheme}, ${zorlaKoyu.themeColor}`);
+
+  // seçim kalıcı mı
+  await p1.reload({ waitUntil: 'domcontentloaded' });
+  await p1.waitForSelector('.card');
+  const yenilemeSonrasi = await durum(p1);
+  check('§6.1 tema seçimi yenilemede kalıyor', yenilemeSonrasi.dataTheme === 'dark', JSON.stringify(yenilemeSonrasi));
+  await c1.close();
+
+  const { ctx: c2, p: p2 } = await ac('dark');
+  const koyu = await durum(p2);
+  check('§6.1 sistem koyu temada koyu palet',
+    koyu.dataTheme === null && koyu.bg === 'rgb(10, 12, 17)' && koyu.themeColor === '#0a0c11',
+    JSON.stringify(koyu));
+
+  // açık temada bile oynatıcı modalı koyu kalmalı
+  const { ctx: c3, p: p3 } = await ac('light');
+  await p3.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await p3.waitForSelector('.ep');
+  await p3.locator('.ep[data-i="0"] .ep-head').click();
+  await p3.waitForTimeout(400);
+  await p3.locator('.ep[data-i="0"] .ep-links [data-embed-url]').first().click();
+  await p3.waitForTimeout(500);
+  const modal = await p3.evaluate(() => getComputedStyle(document.getElementById('player-modal')).colorScheme);
+  check('§6.1 oynatıcı modalı açık temada da koyu', modal === 'dark', modal);
+  await c2.close(); await c3.close();
+}
+
 async function run(page, base) {
   // Üçüncü taraf istekleri engelleniyor: test bizim uygulamamızı ölçüyor, AniList CDN'ini ya da
   // sayacı değil. Böylece internetli (CI) ve internetsiz ortamlarda aynı biçimde çalışıyor.
@@ -310,7 +373,7 @@ async function run(page, base) {
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v5');
+      const c = await caches.open('tka-shell-v6');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -324,7 +387,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v5');
+      const sh = await caches.open('tka-shell-v6');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });
@@ -355,6 +418,7 @@ async function run(page, base) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     await run(await ctx.newPage(), base);
+    await temaTestleri(browser, base);
   } finally {
     await browser.close();
     server.close();
