@@ -161,6 +161,45 @@ async function run(page, base) {
   await page.waitForSelector('.legal', { timeout: 10000 });
   check('yasal sayfası açılıyor', true);
 
+  // --- §1.5: service worker iki ayrı cache kullanıyor, veri cache'i LRU ile sınırlı ---
+  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  const swHazir = await page.evaluate(() => navigator.serviceWorker.ready.then(r => !!r.active).catch(() => false));
+  check('§1.5 service worker kaydoluyor', swHazir);
+  if (swHazir) {
+    const kabuk = await page.evaluate(async () => {
+      const c = await caches.open('tka-shell-v4');
+      const keys = (await c.keys()).map(r => new URL(r.url).pathname);
+      return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
+    });
+    check('§1.5 katalog dosyaları kabuk cache\'inde', kabuk.data && kabuk.meta, JSON.stringify(kabuk));
+
+    // 45 bölüm dosyası iste: veri cache'i 40 girişte kalmalı, kabuk cache'i kirlenmemeli
+    const sluglar = await page.evaluate(n => window.INDEX.slice(0, n).map(r => r[0]), 45);
+    await page.evaluate(async ss => {
+      for (const s of ss) await fetch(`kaynak/b/${s}.js`).then(r => r.arrayBuffer()).catch(() => {});
+    }, sluglar);
+    await page.waitForTimeout(1500);
+    const lru = await page.evaluate(async () => {
+      const d = await caches.open('tka-data-v1');
+      const sh = await caches.open('tka-shell-v4');
+      const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
+      return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
+    });
+    check('§1.5 veri cache\'i 40 girişi aşmıyor', lru.veri > 0 && lru.veri <= 40, lru.veri + ' giriş');
+    check('§1.5 bölüm dosyaları kabuk cache\'ine sızmıyor', lru.kabuktaBolum === 0, lru.kabuktaBolum + ' sızıntı');
+
+    // çevrimdışı ilk açılış: katalog kabukta olduğu için liste dolu gelmeli
+    await page.context().setOffline(true);
+    let cevrimdisiKart = 0;
+    try {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('.card', { timeout: 15000 });
+      cevrimdisiKart = await page.locator('.card').count();
+    } catch (e) { /* aşağıda FAIL olarak raporlanır */ }
+    check('§1.5 çevrimdışı açılışta liste dolu geliyor', cevrimdisiKart > 10, cevrimdisiKart + ' kart');
+    await page.context().setOffline(false);
+  }
+
   // --- konsol temiz mi (dış kaynak/ağ hataları hariç) ---
   const gercek = errors.filter(e => !/favicon|net::ERR|ERR_INTERNET|anilist|zgo\.at/i.test(e));
   check('konsol hatası yok', gercek.length === 0, gercek.slice(0, 3).join(' | '));

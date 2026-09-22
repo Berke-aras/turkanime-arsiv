@@ -97,7 +97,7 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   belirsiz kalmıyor. Modal açıkken "Tersten" düğmesine basılırsa butonlar yeniden senkronlanıyor.
   Video bitince otomatik geçiş de aynı yönü izliyor.
 
-### 1.5 Service Worker sınırsız büyüyor ve güncellemeyi geciktiriyor
+### 1.5 Service Worker sınırsız büyüyor ve güncellemeyi geciktiriyor — **(TAMAM)**
 - **Dosya:** `sw.js`
 - **Sorun:** `fetch` handler'ı **aynı origin'deki her GET'i** cache'liyor — `kaynak/b/one-piece.js`
   tek başına 3.4 MB. Birkaç uzun seriye bakan kullanıcının cihazında yüzlerce MB birikir, kota
@@ -113,6 +113,12 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   4. `CACHE` adını sürümle ve `activate`'te eski sürümleri sil (bu kısım zaten doğru).
 - **Kabul:** DevTools → Application → Cache Storage'da veri cache'i 40 girişi aşmaz; `index.html`
   değişikliği ilk yenilemede görünür.
+- **Yapıldı (2026-09-22):** `sw.js` yeniden yazıldı. `tka-shell-v4` (kabuk + `kaynak/data.js` +
+  `meta.js`, cache-first) ve `tka-data-v1` (`kaynak/b/*.js` + `info.json`, SWR + 40 girişlik LRU)
+  ayrıldı; gezinme istekleri network-first, çevrimdışında `index.html`'e düşüyor. `install`
+  artık `addAll` yerine dosya başına `add().catch()` kullanıyor — tek bir 404 kurulumun tamamını
+  düşürmüyor. Test: 45 bölüm dosyası çekildikten sonra veri cache'i 40 girişte kalıyor, kabuk
+  cache'ine sızıntı yok, çevrimdışı yeniden yüklemede liste 62 kartla dolu geliyor.
 
 ### 1.6 `#/yasal` ve detay sayfaları sayfa başına kaydırmıyor — **(TAMAM)**
 - **Dosya:** `app.js:822` `route()`
@@ -554,3 +560,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §1.3 | Liste durumu hash'te (paylaşılabilir/yenilemeye dayanıklı) + kaydırma konumu korunuyor |
 | 2026-09-22 | §1.4 | Ters sıralamada ileri/geri ekrandaki yönü izliyor, buton başlığı hedef bölümü söylüyor |
 | 2026-09-22 | §1.6 | Rota geçişleri sayfa başına, animasyonsuz kaydırıyor |
+| 2026-09-22 | §1.5 | SW: kabuk/veri cache'leri ayrıldı, veri LRU'lu (40), gezinme network-first, çevrimdışı açılış dolu |
