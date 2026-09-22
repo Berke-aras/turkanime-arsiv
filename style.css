@@ -325,6 +325,28 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .ep-arrow{color:var(--accent);transition:transform .15s;display:inline-flex}
 .ep.open .ep-arrow{transform:rotate(90deg)}
 .ep-links{padding:0 16px 14px 16px;display:none;border-top:1px solid var(--border);padding-top:12px}
+.ep-kisa{display:none}
+
+/* ---------- §6.4 bölüm ızgarası ----------
+   Aynı DOM, farklı yerleşim: ızgarada yalnız bölüm numarası görünür, açılan bölüm satırın
+   tamamını kaplar ki link listesi yine tam genişlikte çıksın. Uzun serilerde (One Piece 1166)
+   liste görünümünde her bölüm 46px'lik tam genişlik bir satır; ızgarada tek ekrana ~10 katı sığıyor. */
+#ep-list.izgara .ep-kutular{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px}
+#ep-list.izgara .ep{margin-bottom:0}
+#ep-list.izgara .ep-head{padding:0;min-height:0;aspect-ratio:1;justify-content:center;gap:0;
+  font-variant-numeric:tabular-nums;font-weight:600}
+#ep-list.izgara .ep-arrow,#ep-list.izgara .ep-ad,#ep-list.izgara .ep-head .meta{display:none}
+#ep-list.izgara .ep-kisa{display:block}
+#ep-list.izgara .ep-empty{opacity:.4}
+/* açık bölüm: satırı kapla, tam başlığı geri getir */
+#ep-list.izgara .ep.open{grid-column:1/-1}
+#ep-list.izgara .ep.open .ep-head{aspect-ratio:auto;min-height:46px;padding:12px 16px;gap:12px;justify-content:flex-start}
+#ep-list.izgara .ep.open .ep-arrow,#ep-list.izgara .ep.open .ep-ad,#ep-list.izgara .ep.open .ep-head .meta{display:inline-flex}
+#ep-list.izgara .ep.open .ep-head .meta{display:block}
+#ep-list.izgara .ep.open .ep-kisa{display:none}
+@media (max-width:640px){
+  #ep-list.izgara .ep-kutular{grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:6px}
+}
 .ep.open .ep-links{display:block}
 .fansub-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .fansub-chip{font-weight:600}

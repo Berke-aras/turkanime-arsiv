@@ -497,6 +497,42 @@ async function run(page, base) {
   await page.locator('.grid:not(.recent-grid) .fav-btn').first().click(); // geri al
   await page.waitForTimeout(200);
 
+  // --- §6.4: bölüm ızgarası ---
+  await page.goto(base + '/index.html#/anime/one-piece', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.ep', { timeout: 30000 });
+  const gorunen = () => page.evaluate(() => [...document.querySelectorAll('.ep')]
+    .filter(e => { const r = e.getBoundingClientRect(); return r.top < window.innerHeight && r.bottom > 0; }).length);
+  const listeGorunen = await gorunen();
+  await page.click('#ep-view');
+  await page.waitForTimeout(400);
+  const izgaraGorunen = await gorunen();
+  const izgaraSinif = await page.evaluate(() => document.getElementById('ep-list').className);
+  check('§6.4 ızgara görünümü ekrana çok daha fazla bölüm sığdırıyor',
+    izgaraSinif === 'izgara' && izgaraGorunen > listeGorunen * 10,
+    `liste ${listeGorunen} -> ızgara ${izgaraGorunen}`);
+
+  await page.locator('.ep[data-i="3"] .ep-head').click();
+  await page.waitForTimeout(500);
+  const acik = await page.evaluate(() => {
+    const e = document.querySelector('.ep[data-i="3"]');
+    const k = document.querySelector('.ep-kutular');
+    return {
+      tamGenislik: Math.abs(e.getBoundingClientRect().width - k.getBoundingClientRect().width) < 2,
+      adGorunur: getComputedStyle(e.querySelector('.ep-ad')).display !== 'none',
+      link: e.querySelectorAll('.link-btn').length,
+    };
+  });
+  check('§6.4 açılan bölüm satırın tamamını kaplayıp linkleri gösteriyor',
+    acik.tamGenislik && acik.adGorunur && acik.link > 0, JSON.stringify(acik));
+
+  // tercih kalıcı mı
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.ep', { timeout: 30000 });
+  const kalici = await page.evaluate(() => document.getElementById('ep-list').className);
+  check('§6.4 görünüm tercihi yenilemede kalıyor', kalici === 'izgara', kalici || '(boş)');
+  await page.click('#ep-view');  // listeye geri dön (sonraki testler etkilenmesin)
+  await page.waitForTimeout(300);
+
   // --- §6.2: ana sayfa keşif şeritleri ---
   await page.evaluate(() => localStorage.setItem('ta_recent',
     JSON.stringify(['beck', 'one-piece', 'naruto', 'bleach', 'death-note', 'steins-gate', 'hunter-x-hunter'])));
@@ -554,7 +590,7 @@ async function run(page, base) {
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v8');
+      const c = await caches.open('tka-shell-v9');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -568,7 +604,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v8');
+      const sh = await caches.open('tka-shell-v9');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });

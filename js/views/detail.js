@@ -2,7 +2,7 @@
 import { esc, ic, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
 import { ANIME, loadScript } from '../data.js';
-import { isFav, favLabel, toggleFav, pushRecent, getEpReverse, setEpReverse } from '../store.js';
+import { isFav, favLabel, toggleFav, pushRecent, getEpReverse, setEpReverse, getEpIzgara, setEpIzgara } from '../store.js';
 import { posterPlaceholder } from '../cards.js';
 import { OLU } from '../links.js';
 import { openEpisode, setCurrentEpisodes, syncEpNavButtons, playerModal, directBtnOf } from '../player.js';
@@ -70,12 +70,21 @@ async function renderDetail(slug, token) {
 
   // link butonları binlerce olabildiğinden (ör. One Piece: 1166 bölüm/~27000 link),
   // baştan basmak yerine bölüm ilk açıldığında dolduruluyor (bkz. aşağıdaki ep-head handler'ı).
+  // Aynı DOM iki görünümü de besliyor (§6.4): liste modunda tam başlık, ızgara modunda yalnız
+  // bölüm numarası görünür; hangisinin görüneceğine CSS karar veriyor. Açılan bölüm ızgarada
+  // tüm satırı kaplar (grid-column:1/-1), böylece link listesi yine tam genişlikte çıkar.
   const epItemHtml = i => {
     const ep = episodes[i];
-    const empty = ep.links.every(l => OLU(l.tip));
+    const empty = !ep.links.length;
+    const kisa = ep.no != null ? String(ep.no) : '•';
     return `
     <div class="ep${empty ? ' ep-empty' : ''}" data-i="${i}">
-      <div class="ep-head"><span class="ep-arrow">${ic('chevron-right')}</span>${esc(ep.ad)}<span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span></div>
+      <div class="ep-head">
+        <span class="ep-arrow">${ic('chevron-right')}</span>
+        <span class="ep-kisa" aria-hidden="true">${esc(kisa)}</span>
+        <span class="ep-ad">${esc(ep.ad)}</span>
+        <span class="meta">${empty ? 'çalışan link yok' : `${ep.links.length} link`}</span>
+      </div>
       <div class="ep-links"></div>
     </div>`;
   };
@@ -84,13 +93,14 @@ async function renderDetail(slug, token) {
   const epListHtml = () => {
     let order = episodes.map((_, i) => i);
     if (getEpReverse()) order.reverse();
-    if (order.length <= 100) return order.map(epItemHtml).join('');
+    const kutular = g => `<div class="ep-kutular">${g.map(epItemHtml).join('')}</div>`;
+    if (order.length <= 100) return kutular(order);
     const groups = [];
     for (let k = 0; k < order.length; k += EP_GROUP) groups.push(order.slice(k, k + EP_GROUP));
     return groups.map((g, gi) => `
       <details class="ep-group"${gi === 0 ? ' open' : ''}>
         <summary>${g[0] + 1}–${g[g.length - 1] + 1}<span class="meta">${g.length} bölüm</span></summary>
-        ${g.map(epItemHtml).join('')}
+        ${kutular(g)}
       </details>`).join('');
   };
 
@@ -113,10 +123,11 @@ async function renderDetail(slug, token) {
       ${episodes.length ? `
       <div class="ep-toolbar">
         <h3 class="section-title">Bölümler <span class="meta">(${episodes.length})</span></h3>
+        <button type="button" id="ep-view" class="link-btn" title="${getEpIzgara() ? 'Liste görünümü' : 'Izgara görünümü'}" aria-label="${getEpIzgara() ? 'Liste görünümü' : 'Izgara görünümü'}">${ic(getEpIzgara() ? 'list' : 'grid')}</button>
         <button type="button" id="ep-reverse" class="link-btn${getEpReverse() ? ' active' : ''}" title="Sıralamayı tersine çevir">${ic('sort')}Tersten</button>
       </div>` : ''}
       ${episodes.length > 20 ? `<input id="ep-search" class="ep-search" placeholder="Bölüm ara... (örn. 12 veya final)">` : ''}
-      <div id="ep-list">${epListHtml() || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
+      <div id="ep-list"${getEpIzgara() ? ' class="izgara"' : ''}>${epListHtml() || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
     </div>`;
   fadeApp();
 
@@ -146,6 +157,13 @@ async function renderDetail(slug, token) {
     epListEl.innerHTML = epListHtml();
     const epSearchEl = document.getElementById('ep-search');
     if (epSearchEl && epSearchEl.value) epSearchEl.dispatchEvent(new Event('input'));
+  });
+  const viewBtn = document.getElementById('ep-view');
+  if (viewBtn) viewBtn.addEventListener('click', () => {
+    setEpIzgara(!getEpIzgara());
+    epListEl.classList.toggle('izgara', getEpIzgara());
+    viewBtn.innerHTML = ic(getEpIzgara() ? 'list' : 'grid');
+    viewBtn.title = viewBtn.ariaLabel = getEpIzgara() ? 'Liste görünümü' : 'Izgara görünümü';
   });
   const moreBtn = app.querySelector('.ozet-more');
   if (moreBtn) moreBtn.addEventListener('click', () => {

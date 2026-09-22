@@ -657,7 +657,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   taşmayı ölçüyor. Yatay şeritlerde (dar kart) yalnız baş harfler gösteriliyor.
 - **Not:** §2.4 sonrası bu durumdaki anime sayısı **903 değil 92**.
 
-### 6.4 Bölüm listesi yoğunluğu
+### 6.4 Bölüm listesi yoğunluğu — **(TAMAM)**
 - **Dosya:** `app.js:666` `epItemHtml`, `style.css` `.ep`
 - Uzun serilerde (One Piece: 1166 bölüm) her bölüm 46px yüksekliğinde tam genişlik bir satır.
   50'lik gruplar var ama grup içi hâlâ 50 satır × tam genişlik = çok kaydırma.
@@ -665,6 +665,17 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   `grid-template-columns: repeat(auto-fill, minmax(56px,1fr))`). Izgarada izlenen bölümler
   işaretli (§7.2), çalışan linki olmayanlar soluk. Uzun serilerde çok daha hızlı gezinilir.
   Tercihi `localStorage`'a yaz.
+- **Yapıldı (2026-09-22):** Bölüm araç çubuğuna görünüm düğmesi eklendi, tercih
+  `localStorage['ta_epizgara']`'da. **Aynı DOM iki görünümü de besliyor**; hangi parçanın
+  görüneceğine CSS karar veriyor, böylece `openEpisode`, bölüm araması, gruplama ve klavye
+  gezinmesi ikisinde de değişmeden çalışıyor:
+  - Izgarada yalnız bölüm numarası görünür (`grid-template-columns:repeat(auto-fill,minmax(56px,1fr))`,
+    mobilde 48px), çalışan linki olmayan bölümler soluk.
+  - Açılan bölüm `grid-column:1/-1` ile satırın tamamını kaplar, tam başlık ve link listesi
+    yine tam genişlikte çıkar.
+  - Bölümler `.ep-kutular` sarmalayıcısına alındı; 50'lik `<details>` grupları korunuyor.
+- **Ölçüm (One Piece, 1280×900):** ekranda görünen bölüm sayısı **2 → 457**.
+- **Not:** §7.2'deki "izlendi" işareti geldiğinde ızgara kutucuklarına doğrudan oturur.
 
 ### 6.5 Detay sayfasındaki boşluklar
 - **Japonca başlık gösterilmiyor** (§3.3) — `<h2>` altına `--text-2` renginde küçük satır.
@@ -790,7 +801,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 13. ~~§6.1 açık tema~~
 14. ~~§6.6 oynatıcı modalı (6 madde)~~
 15. ~~§6.2 ana sayfa keşif şeritleri~~ (+ §6.3 postersiz kart tasarımı)
-16. §6.4 bölüm ızgarası
+16. ~~§6.4 bölüm ızgarası~~ → One Piece'te ekranda görünen bölüm 2 → 457
 
 **Tur 5 — özellikler**
 17. §7.1 izlemeye devam et + §7.2 izlendi işareti
@@ -840,3 +851,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §6.1 | Açık tema + üç durumlu tema düğmesi; sabit renkler token'a alındı |
 | 2026-09-22 | §6.6 | Oynatıcı modalının altı maddesi: klavye, ses/hız hatırlama, 44px hedefler, otomatik gizlenme, tam ekran |
 | 2026-09-22 | §6.2 + §6.3 | Ana sayfaya "En yüksek puanlı" ve "Janra göre keşfet" şeritleri; postersiz kart tasarımı yenilendi |
+| 2026-09-22 | §6.4 | Bölüm ızgarası: One Piece'te ekranda görünen bölüm 2 → 457 |
