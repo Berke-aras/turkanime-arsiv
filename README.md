@@ -6,6 +6,8 @@
 
 **トルコアニメ・アーカイブ**
 
+**turkanime.tv arşivi · Türkçe anime arşivi · 6100+ anime, bölüm listesi ve izleme linkleri**
+
 turkanime.tv kapandı. Geriye kalan arşiv burada yaşıyor:
 tek sayfalık, sunucusuz, build adımı olmayan bir görüntüleyici.
 
@@ -22,9 +24,14 @@ tek sayfalık, sunucusuz, build adımı olmayan bir görüntüleyici.
 
 ## Genel bakış
 
+**TürkAnime Arşivi**, kapanan **turkanime.tv**'nin geride bıraktığı katalogu okunabilir bir arayüzde
+gösteren statik bir arşiv görüntüleyicisidir. Türkçe anime arşivi, anime bölüm listesi ve izleme
+linklerini tek yerde toplar; üyelik, reklam ve sunucu yoktur.
+
 Arşivde ~6100 anime var; her biri için bölüm listesi, izleme linkleri, AniList'ten çekilmiş kapak
-görseli ve özet bilgisi. Uygulamanın tamamı `index.html` + `app.js` + `style.css` ve iki veri
-dosyasından ibaret — paket yöneticisi, derleme adımı, veritabanı ya da kullanıcı hesabı yok.
+görseli ve özet bilgisi. Uygulamanın tamamı `index.html` + `js/` altındaki ES modülleri +
+`style.css` ve iki veri dosyasından ibaret — paket yöneticisi, derleme adımı, veritabanı ya da
+kullanıcı hesabı yok.
 Dosyayı açtığın anda çalışır.
 
 ## Özellikler
@@ -37,6 +44,9 @@ Dosyayı açtığın anda çalışır.
 | **Günün Animesi** | Puanı 7 ve üzerindekilerden, gün boyunca değişmeyen bir seçim |
 | **Rastgele** | Tek tuşla arşivden rastgele bir başlık |
 | **Reklamsız oynatıcı** | Sibnet ve Uqload bölümleri sitenin kendi oynatıcısında, reklamsız açılır |
+| **İzlemeye devam et** | Bıraktığın yeri hatırlar, izlenen bölümleri işaretler, ilerleme çubuğu gösterir |
+| **Benzer animeler** | Detay sayfasında aynı seri ve aynı türden öneriler |
+| **18+ uyarısı** | Ecchi/Hentai/Erotica başlıklarında NSFW uyarısı ve kartlarda `18+` rozeti |
 | **Klavye** | Oynatıcıda `Esc` kapatır, `←` ve `→` bölüm değiştirir |
 | **Çevrimdışı** | Service worker uygulama kabuğunu önbelleğe alır; PWA olarak kurulabilir |
 
@@ -108,6 +118,47 @@ Veride bir değişiklik olduğunda sırasıyla:
 node scripts/build-meta.js
 node scripts/build-posters.js
 ```
+
+## Sık sorulan sorular
+
+<details>
+<summary><strong>turkanime.tv kapandı mı, arşivi nerede?</strong></summary>
+
+Evet, site kapandı. Bu repo kapanmadan önce toplanmış katalogu — anime listesi, bölüm listeleri ve
+üçüncü taraf oynatıcı linkleri — barındırır ve
+[berke-aras.github.io/turkanime-arsiv](https://berke-aras.github.io/turkanime-arsiv/) adresinde
+tarayıcıdan açılabilir hâlde sunar.
+</details>
+
+<details>
+<summary><strong>Video dosyaları burada mı duruyor?</strong></summary>
+
+Hayır. Depoda hiçbir video yok; yalnızca GDrive, Sibnet, Mp4upload gibi üçüncü taraf sağlayıcılara
+ait arşivlenmiş linkler var. Videoyu tarayıcı doğrudan o sağlayıcıdan çeker.
+</details>
+
+<details>
+<summary><strong>Üyelik ya da kurulum gerekiyor mu?</strong></summary>
+
+Hayır. Statik bir sayfa; açtığın anda çalışır. Favoriler ve izleme geçmişi yalnızca kendi
+tarayıcındaki `localStorage`'da tutulur, hiçbir yere gönderilmez.
+</details>
+
+<details>
+<summary><strong>Kendi bilgisayarımda çalıştırabilir miyim?</strong></summary>
+
+Evet — repoyu klonlayıp herhangi bir statik sunucuyla aç (yukarıdaki *Çalıştırma* bölümü).
+Bağımlılık, veritabanı ya da API anahtarı gerekmez.
+</details>
+
+## English
+
+**TürkAnime Arşivi (TurkAnime Archive)** is a static, serverless viewer for the catalogue left behind
+by *turkanime.tv*, a Turkish anime site that shut down. It lists ~6100 anime with their episodes,
+archived third-party streaming links, AniList cover art and synopses. No backend, no build step, no
+account: `index.html` + ES modules + two data files. The project hosts **no video files** — only
+links that already existed elsewhere. See the
+[legal & privacy page](https://berke-aras.github.io/turkanime-arsiv/#/yasal) for takedown requests.
 
 ## Yol haritası
 

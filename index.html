@@ -3,10 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TürkAnime Arşiv Görüntüleyici</title>
-<meta name="description" content="turkanime.tv kapandıktan sonra geride kalan arşiv: ~6100 anime, bölüm ve izleme linkleriyle birlikte.">
-<meta property="og:title" content="TürkAnime Arşivi">
-<meta property="og:description" content="turkanime.tv kapandıktan sonra geride kalan arşiv: ~6100 anime, bölüm ve izleme linkleriyle birlikte.">
+<title>TürkAnime Arşivi — Türkçe anime arşivi, bölüm ve izleme linkleri</title>
+<meta name="description" content="turkanime.tv kapandıktan sonra geride kalan Türkçe anime arşivi: 6100+ animenin bölüm listesi, izleme linkleri, kapak ve özet bilgisi. Üyelik yok, reklam yok, sunucu yok.">
+<meta name="keywords" content="türkanime, türkanime arşiv, turkanime.tv, türk anime, türkçe anime, türkçe altyazılı anime, anime arşivi, anime bölüm listesi, anime izleme linkleri">
+<meta name="author" content="Berke Aras">
+<meta property="og:site_name" content="TürkAnime Arşivi">
+<meta property="og:title" content="TürkAnime Arşivi — Türkçe anime arşivi">
+<meta property="og:description" content="turkanime.tv kapandıktan sonra geride kalan Türkçe anime arşivi: 6100+ animenin bölüm listesi ve izleme linkleri.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://berke-aras.github.io/turkanime-arsiv/">
 <meta property="og:image" content="https://berke-aras.github.io/turkanime-arsiv/og-image.png">
@@ -14,8 +17,8 @@
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="tr_TR">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="TürkAnime Arşivi">
-<meta name="twitter:description" content="turkanime.tv kapandıktan sonra geride kalan arşiv: ~6100 anime, bölüm ve izleme linkleriyle birlikte.">
+<meta name="twitter:title" content="TürkAnime Arşivi — Türkçe anime arşivi">
+<meta name="twitter:description" content="turkanime.tv kapandıktan sonra geride kalan Türkçe anime arşivi: 6100+ animenin bölüm listesi ve izleme linkleri.">
 <meta name="twitter:image" content="https://berke-aras.github.io/turkanime-arsiv/og-image.png">
 <link rel="canonical" href="https://berke-aras.github.io/turkanime-arsiv/">
 <meta name="theme-color" content="#0a0c11">
@@ -47,14 +50,27 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="style.css">
+<!-- Yapısal veri (§7.6). WebSite + SearchAction: Google arama sonucunda site içi arama kutusu
+     gösterebiliyor; hash rotası query parametresini olduğu gibi alıyor (#/?q=...). -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "TürkAnime Arşivi",
+  "alternateName": ["TürkAnime Arşiv Görüntüleyici", "turkanime.tv arşivi"],
   "url": "https://berke-aras.github.io/turkanime-arsiv/",
-  "description": "turkanime.tv kapandıktan sonra geride kalan arşiv: ~6100 anime, bölüm ve izleme linkleriyle birlikte.",
-  "inLanguage": "tr"
+  "description": "turkanime.tv kapandıktan sonra geride kalan Türkçe anime arşivi: 6100+ animenin bölüm listesi, izleme linkleri, kapak ve özet bilgisi.",
+  "inLanguage": "tr",
+  "isAccessibleForFree": true,
+  "keywords": "türkanime, türkçe anime arşivi, anime bölüm listesi, turkanime.tv",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://berke-aras.github.io/turkanime-arsiv/#/?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  }
 }
 </script>
 </head>
@@ -62,8 +78,18 @@
 <a class="skip-link" href="#app">İçeriğe geç</a>
 <noscript>
   <div class="noscript-uyari">
-    Bu arşiv görüntüleyicisi JavaScript ile çalışıyor; veri tarayıcıda işleniyor, sunucu yok.
-    Devam etmek için JavaScript'i açman gerekiyor.
+    <h2>TürkAnime Arşivi — Türkçe anime arşivi</h2>
+    <p>
+      turkanime.tv kapandıktan sonra geride kalan arşiv: <strong>6100&#39;den fazla anime</strong>,
+      bölüm listeleri, izleme linkleri, AniList kapakları ve özetleriyle birlikte. Arama, tür/kategori
+      filtresi, favoriler ve reklamsız oynatıcı içerir; üyelik istemez, hiçbir veri sunucuya gitmez.
+    </p>
+    <p>
+      Bu görüntüleyici JavaScript ile çalışıyor — veri tarayıcıda işleniyor, arkasında sunucu yok.
+      Devam etmek için JavaScript&#39;i açman gerekiyor. Projenin kaynak kodu
+      <a href="https://github.com/Berke-aras/turkanime-arsiv">GitHub&#39;da</a>;
+      yasal bilgilendirme ve kaldırma talebi için <a href="#/yasal">Gizlilik &amp; Yasal</a> sayfasına bak.
+    </p>
   </div>
 </noscript>
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg">

@@ -790,11 +790,19 @@ async function run(page, base) {
   const swHazir = await page.evaluate(() => navigator.serviceWorker.ready.then(r => !!r.active).catch(() => false));
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
-    const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v14');
+    // Cache adları sw.js'ten okunuyor; sürüm atlayınca test elle güncellenmek zorunda kalmasın.
+    const swKaynak = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+    const adCek = (ad, varsayilan) => {
+      const m = new RegExp(ad + "\\s*=\\s*'([^']+)'").exec(swKaynak);
+      return m ? m[1] : varsayilan;
+    };
+    const KABUK = adCek('SHELL_CACHE', 'tka-shell-v14');
+    const VERI = adCek('DATA_CACHE', 'tka-data-v1');
+    const kabuk = await page.evaluate(async ad => {
+      const c = await caches.open(ad);
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
-    });
+    }, KABUK);
     check('§1.5 katalog dosyaları kabuk cache\'inde', kabuk.data && kabuk.meta, JSON.stringify(kabuk));
 
     // 45 bölüm dosyası iste: veri cache'i 40 girişte kalmalı, kabuk cache'i kirlenmemeli
@@ -803,12 +811,12 @@ async function run(page, base) {
       for (const s of ss) await fetch(`kaynak/b/${s}.js`).then(r => r.arrayBuffer()).catch(() => {});
     }, sluglar);
     await page.waitForTimeout(1500);
-    const lru = await page.evaluate(async () => {
-      const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v14');
+    const lru = await page.evaluate(async adlar => {
+      const d = await caches.open(adlar.veri);
+      const sh = await caches.open(adlar.kabuk);
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
-    });
+    }, { veri: VERI, kabuk: KABUK });
     check('§1.5 veri cache\'i 40 girişi aşmıyor', lru.veri > 0 && lru.veri <= 40, lru.veri + ' giriş');
     check('§1.5 bölüm dosyaları kabuk cache\'ine sızmıyor', lru.kabuktaBolum === 0, lru.kabuktaBolum + ' sızıntı');
 
@@ -887,6 +895,35 @@ async function run(page, base) {
   check('§4.2 satır içi olay işleyicisi yok', satirIci === 0, satirIci + ' öğe');
   const cspVar = await page.evaluate(() => !!document.querySelector('meta[http-equiv="Content-Security-Policy"]'));
   check('§4.2 CSP meta etiketi var', cspVar);
+
+  // --- §7.6: keşfedilebilirlik (başlık, meta, yapısal veri, noscript) ---
+  // document.title'a router anime adını yazdığı için statik başlık HTML kaynağından okunuyor.
+  const baslikEs = /<title>([^<]*)<\/title>/.exec(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
+  const statikBaslik = baslikEs ? baslikEs[1] : '';
+  const seo = await page.evaluate(() => {
+    const meta = n => (document.querySelector(`meta[name="${n}"]`) || {}).content || '';
+    const og = n => (document.querySelector(`meta[property="${n}"]`) || {}).content || '';
+    let ld = null;
+    try { ld = JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent); } catch (e) { ld = null; }
+    const ns = document.querySelector('noscript');
+    return {
+      aciklama: meta('description'),
+      ogSite: og('og:site_name'),
+      arama: ld && ld.potentialAction && ld.potentialAction.target && ld.potentialAction.target.urlTemplate,
+      // noscript içeriği DOM'da metin olarak durur; uzunluğu ve başlığı olması yeter.
+      noscriptUzunluk: ns ? ns.textContent.trim().length : 0,
+      noscriptBaslik: !!(ns && /TürkAnime Arşivi/.test(ns.textContent)),
+    };
+  });
+  check('§7.6 sayfa başlığı anahtar kelime taşıyor',
+    /anime/i.test(statikBaslik) && statikBaslik.length > 30, statikBaslik);
+  check('§7.6 açıklama metni dolu ve 120+ karakter',
+    seo.aciklama.length >= 120, seo.aciklama.length + ' karakter');
+  check('§7.6 og:site_name var', seo.ogSite === 'TürkAnime Arşivi', seo.ogSite);
+  check('§7.6 yapısal veride SearchAction var',
+    typeof seo.arama === 'string' && seo.arama.includes('{search_term_string}'), String(seo.arama));
+  check('§7.6 noscript gerçek tanıtım metni içeriyor',
+    seo.noscriptUzunluk > 200 && seo.noscriptBaslik, seo.noscriptUzunluk + ' karakter');
 
   // --- konsol temiz mi (dış kaynak/ağ hataları hariç) ---
   const gercek = errors.filter(e => !/favicon|net::ERR|ERR_INTERNET|anilist|zgo\.at/i.test(e));

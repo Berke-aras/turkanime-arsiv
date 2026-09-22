@@ -80,6 +80,10 @@
 .skip-link:focus{left:0}
 .noscript-uyari{margin:0;padding:14px var(--gutter);background:var(--surface-2);
   border-bottom:1px solid var(--border);color:var(--text);font-size:14px;text-align:center}
+/* JS kapalıyken tek görünen içerik burası; okunabilir bir blok olsun (§7.6). */
+.noscript-uyari h2{margin:0 0 8px;font-size:18px}
+.noscript-uyari p{max-width:70ch;margin:0 auto 8px;text-align:left;line-height:1.55}
+.noscript-uyari p:last-child{margin-bottom:0}
 
 /* ---------- base ---------- */
 *,*::before,*::after{box-sizing:border-box}

@@ -3,7 +3,7 @@
 //  - DATA_CACHE:  kaynak/b/<slug>.js ve info.json gibi talep üzerine gelen bölüm verisi. Tek bir
 //    kaynak/b dosyası 3.4 MB'a kadar çıkabiliyor (one-piece), sınırsız biriktirilirse cihazda
 //    yüzlerce MB'a ulaşıp kota hatasıyla SW'yi sessizce düşürüyordu. Bu yüzden LRU ile sınırlı.
-const SHELL_CACHE = 'tka-shell-v14';
+const SHELL_CACHE = 'tka-shell-v15';
 const DATA_CACHE = 'tka-data-v1';
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);
 const DATA_CAP = 40;

@@ -543,6 +543,16 @@ değişiklik günlüğünde ve commit mesajında durur.
        sınırlayıcı gerekir:** Vercel Firewall ya da Cloudflare Rate Limiting (ücretsiz planda da var).
      - `test/koken.test.mjs`: iki uygulama da aynı 7 senaryodan geçiyor (kendi kökeni, yabancı köken,
        başlıksız istek, Referer'dan çıkarım, localhost, ek köken, benzeyen sahte kökenler).
+     - ⚠️ **KOD REPODA, CANLIDA DEĞİL.** Deploy denendi, Vercel MCP bağlantısı
+       `berke-aras-projects` kapsamına yetkili olmadığı için 403 döndü; Worker için de deploy
+       aracı yok. Ölçüm (deploy öncesi, canlı uçlar): başlıksız `curl` → `{"url":"https://dvb7.sibnet.ru/…mp4"}`
+       **HTTP 200**, `Origin: https://kotusite.example` → `access-control-allow-origin: *`.
+       Yani uçlar **hâlâ herkese açık**. Kapatmak için repo sahibinin bir kez çalıştırması gereken:
+       ```bash
+       npx vercel deploy --prod            # api/sibnet.js  (tka-sibnet)
+       cd cf/uqload && npx wrangler deploy # cf/uqload/worker.js
+       ```
+       Ardından tekrar ölçüm: başlıksız `curl` **403**, kendi sitemizden istek **200** olmalı.
   2. **Deploy elle yapılıyor** (`.claude/progress.md`: "MCP create_deployment ile inline dosya;
      repo git'e bağlı değil"). Bu kırılgan — repoyu Vercel projesine bağla ya da
      `.github/workflows/deploy-api.yml` ile `vercel deploy --prod` çalıştır. Aynısı Wrangler için.
@@ -854,6 +864,37 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   kaldırma talebi süreci kurulu olsa da tetiği repo sahibi çekmeli.
   Karar verilirse işaret kaldırılsın; 1–4. adımlar olduğu gibi uygulanabilir.
 
+### 7.6 Keşfedilebilirlik — GitHub ve Google'da öne çıkmak — **(TAMAM — repodaki kısmı)**
+- **Sorun:** "türk anime arşivi", "turkanime kapandı" gibi aramalarda repo da site de görünmüyordu.
+  GitHub aramasının baktığı alanlar: **repo adı, About açıklaması, topics, README**. Google'ın
+  baktıkları: `<title>`, `<meta description>`, sayfadaki metin, yapısal veri, backlink.
+- **Yapıldı (repoda):**
+  1. `index.html` başlığı jenerik "Arşiv Görüntüleyici"den anahtar kelimeli hâle getirildi:
+     *"TürkAnime Arşivi — Türkçe anime arşivi, bölüm ve izleme linkleri"*. Açıklama, `keywords`,
+     `og:site_name`, OG/Twitter metinleri de güncellendi.
+  2. Yapısal veri genişletildi: `alternateName`, `keywords`, `isAccessibleForFree` ve
+     **`SearchAction`** (Google sonuçta site içi arama kutusu gösterebiliyor; hash rotası
+     `#/?q=…` sorguyu olduğu gibi alıyor).
+  3. `<noscript>` bloğu tek cümlelik uyarıdan, JS çalıştırmayan tarayıcı/tarayıcı botlarının
+     okuyabileceği gerçek bir tanıtım metnine dönüştü (başlık + iki paragraf + linkler).
+  4. README: ilk satıra anahtar kelimeli alt başlık, "Genel bakış"a *turkanime.tv* bağlamı,
+     **Sık sorulan sorular** bölümü (insanların aradığı soru kalıpları) ve bir **English** özeti.
+     GitHub araması README gövdesini de tarıyor; İngilizce özet uluslararası aramalarda yakalar.
+- **Elle yapılacak (repodan yapılamıyor — MCP'de repo ayarı yazan araç yok):**
+  1. **About açıklaması** (repo sayfası → ⚙ Edit):
+     > Kapanan turkanime.tv'nin arşivi: 6100+ Türkçe anime, bölüm listeleri ve izleme linkleri. Statik, sunucusuz, kurulum gerektirmeyen arşiv görüntüleyici.
+  2. **Topics** (aynı yer): `turkanime` · `turkanime-tv` · `anime` · `turkish-anime` · `anime-archive`
+     · `arsiv` · `turkce-anime` · `static-site` · `github-pages` · `vanilla-js` · `pwa` · `anilist`
+  3. **Website** alanına `https://berke-aras.github.io/turkanime-arsiv/` yazılsın (About kutusunda
+     link olarak çıkar, Google için de backlink'tir).
+  4. **Google Search Console**'a siteyi ekle ve `sitemap.xml`'i gönder — GitHub Pages'te doğrulama
+     HTML dosyası yüklenerek yapılır. Bunsuz Google'ın siteyi bulması aylar sürebiliyor.
+  5. İsteğe bağlı: repoya bir **Release** ve **sosyal önizleme görseli** (Settings → Social preview)
+     ekle; paylaşılan linkler tık alır, tık da sıralamayı besler.
+- **En büyük kaldıraç hâlâ §7.4** (her anime için gerçek URL + sitemap). Bu madde bilerek
+  **(YAPILMAYACAK)** işaretli: teknik değil, telif/görünürlük kararı. Repo sahibi kararı verirse
+  §7.4'teki 1–4. adımlar olduğu gibi uygulanabilir ve ziyaretçi sayısındaki asıl sıçrama o zaman olur.
+
 ### 7.5 Diğer
 - Klavye kısayolu `/` ile arama kutusuna odaklan.
 - Fansub'a göre filtre (veride `fansub` alanı var, hiç kullanılmıyor — "sadece TAÇE çevirileri").
@@ -888,7 +929,9 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 **Tur 5 — özellikler**
 17. ~~§7.1 izlemeye devam et + §7.2 izlendi işareti~~
 18. §7.4 gerçek URL'ler + sitemap — **(YAPILMAYACAK)**, bkz. §7.4
-19. §4.4 ODNOKLASSNIKI resolver'ı (en yaygın sağlayıcı, 8721 link)
+19. ~~§4.4.1 resolver köken kısıtlaması~~ (kod hazır; **deploy bekliyor**, bkz. §4.4)
+20. ~~§7.6 keşfedilebilirlik~~ — repodaki kısım bitti; About/topics/Search Console elle
+21. §4.4 ODNOKLASSNIKI resolver'ı (en yaygın sağlayıcı, 8721 link)
 
 ---
 
@@ -938,3 +981,5 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §4.2 + §5.2–5.5 | Satır içi olay işleyicileri kalktı, CSP eklendi; modal odak tuzağı, canlı bölgeler, kontrast, noscript + atlama bağlantısı |
 | 2026-09-22 | §6.5 + §6.7 | Benzer animeler şeridi, paralel yükleme, filtre temizleme, ikinci rastgele girişi, şerit ok düğmeleri |
 | 2026-09-22 | §6.8 | Ecchi/Hentai/Erotica için 18+ rozeti ve detay sayfasında yetişkin içerik uyarısı |
+| 2026-09-22 | §4.4.1 | Resolver'lara köken kısıtlaması (`Origin`/`Referer` sunucuda doğrulanıyor) + 7 senaryolu ortak test |
+| 2026-09-22 | §7.6 | Keşfedilebilirlik: başlık/meta/yapısal veri, zengin `noscript`, README (SSS + English); elle yapılacaklar listelendi |
