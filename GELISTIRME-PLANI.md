@@ -620,7 +620,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   `theme-color`, seçimin yenilemede kalması, modalın koyu kalması). Açık temada liste ve detay
   sayfası ekran görüntüsüyle de gözden geçirildi.
 
-### 6.2 Ana sayfa hiyerarşisi
+### 6.2 Ana sayfa hiyerarşisi — **(TAMAM, biri hariç)**
 - Şu an: istatistik şeridi → Günün Animesi → Son bakılanlar → Tüm Arşiv. Mantıklı ama
   6107 anime "Tüm Arşiv" başlığı altında tek düze alfabetik bir duvar hâlinde akıyor. Keşif yok.
 - **Yapılacak (etkiye göre sıralı):**
@@ -631,14 +631,31 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   3. **"Devam et"** şeridi — §7.1'deki izleme konumu özelliği geldiğinde en üst sıraya.
   4. "Son bakılanlar" 6 kartla sınırlı (`app.js` renderList); zaten yatay kaydırmalı olduğu için
      16'ya (saklanan sayı) çıkarmanın maliyeti yok.
+- **Yapıldı (2026-09-22):** 1, 2 ve 4 uygulandı; 3 (§7.1'e bağlı) sırada.
+  - **"En yüksek puanlı" şeridi**: puanı 8+ olanlar puana göre sıralanıp ilk 120'ye iniliyor,
+    sonra günün tohumuyla **aralıklı** örnekleme yapılıyor. İlk denemede ardışık seçim
+    kullanılmıştı; alfabetik komşular geldiği için şerit "Hellsing, Hellsing Ultimate,
+    Helsing Türkçe…" gibi aynı serinin sezonlarıyla doluyordu. Aralıklı örneklemeyle hem
+    gerçekten yüksek puanlılar çıkıyor (9.2+) hem şerit her gün değişiyor.
+  - **"Janra göre keşfet"**: en kalabalık 8 janr, sayılarıyla; çip tıklanınca yalnız o janrın
+    seçili olduğu temiz bir listeye gidiyor (gerçek `<a href="#/?tur=…">`).
+  - **"Son bakılanlar"** artık saklanan 16 kaydın tamamını gösteriyor (eskiden 6).
+  - Şeritlerin tamamı tek bir `seritHtml()` yardımcısını kullanıyor.
+- **Kalan:** 3. madde ("Devam et" şeridi) §7.1'deki izleme konumu özelliğine bağlı.
 
-### 6.3 Postersiz kartlar (903 adet) çirkin
+### 6.3 Postersiz kartlar (903 adet) çirkin — **(TAMAM)**
 - **Dosya:** `app.js:159` `posterPlaceholder()`
 - Şu an: `hsl(<hash>, 45%, 20%)` düz zemin + iki harf. Ana sayfada arka arkaya gelince "bozuk" izlenimi veriyor.
 - **Yapılacak:** Tasarımı iyileştir: ince bir diagonal gradyan (`hsl(h,45%,22%)` → `hsl(h+30,40%,14%)`),
   başlığın tamamını 2 satır clamp'li olarak ortada göster (iki harf yerine), alta küçük bir
   "kapak yok" etiketi. Ayrıca poster kutusuna `aspect-ratio` yerine kullanılan `padding-bottom:150%`
   tekniği (commit 69887c489) doğru ve tutarlı — ona dokunma.
+- **Yapıldı (2026-09-22):** Diagonal gradyan (`hsl(h,45%,24%)` → `hsl(h+30,40%,14%)`), baş harfler,
+  **başlığın tamamı** (3 satır clamp) ve küçük "kapak yok" etiketi. `padding-bottom:150%`
+  tekniğine dokunulmadı; `.poster` yüksekliği 0 olduğu için içerik `position:absolute;inset:0`
+  bir sarmalayıcıya alındı — ilk denemede içerik kutunun dışına taşıyordu, duman testi
+  taşmayı ölçüyor. Yatay şeritlerde (dar kart) yalnız baş harfler gösteriliyor.
+- **Not:** §2.4 sonrası bu durumdaki anime sayısı **903 değil 92**.
 
 ### 6.4 Bölüm listesi yoğunluğu
 - **Dosya:** `app.js:666` `epItemHtml`, `style.css` `.ep`
@@ -772,7 +789,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 **Tur 4 — tasarım**
 13. ~~§6.1 açık tema~~
 14. ~~§6.6 oynatıcı modalı (6 madde)~~
-15. §6.2 ana sayfa keşif şeritleri
+15. ~~§6.2 ana sayfa keşif şeritleri~~ (+ §6.3 postersiz kart tasarımı)
 16. §6.4 bölüm ızgarası
 
 **Tur 5 — özellikler**
@@ -822,3 +839,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §3.2 | Ölü linkler bölüm başına tek sayıya indi: `kaynak/b` 192 → 129 MB (−%32.6), `.git` +35 MB |
 | 2026-09-22 | §6.1 | Açık tema + üç durumlu tema düğmesi; sabit renkler token'a alındı |
 | 2026-09-22 | §6.6 | Oynatıcı modalının altı maddesi: klavye, ses/hız hatırlama, 44px hedefler, otomatik gizlenme, tam ekran |
+| 2026-09-22 | §6.2 + §6.3 | Ana sayfaya "En yüksek puanlı" ve "Janra göre keşfet" şeritleri; postersiz kart tasarımı yenilendi |

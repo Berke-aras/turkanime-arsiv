@@ -3,9 +3,21 @@
 import { esc, ic, initials, hue } from './util.js';
 import { isFav, favLabel, toggleFav } from './store.js';
 
+// Kapağı olmayan 92 anime için yer tutucu (§6.3). İki harf yerine başlığın kendisi okunuyor;
+// diagonal gradyan arka arkaya gelen yer tutucuların "bozuk" görünmesini engelliyor.
 function posterPlaceholder(a) {
   if (a.poster) return `<div class="poster loaded"><img src="${esc(a.poster)}" loading="lazy" alt="" onload="this.classList.add('img-loaded')" onerror="this.classList.add('img-loaded')"></div>`;
-  return `<div class="poster" style="background:hsl(${hue(a.baslik)},45%,20%)"><span class="poster-init">${esc(initials(a.baslik))}</span></div>`;
+  const h = hue(a.baslik);
+  const zemin = `linear-gradient(150deg,hsl(${h},45%,24%),hsl(${(h + 30) % 360},40%,14%))`;
+  // .poster yüksekliğini padding-bottom ile kuruyor (height:0), o yüzden içerik mutlak
+  // konumlu bir sarmalayıcıya alınıyor; yoksa kutunun dışına taşıyor.
+  return `<div class="poster poster-bos" style="background:${zemin}">
+      <span class="poster-bos-ic">
+        <span class="poster-init">${esc(initials(a.baslik))}</span>
+        <span class="poster-ad">${esc(a.baslik)}</span>
+        <span class="poster-not">kapak yok</span>
+      </span>
+    </div>`;
 }
 
 // Kart gerçek bir <a>: orta tık/Ctrl+tık yeni sekmede açar, tarayıcı bağlantı önizlemesi gösterir,

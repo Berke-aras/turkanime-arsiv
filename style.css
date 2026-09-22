@@ -244,6 +244,23 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
   font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;padding:4px 9px;border-radius:999px;border:1px solid var(--on-art-border);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .card:focus-visible,.featured:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+/* §6.3 kapağı olmayan kart: iki harf yerine başlık okunuyor */
+.poster-bos-ic{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:12px 10px;text-align:center}
+.poster-bos .poster-init{font-size:26px;font-weight:800;letter-spacing:1px;opacity:.5;line-height:1}
+.poster-bos .poster-ad{font-size:12.5px;font-weight:600;line-height:1.3;color:rgba(255,255,255,.92);
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.poster-bos .poster-not{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+.recent-grid .poster-bos .poster-ad,.recent-grid .poster-bos .poster-not{display:none}
+.poster.featured-poster .poster-ad,.poster.detail-poster .poster-ad{-webkit-line-clamp:4}
+
+/* §6.2 janr keşif şeridi */
+.janr-row{margin-bottom:22px}
+.janr-chips{display:flex;flex-wrap:wrap;gap:8px}
+.janr-chip{text-decoration:none}
+.janr-chip .meta{font-variant-numeric:tabular-nums}
+.section-title .meta{margin-left:8px;font-size:12.5px;font-weight:400}
+
 .card-empty{opacity:.55}
 /* bölüm: ölü arşiv linklerinin tek satırlık özeti (§3.2) */
 .ep-olu{margin:8px 2px 2px;font-size:12px;color:var(--muted)}

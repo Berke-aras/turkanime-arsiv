@@ -2,6 +2,7 @@
 import { esc, ic, levenshtein, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
 import { ANIME, KATEGORILER, TURLER, ONYILLAR, statsStripHtml, animeOfDay } from '../data.js';
+import { listHash } from '../state.js';
 import { getRecent } from '../store.js';
 import { cardHtml, wireCards, posterPlaceholder } from '../cards.js';
 import { filterAndSort } from '../search.js';
@@ -43,6 +44,61 @@ function wireFilterBar() {
   document.getElementById('f-fav').addEventListener('change', apply(e => { state.favOnly = e.target.checked; }));
 }
 
+// Yatay kaydırmalı kart şeridi. Ana sayfadaki keşif bölümlerinin tamamı bunu kullanıyor.
+function seritHtml(baslik, items, altBaslik = '') {
+  if (!items.length) return '';
+  return `<section class="recent-row">
+      <h2 class="section-title">${esc(baslik)}${altBaslik ? `<span class="meta">${esc(altBaslik)}</span>` : ''}</h2>
+      <div class="grid recent-grid">${items.map(cardHtml).join('')}</div>
+    </section>`;
+}
+
+// Puanı 8+ olanların en tepesinden, gün içinde değişmeyen 12'lik bir seçki.
+// Havuz puana göre sıralanıp ilk EN_IYI_HAVUZ tanesine iniliyor, sonra günün tohumuyla
+// aralıklı örnekleme yapılıyor: hem gerçekten yüksek puanlılar çıkıyor hem şerit her gün
+// değişiyor hem de ardışık seçim yüzünden aynı serinin sezonları yan yana gelmiyor.
+const EN_IYI_ESIK = 8;
+const EN_IYI_HAVUZ = 120;
+const EN_IYI_SAYI = 12;
+function enIyiler() {
+  const havuz = ANIME.filter(a => a.puan >= EN_IYI_ESIK)
+    .sort((x, y) => y.puan - x.puan)
+    .slice(0, EN_IYI_HAVUZ);
+  if (havuz.length <= EN_IYI_SAYI) return havuz;
+  const tohum = new Date().toISOString().slice(0, 10);
+  let h = 0;
+  for (let i = 0; i < tohum.length; i++) h = (h * 31 + tohum.charCodeAt(i)) >>> 0;
+  const adim = Math.max(1, Math.floor(havuz.length / EN_IYI_SAYI));
+  const bas = h % havuz.length;
+  const secilen = [];
+  for (let i = 0; secilen.length < EN_IYI_SAYI && i < havuz.length; i++) {
+    const a = havuz[(bas + i * adim) % havuz.length];
+    if (!secilen.includes(a)) secilen.push(a);
+  }
+  return secilen.sort((x, y) => y.puan - x.puan);
+}
+
+// En kalabalık 8 janr, sayılarıyla birlikte; tıklanınca o janrın filtresi uygulanmış listeye gider.
+function janrSeridiHtml() {
+  const sayac = new Map();
+  for (const a of ANIME) for (const t of a.tur) sayac.set(t, (sayac.get(t) || 0) + 1);
+  const ilk = [...sayac.entries()].sort((x, y) => y[1] - x[1]).slice(0, 8);
+  if (!ilk.length) return '';
+  return `<section class="janr-row">
+      <h2 class="section-title">Janra göre keşfet</h2>
+      <div class="janr-chips">${ilk.map(([t, n]) =>
+    `<a class="link-btn janr-chip" href="${esc(janrHash(t))}">${esc(t)}<span class="meta">${n.toLocaleString('tr-TR')}</span></a>`).join('')}</div>
+    </section>`;
+}
+// Janr çipinin hedefi: yalnız o janr seçili, diğer filtreler temiz bir liste.
+function janrHash(tur) {
+  const yedek = { ...state };
+  Object.assign(state, { query: '', kategori: '', tur, onyil: 0, sort: 'isim', favOnly: false, page: 1 });
+  const h = listHash();
+  Object.assign(state, yedek);
+  return h;
+}
+
 function renderList() {
   const items = filterAndSort();
   document.title = 'TürkAnime Arşiv Görüntüleyici';
@@ -74,11 +130,16 @@ function renderList() {
   const showRecent = showHome && getRecent().length;
   let recentHtml = '';
   if (showRecent) {
-    const recentItems = getRecent().map(s => ANIME.find(a => a.slug === s)).filter(Boolean).slice(0, 6);
+    // saklanan 16 kaydın tamamı gösteriliyor; şerit zaten yatay kaydırmalı, maliyeti yok.
+    const recentItems = getRecent().map(s => ANIME.find(a => a.slug === s)).filter(Boolean);
     if (recentItems.length) {
-      recentHtml = `<div class="recent-row"><h2 class="section-title">Son bakılanlar</h2><div class="grid recent-grid">${recentItems.map(cardHtml).join('')}</div></div>`;
+      recentHtml = seritHtml('Son bakılanlar', recentItems);
     }
   }
+
+  // Keşif şeritleri: 6107 anime tek düze alfabetik bir duvar hâlinde akmasın (§6.2).
+  const enIyilerHtml = showHome ? seritHtml('En yüksek puanlı', enIyiler(), 'Puanı 8 ve üzeri') : '';
+  const janrHtml = showHome ? janrSeridiHtml() : '';
 
   const bar = filterBarHtml(items.length);
 
@@ -100,9 +161,9 @@ function renderList() {
     ? `<button id="load-more">Daha fazla yükle <span class="meta">(${(items.length - state.page * PAGE_SIZE).toLocaleString('tr-TR')} kaldı)</span></button>` : '';
   const pager = `<div class="pager">${loadMoreHtml()}</div>`;
 
-  const archiveTitleHtml = showRecent ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
+  const archiveTitleHtml = showHome ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
 
-  app.innerHTML = `${statsHtml}${featuredHtml}${recentHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
+  app.innerHTML = `${statsHtml}${featuredHtml}${recentHtml}${enIyilerHtml}${janrHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
   fadeApp();
   wireFilterBar();
   wireCards(app);

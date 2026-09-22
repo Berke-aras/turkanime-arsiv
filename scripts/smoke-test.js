@@ -497,13 +497,64 @@ async function run(page, base) {
   await page.locator('.grid:not(.recent-grid) .fav-btn').first().click(); // geri al
   await page.waitForTimeout(200);
 
+  // --- §6.2: ana sayfa keşif şeritleri ---
+  await page.evaluate(() => localStorage.setItem('ta_recent',
+    JSON.stringify(['beck', 'one-piece', 'naruto', 'bleach', 'death-note', 'steins-gate', 'hunter-x-hunter'])));
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card');
+  const kesif = await page.evaluate(() => ({
+    basliklar: [...document.querySelectorAll('.section-title')].map(e => e.firstChild.textContent.trim()),
+    sonBakilan: document.querySelectorAll('.recent-row .card').length,
+    janrCip: document.querySelectorAll('.janr-chip').length,
+    janrHref: (document.querySelector('.janr-chip') || {}).getAttribute
+      ? document.querySelector('.janr-chip').getAttribute('href') : '',
+    enIyiPuanlar: [...document.querySelectorAll('.recent-row')].slice(1, 2)
+      .flatMap(r => [...r.querySelectorAll('.rating-badge')].map(e => parseFloat(e.textContent))),
+  }));
+  check('§6.2 "En yüksek puanlı" ve "Janra göre keşfet" şeritleri var',
+    kesif.basliklar.includes('En yüksek puanlı') && kesif.basliklar.includes('Janra göre keşfet'),
+    kesif.basliklar.join(' | '));
+  check('§6.2 en yüksek puanlı şeridi 12 kart ve hepsi 8+',
+    kesif.enIyiPuanlar.length === 12 && kesif.enIyiPuanlar.every(p => p >= 8),
+    `${kesif.enIyiPuanlar.length} kart, en düşük ${Math.min(...kesif.enIyiPuanlar)}`);
+  check('§6.2 janr çipi filtreli listeye gidiyor',
+    kesif.janrCip === 8 && /^#\/\?tur=/.test(kesif.janrHref), `${kesif.janrCip} çip, ${kesif.janrHref}`);
+  check('§6.2 "Son bakılanlar" 6 ile sınırlı değil', kesif.sonBakilan >= 7, kesif.sonBakilan + ' kart');
+
+  await page.locator('.janr-chip').first().click();
+  await page.waitForTimeout(400);
+  const janrSonrasi = await page.evaluate(() => ({ hash: location.hash, secili: document.getElementById('f-tur').value }));
+  check('§6.2 janr çipine tıklayınca filtre uygulanıyor',
+    /tur=/.test(janrSonrasi.hash) && janrSonrasi.secili.length > 0, JSON.stringify(janrSonrasi));
+
+  // --- §6.3: kapağı olmayan kartın yer tutucusu ---
+  await page.goto(base + '/index.html#/?q=arcane', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card');
+  const bos = await page.evaluate(() => {
+    const el = document.querySelector('.poster-bos');
+    if (!el) return null;
+    const ic = el.querySelector('.poster-bos-ic');
+    const k = el.getBoundingClientRect(), i = ic.getBoundingClientRect();
+    return {
+      ad: el.querySelector('.poster-ad').textContent.trim(),
+      not: el.querySelector('.poster-not').textContent.trim(),
+      tasma: Math.round(i.bottom - k.bottom),
+      yukseklik: Math.round(k.height),
+      gradyan: /gradient/.test(el.style.background),
+    };
+  });
+  check('§6.3 kapağı olmayan kart başlığı ve etiketi gösteriyor',
+    !!bos && bos.ad.length > 0 && /kapak yok/i.test(bos.not) && bos.gradyan, JSON.stringify(bos));
+  check('§6.3 yer tutucu içeriği poster kutusundan taşmıyor',
+    !!bos && bos.tasma <= 1 && bos.yukseklik > 100, JSON.stringify(bos));
+
   // --- §1.5: service worker iki ayrı cache kullanıyor, veri cache'i LRU ile sınırlı ---
   await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
   const swHazir = await page.evaluate(() => navigator.serviceWorker.ready.then(r => !!r.active).catch(() => false));
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v7');
+      const c = await caches.open('tka-shell-v8');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -517,7 +568,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v7');
+      const sh = await caches.open('tka-shell-v8');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });
