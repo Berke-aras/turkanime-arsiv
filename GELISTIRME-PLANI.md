@@ -239,21 +239,51 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
 
 ## 3. Repo ve veri katmanı
 
-### 3.1 697 MB kullanılmayan ham veri repoda
+### 3.1 697 MB kullanılmayan ham veri repoda — **(1. ADIM TAMAM; ÖNEMLİ BULGU, aşağıyı oku)**
 - **Ölçüm:** `kaynak/animeler/` = 697 MB, 89.597 dosya. Runtime'da **sadece** `info.json`
   (6107 dosya, toplam birkaç MB) kullanılıyor. Geri kalan `<slug>-<n>-bolum.json` ve `bolumler.json`
   dosyaları `kaynak/b/<slug>.js`'in **ham hâli** — yani aynı veri iki kez duruyor.
   `.git` klasörü 307 MB. `git clone` dakikalar sürüyor, GitHub Pages deploy'u yavaş.
 - **Yapılacak (dikkatli, geri dönüşü zor):**
-  1. Önce `scripts/build-b.js` yaz: `kaynak/animeler/<slug>/*.json` → `kaynak/b/<slug>.js` üretimini
-     **kodla belgelensin** (şu an bu dönüşümün scripti repoda yok, veri elle geldi).
-     Bu olmadan ham veriyi atmak tek yönlü kapı olur.
+  1. ~~Önce `scripts/build-b.js` yaz~~ — **(TAMAM, 2026-09-22)** `scripts/build-b.js` yazıldı ve
+     dönüşüm kuralları mevcut çıktıdan geri çıkarılıp ölçüldü:
+
+     | kural | doğrulama |
+     |---|---|
+     | `url` alanı varsa `tip:"url"`, yoksa `mask` varsa `tip:"mask"`, ikisi de yoksa `tip:"yol"` | — |
+     | `href.li` yönlendirme sarmalayıcısı atılıyor, adres `trim()`leniyor | — |
+     | Link sırası: `url` olanlar öne, ölüler arkaya; **ikili kararlı bölümleme** (üçlü değil) | — |
+     | Bölüm `no`'su: slug'daki **son** `-<sayı>-bolum` eşleşmesi, yoksa `null` | **71.573/71.573 bölümde birebir** |
+     | Linksiz bölümler çıktıya girmiyor; sıralama `no`, eşitlikte slug | — |
+
+     Sonuç: **6107 dosyanın 5998'i (%98.2) baytı baytına üretiliyor.**
+
+  1b. **ÖNEMLİ BULGU — planın bu maddedeki varsayımı yanlış.** Plan `kaynak/animeler`'i
+     `kaynak/b`'nin "ham hâli" (üst kümesi) sayıyordu. Değil:
+     - Kalan **109** dosyadaki farkın **87'si** bölüm sayısından: `kaynak/b`'de, ham karşılığı
+       **boş** olan bölümler için yer tutucu kayıtlar var (`{"player":"?","fansub":"-","tip":"url","url":null}`).
+       Aynı durumdaki başka bölümler ise çıktıya hiç girmemiş — yani veri, zaman içinde değişmiş
+       ve kendi içinde tutarsız bir kazıma hattından geçmiş.
+     - **14'ü** yalnız `durum` alanından: repoda 157 link `calisiyor`/`olu`/`supheli` işareti
+       taşıyor. Bu alan ham veride **yok** ve uygulama hiçbir yerde okumuyor — yarım kalmış bir
+       ölü-link taramasından kalma. (Script yeniden üretirken bu alanı koruyor.)
+     - **8'i** bölüm sırasından.
+
+     **Sonuç:** `kaynak/b` türetilmiş bir çıktı değil, **kaynağın kendisi**. Ham veriyi atmak
+     güvenli (kaynak/b daha zengin), ama `kaynak/b`'yi ham veriden yeniden üretmek **kayıplı**.
+     Bu yüzden script varsayılan olarak **hiçbir şey yazmıyor**, yalnız rapor veriyor:
+     `--yaz` sadece eksik dosyaları ekler, üzerine yazmak için açık `--zorla` gerekir.
   2. Ham veriyi ayrı bir repoya (`turkanime-arsiv-ham`) veya bir GitHub Release tarball'ına taşı.
   3. Ana repoda sadece `kaynak/data.js`, `kaynak/b/`, `kaynak/animeler/*/info.json` kalsın.
      Tahmini: 902 MB → ~210 MB.
   4. Geçmişi temizlemek istersen `git filter-repo` ile; **ama** bu force-push gerektirir, fork'ları
      ve mevcut klonları bozar. Sahibine sor. Temizlemeden de yeni klonlar `--depth 1` ile hızlanır.
 - **Kabul:** `du -sh .` çıktısı ve `git clone --depth 1` süresi önce/sonra not edilsin.
+- **Kalan (sahibin kararı):** 2–4. adımlar (ham veriyi ayrı repoya/Release'e taşıma, geçmiş temizliği)
+  yapılmadı. İkisi de repo sahibinin kararı: 4. adım force-push gerektiriyor, fork'ları ve mevcut
+  klonları bozar; 2. adım da kalıcı bir yer (ayrı repo ya da Release) seçmeyi gerektiriyor.
+  Artık **güvenle yapılabilir** durumdalar: dönüşüm kodla belgelendi ve ham verinin
+  `kaynak/b`'den daha fakir olduğu ölçüldü.
 
 ### 3.2 Linklerin %25'i ölü ama yine de gönderiliyor
 - **Ölçüm:** Örneklemde 69.298 `url`, 23.032 `mask`, 35 `yol`. `kaynak/b/` baytlarının **%32.5'i**
@@ -685,3 +715,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §3.3 | `meta.js`'e yıl + stüdyo; onyıl filtresi, yıl sıralaması, kartta yıl, detayda Japonca başlık |
 | 2026-09-22 | §2.1.2 | Poster öneki sabite alındı + tür/stüdyo dizinlendi: `meta.js` ham 923→506 KB |
 | 2026-09-22 | CI | Duman testi hermetik hâle getirildi (üçüncü taraf istekleri engelli, `networkidle` yerine `domcontentloaded`) |
+| 2026-09-22 | §3.1.1 | `scripts/build-b.js`: dönüşüm kodla belgelendi (%98.2 birebir); `kaynak/b`'nin ham veriden zengin olduğu saptandı |
