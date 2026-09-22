@@ -30,6 +30,7 @@ function filterAndSort() {
   if (state.favOnly) list = list.filter(a => isFav(a.slug));
   if (state.kategori) list = list.filter(a => a.kategori === state.kategori);
   if (state.tur) list = list.filter(a => a.tur.includes(state.tur));
+  if (state.onyil) list = list.filter(a => a.yil >= state.onyil && a.yil < state.onyil + 10);
 
   const scored = qTokens.length
     ? list.map(a => ({ a, score: matchScore(qTokens, a) })).filter(x => x.score !== null)
@@ -39,6 +40,9 @@ function filterAndSort() {
     if (qTokens.length && x.score !== y.score) return x.score - y.score;
     if (state.sort === 'puan') return (y.a.puan - x.a.puan) || x.a.baslik.localeCompare(y.a.baslik, 'tr');
     if (state.sort === 'eps') return (y.a.eps - x.a.eps) || x.a.baslik.localeCompare(y.a.baslik, 'tr');
+    // yılı bilinmeyenler (0) her iki yönde de sona
+    if (state.sort === 'yeni') return (y.a.yil - x.a.yil) || x.a.baslik.localeCompare(y.a.baslik, 'tr');
+    if (state.sort === 'eski') return ((x.a.yil || 9999) - (y.a.yil || 9999)) || x.a.baslik.localeCompare(y.a.baslik, 'tr');
     return x.a.baslik.localeCompare(y.a.baslik, 'tr');
   });
   return scored.map(x => x.a);

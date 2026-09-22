@@ -192,6 +192,50 @@ async function run(page, base) {
   });
   check('§2.1.1 kartta bölüm/link sayısı hâlâ doğru basılıyor', /\d+ bölüm · \d+ link|bölüm verisi yok/.test(kartMeta), kartMeta);
 
+  // --- §3.3: yıl ve stüdyo verisi, yıl filtresi ve sıralaması ---
+  const kartYil = await page.locator('.grid:not(.recent-grid) .card .meta').first().textContent();
+  check('§3.3 kartta yıl görünüyor', /^\d{4} · /.test(kartYil.trim()), kartYil.trim());
+
+  const posterSrc = await page.locator('.grid:not(.recent-grid) .poster img').first().getAttribute('src').catch(() => '');
+  check('§2.1.2 poster URL\'i öneğiyle birleştirilmiş', /^https:\/\/s4\.anilist\.co\/.+\.(jpg|png|jpeg)$/i.test(posterSrc || ''), (posterSrc || '').slice(0, 70));
+
+  // onyıl filtresi
+  await page.selectOption('#f-onyil', '1990');
+  await page.waitForTimeout(400);
+  const onyilDurum = await page.evaluate(() => ({
+    hash: location.hash,
+    yillar: [...document.querySelectorAll('.grid:not(.recent-grid) .card .meta')]
+      .map(e => Number((e.textContent.match(/^(\d{4}) · /) || [])[1])).filter(Boolean),
+  }));
+  const disari = onyilDurum.yillar.filter(y => y < 1990 || y > 1999);
+  check('§3.3 onyıl filtresi yalnız o onyılı gösteriyor',
+    onyilDurum.yillar.length > 10 && disari.length === 0 && /onyil=1990/.test(onyilDurum.hash),
+    `${onyilDurum.yillar.length} kart, ${disari.length} dışarıda, ${onyilDurum.hash}`);
+
+  // yeniden eskiye sıralama
+  await page.selectOption('#f-onyil', '');
+  await page.selectOption('#f-sort', 'yeni');
+  await page.waitForTimeout(400);
+  const sirali = await page.evaluate(() => [...document.querySelectorAll('.grid:not(.recent-grid) .card .meta')]
+    .map(e => Number((e.textContent.match(/^(\d{4}) · /) || [])[1])).filter(Boolean));
+  const azalan = sirali.every((y, i) => i === 0 || sirali[i - 1] >= y);
+  check('§3.3 "yeniden eskiye" sıralaması azalan', azalan && sirali.length > 10,
+    `${sirali.length} kart, ilk üç: ${sirali.slice(0, 3).join(', ')}`);
+
+  // detayda Japonca başlık ve yayın yılı
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.detail-info');
+  const detayEk = await page.evaluate(() => ({
+    japonca: (document.querySelector('.detail-japonca') || {}).textContent || '',
+    stats: (document.querySelector('.info-stats') || {}).textContent || '',
+  }));
+  check('§3.3 detayda Japonca başlık var', detayEk.japonca.trim() === 'ベック', detayEk.japonca.trim());
+  check('§3.3 detayda yayın yılı aralığı var', /2004–2005/.test(detayEk.stats), detayEk.stats.replace(/\s+/g, ' ').trim());
+
+  // sonraki kontroller liste sayfasında sürüyor
+  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.card');
+
   const kartYapi = await page.evaluate(() => {
     const c = document.querySelector('.grid:not(.recent-grid) .card');
     const fav = document.querySelector('.grid:not(.recent-grid) .fav-btn');

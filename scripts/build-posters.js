@@ -8,6 +8,7 @@ const path = require("path");
 const vm = require("vm");
 
 const root = path.join(__dirname, "..");
+const { posterKisalt } = require("./poster-onek");
 const dataPath = path.join(root, "kaynak", "data.js");
 const metaPath = path.join(root, "meta.js");
 
@@ -56,8 +57,8 @@ async function fetchChunk(chunk, attempt = 1) {
     const media = json.data && json.data["m" + i] && json.data["m" + i].media;
     const url = media && media[0] && media[0].coverImage ? media[0].coverImage.large : null;
     if (url) {
-      const m = META[a.slug] || ["", [], 0, null];
-      m[3] = url;
+      const m = META[a.slug] || ["", [], 0, null, 0, ""];
+      m[3] = posterKisalt(url);
       META[a.slug] = m;
     }
   });

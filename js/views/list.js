@@ -1,7 +1,7 @@
 // Liste görünümü: istatistik şeridi, Günün Animesi, son bakılanlar, filtre çubuğu ve kart ızgarası.
 import { esc, ic, levenshtein, norm } from '../util.js';
 import { app, fadeApp } from '../dom.js';
-import { ANIME, KATEGORILER, TURLER, statsStripHtml, animeOfDay } from '../data.js';
+import { ANIME, KATEGORILER, TURLER, ONYILLAR, statsStripHtml, animeOfDay } from '../data.js';
 import { getRecent } from '../store.js';
 import { cardHtml, wireCards, posterPlaceholder } from '../cards.js';
 import { filterAndSort } from '../search.js';
@@ -19,9 +19,15 @@ function filterBarHtml(count) {
         <option value="">Tüm janrlar</option>
         ${TURLER.map(t => `<option value="${esc(t)}" ${state.tur === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
       </select>
+      <select id="f-onyil" title="Yayın yılı">
+        <option value="">Tüm yıllar</option>
+        ${ONYILLAR.map(d => `<option value="${d}" ${state.onyil === d ? 'selected' : ''}>${d}'ler</option>`).join('')}
+      </select>
       <select id="f-sort" title="Sırala">
         <option value="isim" ${state.sort === 'isim' ? 'selected' : ''}>İsme göre</option>
         <option value="puan" ${state.sort === 'puan' ? 'selected' : ''}>Puana göre</option>
+        <option value="yeni" ${state.sort === 'yeni' ? 'selected' : ''}>Yeniden eskiye</option>
+        <option value="eski" ${state.sort === 'eski' ? 'selected' : ''}>Eskiden yeniye</option>
         <option value="eps" ${state.sort === 'eps' ? 'selected' : ''}>Bölüm sayısına göre</option>
       </select>
       <label class="fav-toggle"><input type="checkbox" id="f-fav" ${state.favOnly ? 'checked' : ''}> ${ic('star')}Favoriler</label>
@@ -32,6 +38,7 @@ function wireFilterBar() {
   const apply = fn => e => { fn(e); state.page = 1; syncListHash(); renderList(); };
   document.getElementById('f-kategori').addEventListener('change', apply(e => { state.kategori = e.target.value; }));
   document.getElementById('f-tur').addEventListener('change', apply(e => { state.tur = e.target.value; }));
+  document.getElementById('f-onyil').addEventListener('change', apply(e => { state.onyil = Number(e.target.value) || 0; }));
   document.getElementById('f-sort').addEventListener('change', apply(e => { state.sort = e.target.value; }));
   document.getElementById('f-fav').addEventListener('change', apply(e => { state.favOnly = e.target.checked; }));
 }
@@ -43,7 +50,7 @@ function renderList() {
   state.page = Math.min(Math.max(1, state.page), totalPages);
   const pageItems = items.slice(0, state.page * PAGE_SIZE);
 
-  const showHome = !state.query && !state.kategori && !state.tur && !state.favOnly;
+  const showHome = !state.query && !state.kategori && !state.tur && !state.onyil && !state.favOnly;
 
   const statsHtml = showHome ? statsStripHtml() : '';
 

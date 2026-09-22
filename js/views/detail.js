@@ -44,6 +44,11 @@ async function renderDetail(slug, token) {
   const escBr = s => esc(s).replace(/&lt;br\s*\/?&gt;/gi, '\n').replace(/\n/g, '<br>');
 
   const firstPlayable = episodes.findIndex(ep => ep.links.some(l => !OLU(l.tip)));
+  // "07 Ekim 2004, Perşembe" gibi uzun tarihlerden yalnız yılı al; başlangıç ve bitiş aynıysa tek yıl yaz.
+  const yilAl = t => { const m = /(\d{4})/.exec(t || ''); return m ? m[1] : ''; };
+  const basYil = info ? yilAl(info['Başlama Tarihi']) : '';
+  const bitYil = info ? yilAl(info['Bitiş Tarihi']) : '';
+  const yayinAraligi = basYil && bitYil && bitYil !== basYil ? `${basYil}–${bitYil}` : (basYil || bitYil);
   const heroInfoHtml = info ? `
       <div class="info-tags">
         ${info['Kategori'] ? `<span class="tag tag-main">${esc(info['Kategori'])}</span>` : ''}
@@ -51,6 +56,7 @@ async function renderDetail(slug, token) {
       </div>
       <div class="info-stats">
         <span>${ic('tv')}${esc(info['Bölüm Sayısı'] || '?')} bölüm</span>
+        ${yayinAraligi ? `<span>${ic('calendar')}${esc(yayinAraligi)}</span>` : ''}
         <span>${ic('clapper')}${esc(info['Stüdyo'] || '?')}</span>
         <span>${ic('star','ic-star')}${info['Puanı'] ?? '?'}</span>
       </div>` : `<div class="info-stats"><span>${ic('tv')}${episodes.length} bölüm arşivlendi</span></div>`;
@@ -98,6 +104,7 @@ async function renderDetail(slug, token) {
         ${posterPlaceholder(titleObj).replace('class="poster', 'class="detail-poster poster')}
         <div class="detail-info">
           <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${favLabel(slug)}">${ic('star')}</button></h2>
+          ${info && info['Japonca'] ? `<p class="detail-japonca" lang="ja">${esc(info['Japonca'])}</p>` : ''}
           ${heroInfoHtml}
           ${firstPlayable >= 0 ? `<button type="button" id="detail-start" class="start-btn">${ic('play')}İzlemeye başla</button>` : ''}
         </div>

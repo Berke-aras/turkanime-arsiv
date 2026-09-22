@@ -4,9 +4,9 @@ import { searchEl } from './dom.js';
 
 const PAGE_SIZE = 60;
 
-const state = { query: '', page: 1, kategori: '', tur: '', sort: 'isim', favOnly: false };
+const state = { query: '', page: 1, kategori: '', tur: '', onyil: 0, sort: 'isim', favOnly: false };
 
-// Liste görünümünün tamamı hash'te taşınır: #/?q=naruto&kategori=TV&tur=Aksiyon&sort=puan&fav=1&sayfa=3
+// Liste görünümünün tamamı hash'te taşınır: #/?q=naruto&kategori=TV&tur=Aksiyon&onyil=2010&sort=puan&fav=1&sayfa=3
 // Böylece filtrelenmiş bir görünüm paylaşılabilir, yenilemede ve geri tuşunda kaybolmaz.
 const isListHash = h => !h || h === '#' || h === '#/' || h.startsWith('#/?');
 
@@ -15,6 +15,7 @@ function listHash() {
   if (state.query) p.set('q', state.query);
   if (state.kategori) p.set('kategori', state.kategori);
   if (state.tur) p.set('tur', state.tur);
+  if (state.onyil) p.set('onyil', String(state.onyil));
   if (state.sort !== 'isim') p.set('sort', state.sort);
   if (state.favOnly) p.set('fav', '1');
   if (state.page > 1) p.set('sayfa', String(state.page));
@@ -27,7 +28,8 @@ function parseListHash(hash) {
   state.query = qs.get('q') || '';
   state.kategori = qs.get('kategori') || '';
   state.tur = qs.get('tur') || '';
-  state.sort = ['isim', 'puan', 'eps'].includes(qs.get('sort')) ? qs.get('sort') : 'isim';
+  state.onyil = Number(qs.get('onyil')) || 0;
+  state.sort = ['isim', 'puan', 'eps', 'yeni', 'eski'].includes(qs.get('sort')) ? qs.get('sort') : 'isim';
   state.favOnly = qs.get('fav') === '1';
   state.page = Math.max(1, Number(qs.get('sayfa')) || 1);
   if (searchEl.value !== state.query) searchEl.value = state.query;

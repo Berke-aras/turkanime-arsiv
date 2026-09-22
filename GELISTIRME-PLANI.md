@@ -166,10 +166,25 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
      kayıt biçimi artık `[slug, baslik, eps, urls]`.
      Ölçüldü: **658 KB → 392 KB ham, 174.7 KB → 130.9 KB gzip (−43.8 KB)**. `build-posters.js`
      yalnız `r[0]`/`r[1]` okuduğu için etkilenmiyor.
-  2. **Poster URL'lerini kısalt.** `meta.js`'teki 5204 poster URL'inin neredeyse hepsi
-     `https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/` ile başlıyor — 320 KB'ı
-     sadece tekrar eden önek. Ön eki sabite al, meta'da yalnız dosya adını tut, `posterPlaceholder`
-     (`app.js:159`) birleştirsin. Ham boyut ~924 KB → ~600 KB.
+  2. **Poster URL'lerini kısalt.** — **(TAMAM, 2026-09-22)** 5204 posterin **%100'ü** standart
+     önekliymiş. Önek `scripts/poster-onek.js` (build tarafı) ve `js/data.js` içindeki
+     `POSTER_ONEK` (tarayıcı tarafı) olarak sabite alındı; meta'da yalnız dosya adı duruyor.
+     Yardımcılar idempotent (mutlak URL'e dokunmuyor), scriptler tekrar çalıştırılabilir.
+
+     **Ölçüm (4 varyant, hepsi aynı 6107 kayıt):**
+
+     | varyant | ham | gzip |
+     |---|---|---|
+     | eski (yıl/stüdyo yok, tam URL) | 923 KB | 181.6 KB |
+     | yıl+stüdyo eklenmiş, tam URL | 1037 KB | 215.9 KB |
+     | yıl/stüdyo yok, öneksiz URL | 603 KB | 173.5 KB |
+     | **yeni** (yıl+stüdyo, öneksiz URL, tür/stüdyo dizinli) | **506 KB** | **189.9 KB** |
+
+     Yani önek çıkarma tek başına ham −320 KB / gzip −8.1 KB; yıl+stüdyo eklemesi gzip'e +32 KB
+     getiriyordu, tür ve stüdyo adlarının dizinlenmesi bunun 16 KB'ını geri aldı.
+     **Net: eskiye göre ham −417 KB (%-45), gzip +8.3 KB** — iki yeni filtre bu fiyata alındı.
+     Gzip'in ham kadar düşmemesi beklenen: tekrar eden öneki gzip zaten sıkıştırıyordu; kazanç
+     asıl **JS ayrıştırma süresinde** (ham bayta bağlı, bkz. §2.2).
   3. **Bölünmüş veri.** `meta.js`'i ikiye ayır: liste için gereken minimum (kategori, tür, puan,
      poster) ve detayda gereken (özet vb. — zaten `info.json`'da). Daha iyisi: `data.js` + `meta.js`'i
      **tek bir `index.json`**'da birleştirip `fetch` ile al (JSON parse, JS parse'tan hızlıdır) ve
@@ -253,7 +268,7 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   - Her iki durumda da `scripts/build-b.js` (§3.1) bu ayıklamayı yapsın, ham veri dokunulmadan kalsın.
 - **Kabul:** One Piece detay sayfasında bir bölüm açıldığında en fazla 6–8 buton görünür.
 
-### 3.3 `meta.js` şeması eksik: yıl yok
+### 3.3 `meta.js` şeması eksik: yıl yok — **(TAMAM)**
 - **Ölçüm:** `info.json` şu alanları taşıyor: `Kategori`, `Japonca`, `Anime Türü`, `Bölüm Sayısı`,
   `Başlama Tarihi`, `Bitiş Tarihi`, `Stüdyo`, `Puanı`, `Özet`, `Resim`.
   `app.js` bunlardan **`Japonca`, `Başlama Tarihi`, `Bitiş Tarihi`'ni hiç kullanmıyor**
@@ -270,6 +285,23 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   5. Detay sayfasında (`heroInfoHtml`) Japonca başlığı `<h2>` altına küçük gri satır olarak göster —
      hem bilgi hem de arama için değerli.
 - **Kabul:** "2015 aksiyon" araması ya da yıl filtresi çalışır; kartta yıl görünür.
+- **Yapıldı (2026-09-22):** `meta.js` şeması `[kategori, [türIx...], puan, poster, yıl, studyoIx]`.
+  Kapsam ölçüldü: **6092/6107 yıl (%99.8)**, **5707 stüdyo**, 51 farklı tür, 791 farklı stüdyo.
+  - `scripts/build-meta.js` yılı `Başlama Tarihi`'nden regex ile alıyor; tür ve stüdyo adları
+    kayıt başına tekrarlanmak yerine `window.META_TURLER` / `window.META_STUDYOLAR` sözlüklerine
+    indeksleniyor (sözlükler alfabetik → çıktı deterministik, git diff'i sakin).
+  - `js/data.js` indeksleri tek `map` içinde çözüyor; çözülen adlar sözlükteki tek dize örneğini
+    paylaşıyor.
+  - Filtre çubuğuna **onyıl seçicisi** (2020'ler…1910'lar, boş onyıl gösterilmiyor) ve sıralamaya
+    **"Yeniden eskiye" / "Eskiden yeniye"** eklendi (yılı bilinmeyenler her iki yönde de sona).
+    Onyıl da hash'te: `#/?onyil=1990`.
+  - Kartta puanın yanına yıl (`2004 · 26 bölüm · 320 link`).
+  - Detay sayfasında başlığın altına **Japonca özgün başlık** (`ベック`, `lang="ja"`) ve
+    bilgi şeridine **yayın yılı aralığı** (`2004–2005`; başlangıç ve bitiş aynıysa tek yıl).
+    Yeni `i-calendar` ikonu eklendi.
+- **Kalan:** Stüdyoya göre filtre — veri artık hazır (`a.studyo` dolu), ama 791 girdilik bir
+  `<select>` filtre çubuğunu boğar; aranabilir bir seçici ya da detay sayfasında tıklanabilir
+  stüdyo etiketi daha doğru olur.
 
 ### 3.4 Ölü/kullanılmayan kod — **(TAMAM)**
 - `api/sendvid.js`, `api/doodstream.js` — **(TAMAM, 2026-09-22)** İkisi de silindi ve
@@ -644,3 +676,5 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §4.3 | package.json, 9 veri bütünlüğü testi, eslint flat config, GitHub Actions CI |
 | 2026-09-22 | §4.1 | `app.js` (955 satır) 16 ES modülüne bölündü; en büyük dosya 176 satır |
 | 2026-09-22 | §4.3+ | `test/util.test.mjs` — saf mantık birim testleri (toplam 18 test) |
+| 2026-09-22 | §3.3 | `meta.js`'e yıl + stüdyo; onyıl filtresi, yıl sıralaması, kartta yıl, detayda Japonca başlık |
+| 2026-09-22 | §2.1.2 | Poster öneki sabite alındı + tür/stüdyo dizinlendi: `meta.js` ham 923→506 KB |

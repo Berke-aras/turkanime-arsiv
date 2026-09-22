@@ -21,6 +21,8 @@ const loadGlobal = (dosya, ad) => {
 
 const INDEX = loadGlobal("kaynak/data.js", "INDEX");
 const META = loadGlobal("meta.js", "META");
+const META_TURLER = loadGlobal("meta.js", "META_TURLER");
+const META_STUDYOLAR = loadGlobal("meta.js", "META_STUDYOLAR");
 const sluglar = INDEX.map(r => r[0]);
 
 // Tam tarama 205 MB okuyor; ortamda yavaşsa TKA_TEST_ORNEK=200 gibi bir örneklemle çalıştırılabilir.
@@ -50,10 +52,42 @@ test("meta.js anahtarları INDEX ile birebir örtüşüyor", () => {
   assert.deepEqual(indexteYok.slice(0, 5), [], `${indexteYok.length} meta.js anahtarı INDEX'te yok`);
 });
 
-test("meta.js kayıtları [kategori, türler, puan, poster] biçiminde", () => {
+test("meta.js kayıtları [kategori, [türIx], puan, poster, yıl, studyoIx] biçiminde", () => {
   const bozuk = Object.entries(META).filter(([, m]) =>
-    !Array.isArray(m) || m.length !== 4 || typeof m[0] !== "string" || !Array.isArray(m[1]) || typeof m[2] !== "number");
+    !Array.isArray(m) || m.length !== 6 || typeof m[0] !== "string" || !Array.isArray(m[1])
+    || typeof m[2] !== "number" || typeof m[4] !== "number" || typeof m[5] !== "number");
   assert.deepEqual(bozuk.slice(0, 5).map(([s]) => s), [], `${bozuk.length} meta kaydı biçim dışı`);
+});
+
+test("meta.js tür/stüdyo indeksleri sözlük sınırları içinde", () => {
+  assert.ok(META_TURLER.length > 10 && META_STUDYOLAR.length > 100,
+    `sözlükler beklenenden küçük: ${META_TURLER.length} tür, ${META_STUDYOLAR.length} stüdyo`);
+  const kotu = Object.entries(META).filter(([, m]) =>
+    m[1].some(i => !Number.isInteger(i) || i < 0 || i >= META_TURLER.length)
+    || !Number.isInteger(m[5]) || m[5] < -1 || m[5] >= META_STUDYOLAR.length);
+  assert.deepEqual(kotu.slice(0, 5).map(([s]) => s), [], `${kotu.length} kayıtta sınır dışı indeks`);
+});
+
+test("meta.js sözlüklerinde boş/tekrar eden girdi yok", () => {
+  for (const [ad, d] of [["tür", META_TURLER], ["stüdyo", META_STUDYOLAR]]) {
+    assert.equal(d.filter(x => !x || typeof x !== "string").length, 0, `${ad} sözlüğünde boş girdi`);
+    assert.equal(new Set(d).size, d.length, `${ad} sözlüğünde tekrar var`);
+  }
+});
+
+test("yıl bilgisi animelerin ezici çoğunluğunda var ve makul aralıkta", () => {
+  const yillar = Object.values(META).map(m => m[4]).filter(Boolean);
+  const oran = yillar.length / Object.keys(META).length;
+  assert.ok(oran > 0.95, `yıl kapsamı düşük: %${(oran * 100).toFixed(1)}`);
+  const sacma = yillar.filter(y => y < 1900 || y > 2100);
+  assert.deepEqual(sacma.slice(0, 5), [], `${sacma.length} anime makul olmayan yılda`);
+});
+
+test("poster alanı ortak önek çıkarılmış hâlde saklanıyor", () => {
+  // §2.1.2: tam URL yerine yalnız dosya adı; js/data.js ve scripts/poster-onek.js öneki ekliyor.
+  const uzun = Object.entries(META).filter(([, m]) => m[3] && /^https?:\/\/s4\.anilist\.co/i.test(m[3]));
+  assert.deepEqual(uzun.slice(0, 3).map(([s]) => s), [], `${uzun.length} poster hâlâ tam URL`);
+  assert.ok(Object.values(META).filter(m => m[3]).length > 5000, "poster sayısı beklenenden az");
 });
 
 test("her slug için info.json var", () => {
