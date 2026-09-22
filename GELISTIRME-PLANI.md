@@ -355,10 +355,11 @@ değişiklik günlüğünde ve commit mesajında durur.
   | link | 1.165.204 canlı + 389.227 ölü | 1.165.204 canlı + sayaç |
   | hiç canlı linki olmayan bölüm | — | 19 (71.573 bölümde) |
 
-- **Maliyet (dikkat):** Bu değişiklik 6007 dosyayı yeniden yazdığı için `.git` kalıcı olarak
-  büyüyor. §3.1'in geçmiş temizliği **(YAPILMAYACAK)** olduğundan bu geri alınamaz.
-  Çalışma ağacı küçülüyor (GitHub Pages'ten inen bayt azalıyor), klon boyutu artıyor.
-  Ölçüm commit sonrası değişiklik günlüğünde.
+- **Maliyet (ölçüldü):** 6007 dosya yeniden yazıldı, yani `.git` kalıcı olarak büyüdü —
+  §3.1'in geçmiş temizliği **(YAPILMAYACAK)** olduğu için geri alınamaz.
+  **`.git` 310 MB → 345 MB (+35 MB).** Beklenen 129 MB'ın çok altında: yeni dosyalar eskilerin
+  alt kümesi olduğu için git'in delta sıkıştırması neredeyse tamamını yutuyor.
+  Karşılığında her detay sayfasında inen bayt %32.6 azaldı (One Piece 3.4 → 1.95 MB).
 - **Geri alınabilirlik:** Atılan ölü linkler `kaynak/animeler`'deki ham veride duruyor;
   `kaynak/b` gerekirse `scripts/build-b.js` ile yeniden üretilebilir.
 
@@ -780,3 +781,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §3.1.1 | `scripts/build-b.js`: dönüşüm kodla belgelendi (%98.2 birebir); `kaynak/b`'nin ham veriden zengin olduğu saptandı |
 | 2026-09-22 | belge | Ölçümle yanlış çıkan OK.RU maddesi silindi, §1.1 ve §3.1'in eskimiş ölçümleri düzeltildi; §3.1.2–4 ve §7.4 **(YAPILMAYACAK)** işaretlendi |
 | 2026-09-22 | §2.4 | Çok turlu poster taraması: postersiz 903 → 92; `scripts/meta-io.js` ile meta.js yazımı tek yere alındı |
+| 2026-09-22 | §3.2 | Ölü linkler bölüm başına tek sayıya indi: `kaynak/b` 192 → 129 MB (−%32.6), `.git` +35 MB |
