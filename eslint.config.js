@@ -12,7 +12,7 @@ const tarayiciGlobals = {
   requestAnimationFrame: "readonly", console: "readonly", CSS: "readonly", Event: "readonly",
   Hls: "readonly", performance: "readonly", self: "writable", AbortController: "readonly",
   getComputedStyle: "readonly", matchMedia: "readonly", HTMLInputElement: "readonly",
-  Element: "readonly",
+  Element: "readonly", HTMLImageElement: "readonly",
 };
 
 const nodeGlobals = {

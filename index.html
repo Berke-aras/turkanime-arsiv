@@ -19,6 +19,23 @@
 <meta name="twitter:image" content="https://berke-aras.github.io/turkanime-arsiv/og-image.png">
 <link rel="canonical" href="https://berke-aras.github.io/turkanime-arsiv/">
 <meta name="theme-color" content="#0a0c11">
+<!-- §4.2 Content-Security-Policy. Satır içi olay işleyicileri kaldırıldıktan sonra eklenebildi.
+     script-src: kendi modüllerimiz + hls.js (CDN'den talep üzerine) + ziyaretçi sayacı.
+     style-src 'unsafe-inline': şablonlarda style="--hero:url(...)" gibi satır içi stiller var.
+     frame-src https:: bölüm embed'leri onlarca farklı sağlayıcıdan geliyor, daraltmak mümkün değil. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' https://cdn.jsdelivr.net https://gc.zgo.at;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  img-src 'self' data: https://s4.anilist.co;
+  media-src 'self' https: blob:;
+  worker-src 'self' blob:;
+  connect-src 'self' https:;
+  frame-src https:;
+  base-uri 'self';
+  form-action 'none';
+  object-src 'none'">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -42,6 +59,13 @@
 </script>
 </head>
 <body>
+<a class="skip-link" href="#app">İçeriğe geç</a>
+<noscript>
+  <div class="noscript-uyari">
+    Bu arşiv görüntüleyicisi JavaScript ile çalışıyor; veri tarayıcıda işleniyor, sunucu yok.
+    Devam etmek için JavaScript'i açman gerekiyor.
+  </div>
+</noscript>
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
   <symbol id="i-dice" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M16 8h.01M8 8h.01M8 16h.01M16 16h.01M12 12h.01"/></symbol>
   <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></symbol>
@@ -100,7 +124,7 @@
   <a href="https://borketurkanimearsiv.goatcounter.com" target="_blank" rel="noopener noreferrer">İstatistikler</a>
 </footer>
 
-<div id="player-modal" hidden>
+<div id="player-modal" role="dialog" aria-modal="true" aria-label="Bölüm oynatıcı" hidden>
   <div id="player-modal-backdrop"></div>
   <div id="player-modal-box">
     <div id="player-modal-bar">
@@ -116,7 +140,7 @@
       </div>
     </div>
     <div id="player-modal-viewport">
-      <div id="player-modal-loading">
+      <div id="player-modal-loading" role="status" aria-live="polite">
         <div class="spinner"></div>
         <span id="player-modal-loading-hint" hidden>Yüklenmiyor mu? Yukarıdan "Ayrı sayfada aç"ı dene.</span>
       </div>
@@ -144,6 +168,6 @@
 <script type="module" src="js/main.js"></script>
 <!-- Ziyaretçi sayacı (çerezsiz, kişisel veri toplamaz). Günlük/haftalık/aylık/tüm-zamanlar
      kırılımı https://borketurkanimearsiv.goatcounter.com dashboard'unda hazır geliyor. -->
-<script data-goatcounter="https://borketurkanimearsiv.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<script data-goatcounter="https://borketurkanimearsiv.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>

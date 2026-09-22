@@ -75,7 +75,36 @@ function openPlayerModal(url, epIndex = null, direct = null) {
   playerEpLabel.textContent = ep ? `${epIndex + 1} / ${currentEpisodes.length}` : '';
   syncEpNavButtons();
   startLoadHint();
+  modalOdakAl();
 }
+
+// --- §5.2 odak yönetimi ---
+// Modal açılınca odak içeri alınır, Tab içeride döner, kapanınca açan öğeye geri verilir.
+let oncekiOdak = null;
+const ODAKLANABILIR = 'button:not([disabled]):not([hidden]), a[href], input, [tabindex]:not([tabindex="-1"])';
+const modalOdaklanabilirler = () => [...playerModal.querySelectorAll(ODAKLANABILIR)]
+  .filter(el => !el.closest('[hidden]') && el.offsetParent !== null);
+
+function modalOdakAl() {
+  oncekiOdak = document.activeElement;
+  document.body.classList.add('modal-acik');
+  const ilk = modalOdaklanabilirler()[0];
+  if (ilk) ilk.focus();
+}
+function modalOdakBirak() {
+  document.body.classList.remove('modal-acik');
+  if (oncekiOdak && document.contains(oncekiOdak)) oncekiOdak.focus();
+  oncekiOdak = null;
+}
+// Tab tuzağı: modal açıkken odak arkadaki sayfaya kaçmasın.
+window.addEventListener('keydown', e => {
+  if (playerModal.hidden || e.key !== 'Tab') return;
+  const oge = modalOdaklanabilirler();
+  if (!oge.length) return;
+  const ilk = oge[0], son = oge[oge.length - 1];
+  if (e.shiftKey && document.activeElement === ilk) { e.preventDefault(); son.focus(); }
+  else if (!e.shiftKey && document.activeElement === son) { e.preventDefault(); ilk.focus(); }
+});
 
 playerFrame.addEventListener('load', () => { if (playerFrame.hidden) return; playerLoading.hidden = true; clearLoadHint(); });
 
@@ -83,6 +112,7 @@ function closePlayerModal() {
   ilerlemeKaydet(true); // kapatmadan önce son konumu yaz (§7.1)
   currentEpIndex = null; // kapandıktan sonra gelen pause/pagehide kayıt yazmasın
   playerModal.hidden = true;
+  modalOdakBirak();
   bumpDirectToken();
   stopVideo();
   playerFrame.src = 'about:blank';

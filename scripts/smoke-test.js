@@ -692,7 +692,7 @@ async function run(page, base) {
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {
     const kabuk = await page.evaluate(async () => {
-      const c = await caches.open('tka-shell-v11');
+      const c = await caches.open('tka-shell-v12');
       const keys = (await c.keys()).map(r => new URL(r.url).pathname);
       return { data: keys.some(k => k.endsWith('/kaynak/data.js')), meta: keys.some(k => k.endsWith('/meta.js')), sayi: keys.length };
     });
@@ -706,7 +706,7 @@ async function run(page, base) {
     await page.waitForTimeout(1500);
     const lru = await page.evaluate(async () => {
       const d = await caches.open('tka-data-v1');
-      const sh = await caches.open('tka-shell-v11');
+      const sh = await caches.open('tka-shell-v12');
       const shKeys = (await sh.keys()).map(r => new URL(r.url).pathname);
       return { veri: (await d.keys()).length, kabuktaBolum: shKeys.filter(k => k.includes('/kaynak/b/')).length };
     });
@@ -724,6 +724,70 @@ async function run(page, base) {
     check('§1.5 çevrimdışı açılışta liste dolu geliyor', cevrimdisiKart > 10, cevrimdisiKart + ' kart');
     await page.context().setOffline(false);
   }
+
+  // --- §5.2 / §5.3 / §5.5: erişilebilirlik ---
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card');
+  await page.keyboard.press('Tab');
+  const atla = await page.evaluate(() => {
+    const a = document.activeElement;
+    return { sinif: a.className, metin: (a.textContent || '').trim(), sol: Math.round(a.getBoundingClientRect().left) };
+  });
+  check('§5.5 ilk Tab "İçeriğe geç" bağlantısını getiriyor',
+    atla.sinif === 'skip-link' && atla.sol >= 0, JSON.stringify(atla));
+  const canli = await page.evaluate(() => ({
+    sayac: (document.querySelector('.filter-count') || {}).getAttribute
+      ? document.querySelector('.filter-count').getAttribute('aria-live') : null,
+    noscript: !!document.querySelector('noscript'),
+    topGizli: getComputedStyle(document.getElementById('top-btn')).visibility,
+  }));
+  check('§5.3 sonuç sayısı canlı bölge, §5.5 noscript var, #top-btn gizliyken odakta değil',
+    canli.sayac === 'polite' && canli.noscript && canli.topGizli === 'hidden', JSON.stringify(canli));
+
+  // modal: dialog rolü, odak tuzağı, arka plan kilidi, odağın geri dönmesi
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.ep');
+  await page.locator('.ep[data-i="0"] .ep-head').click();
+  await page.waitForTimeout(400);
+  await page.locator('.ep[data-i="0"] .ep-links [data-embed-url]').first().click();
+  await page.waitForTimeout(600);
+  const modalA11y = await page.evaluate(() => {
+    const m = document.getElementById('player-modal');
+    return {
+      rol: m.getAttribute('role'), ariaModal: m.getAttribute('aria-modal'),
+      etiket: !!m.getAttribute('aria-label'),
+      bodyKilit: document.body.classList.contains('modal-acik'),
+      odakIcerde: m.contains(document.activeElement),
+      yuklemeRol: document.getElementById('player-modal-loading').getAttribute('role'),
+    };
+  });
+  check('§5.2 modal dialog rolü, odak içeride, arka plan kilitli',
+    modalA11y.rol === 'dialog' && modalA11y.ariaModal === 'true' && modalA11y.etiket
+    && modalA11y.bodyKilit && modalA11y.odakIcerde && modalA11y.yuklemeRol === 'status',
+    JSON.stringify(modalA11y));
+
+  let kacan = 0;
+  for (let i = 0; i < 30; i++) {
+    await page.keyboard.press('Tab');
+    if (!await page.evaluate(() => document.getElementById('player-modal').contains(document.activeElement))) kacan++;
+  }
+  check('§5.2 Tab odağı modalın içinde tutuyor', kacan === 0, kacan + ' kez dışarı kaçtı');
+
+  await page.locator('#player-modal-close').click();
+  await page.waitForTimeout(300);
+  const kapanis = await page.evaluate(() => ({
+    bodyKilit: document.body.classList.contains('modal-acik'),
+    odakDisarida: !document.getElementById('player-modal').contains(document.activeElement),
+  }));
+  check('§5.2 kapanışta kilit kalkıyor ve odak geri dönüyor',
+    !kapanis.bodyKilit && kapanis.odakDisarida, JSON.stringify(kapanis));
+
+  // §4.2: satır içi olay işleyicisi kalmamalı (CSP'nin ön koşulu)
+  const satirIci = await page.evaluate(() =>
+    [...document.querySelectorAll('*')].filter(e => e.hasAttribute('onload') || e.hasAttribute('onerror') || e.hasAttribute('onclick')).length);
+  check('§4.2 satır içi olay işleyicisi yok', satirIci === 0, satirIci + ' öğe');
+  const cspVar = await page.evaluate(() => !!document.querySelector('meta[http-equiv="Content-Security-Policy"]'));
+  check('§4.2 CSP meta etiketi var', cspVar);
 
   // --- konsol temiz mi (dış kaynak/ağ hataları hariç) ---
   const gercek = errors.filter(e => !/favicon|net::ERR|ERR_INTERNET|anilist|zgo\.at/i.test(e));

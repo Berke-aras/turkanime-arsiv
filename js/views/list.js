@@ -12,7 +12,7 @@ import { PAGE_SIZE, state, syncListHash } from '../state.js';
 function filterBarHtml(count) {
   return `
     <div class="filterbar">
-      <span class="filter-count">${count.toLocaleString('tr-TR')} / ${ANIME.length.toLocaleString('tr-TR')} anime</span>
+      <span class="filter-count" aria-live="polite">${count.toLocaleString('tr-TR')} / ${ANIME.length.toLocaleString('tr-TR')} anime</span>
       <select id="f-kategori" title="Tür (TV/Film/OVA)">
         <option value="">Tüm kategoriler</option>
         ${KATEGORILER.map(k => `<option value="${esc(k)}" ${state.kategori === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}

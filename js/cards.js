@@ -11,7 +11,7 @@ function ilerlemeCubugu(oran) {
   return oran ? `<span class="ilerleme" title="İzlemeye devam et"><i style="width:${Math.round(oran * 100)}%"></i></span>` : '';
 }
 function posterPlaceholder(a, oran = 0) {
-  if (a.poster) return `<div class="poster loaded"><img src="${esc(a.poster)}" loading="lazy" alt="" onload="this.classList.add('img-loaded')" onerror="this.classList.add('img-loaded')">${ilerlemeCubugu(oran)}</div>`;
+  if (a.poster) return `<div class="poster loaded"><img src="${esc(a.poster)}" loading="lazy" alt="">${ilerlemeCubugu(oran)}</div>`;
   const h = hue(a.baslik);
   const zemin = `linear-gradient(150deg,hsl(${h},45%,24%),hsl(${(h + 30) % 360},40%,14%))`;
   // .poster yüksekliğini padding-bottom ile kuruyor (height:0), o yüzden içerik mutlak
@@ -55,5 +55,15 @@ function wireCards(container) {
   });
 }
 
+
+// §4.2: eskiden her <img> satır içi onload/onerror taşıyordu; bu, Content-Security-Policy
+// eklemeyi imkânsız kılıyordu. Yerine belgede tek bir yakalama fazlı dinleyici var — poster
+// yüklendiğinde (ya da yüklenemediğinde) aynı sınıf ekleniyor, maliyeti sabit.
+function posterYuklendi(e) {
+  const img = e.target;
+  if (img instanceof HTMLImageElement && img.closest('.poster')) img.classList.add('img-loaded');
+}
+document.addEventListener('load', posterYuklendi, true);
+document.addEventListener('error', posterYuklendi, true);
 
 export { posterPlaceholder, cardHtml, wireCards };
