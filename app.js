@@ -280,6 +280,23 @@ function ensureHls() {
     document.head.appendChild(s);
   });
 }
+// Sibnet yoğun anlarda geçici olarak 403 verip resolver'ın 503 dönmesine yol açıyor (bkz. api/sibnet.js).
+// Bu kalıcı bir hata değil, o yüzden reklamlı embed'e düşmeden önce kısa aralıklarla tekrar deniyoruz.
+// 404/502 gibi kalıcı hatalarda beklemeden vazgeçiyoruz.
+const RESOLVE_RETRY = [900, 2000];
+async function resolveDirect(provider, params, stillWanted) {
+  for (let i = 0; i <= RESOLVE_RETRY.length; i++) {
+    if (i) {
+      await new Promise(r => setTimeout(r, RESOLVE_RETRY[i - 1]));
+      if (!stillWanted()) return null;
+    }
+    const r = await fetch(`${provider.resolver}?${params}`);
+    if (!stillWanted()) return null;
+    if (r.ok) return r.json();
+    if (r.status !== 503) return null;
+  }
+  return null;
+}
 // resolver'dan mp4/m3u8 linkini alıp <video> ile oynatır; olmazsa sessizce klasik iframe embed'e düşer.
 let currentDirectPlayer = null;
 async function playDirect(direct, embedUrl) {
@@ -287,8 +304,7 @@ async function playDirect(direct, embedUrl) {
   currentDirectPlayer = direct.player;
   try {
     const provider = DIRECT_PROVIDERS[direct.player];
-    const r = await fetch(`${provider.resolver}?${direct.params}`);
-    const data = r.ok ? await r.json() : null;
+    const data = await resolveDirect(provider, direct.params, () => token === directToken);
     if (token !== directToken) return;
     if (!data || !data.url) throw new Error('resolve failed');
     if (data.hls && !playerVideo.canPlayType('application/vnd.apple.mpegurl')) {

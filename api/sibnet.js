@@ -3,33 +3,74 @@
 // Video trafiği buradan geçmez; sadece link çözülür, tarayıcı mp4'ü doğrudan sibnet CDN'inden çeker.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
+// Sibnet yoğun isteklerde "403 Forbidden - Request forbidden by administrative rules." döndürüyor.
+// Bu, videonun silindiği anlamına GELMİYOR: aynı istek birkaç yüz ms sonra 200 dönüyor (ölçüldü:
+// 403 alan 4 videonun 3'ü tek tekrarda, kalanı ikinci tekrarda çözüldü). Eskiden durum kodu hiç
+// kontrol edilmediği için bu engel sayfası da regex'e takılmayıp "video not found" (404) oluyordu;
+// istemci de reklamsız linki kalıcı olarak ölü sayıp reklamlı embed'e düşüyordu.
+// Sınırlayıcının penceresi uzun (1,5sn arayla yapılan isteklerde bile 403 sürebiliyor), üstelik her
+// çağrı engellenen video.sibnet.ru'ya 2 istek atıyor (shell.php + yönlendirmenin ilk adımı). Bu yüzden
+// tekrarı kısa tutuyoruz: çok denemek yükü artırıp engeli uzatıyor. Kısa engeller burada yakalanır,
+// uzun sürenler 503 olarak istemciye bırakılır.
+const BLOCKED = s => s === 403 || s === 429 || s >= 500;
+const BACKOFF = [700, 1800]; // denemeler arası bekleme (ms)
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// vercel.json'da maxDuration 20sn; tekrarlar bu bütçeyi aşmasın diye ortak bir son tarih tutuyoruz.
+async function fetchRetry(url, init, deadline) {
+  let lastStatus = 0;
+  for (let i = 0; i <= BACKOFF.length; i++) {
+    if (i) {
+      const wait = BACKOFF[i - 1] + Math.floor(Math.random() * 150); // jitter: eşzamanlı çağrılar aynı anda vurmasın
+      if (Date.now() + wait > deadline) break;
+      await sleep(wait);
+    }
+    const r = await fetch(url, init);
+    if (!BLOCKED(r.status)) return r;
+    lastStatus = r.status;
+    if (Date.now() > deadline) break;
+  }
+  const e = new Error('sibnet blocked'); e.blocked = true; e.status = lastStatus;
+  throw e;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('access-control-allow-origin', '*');
   res.setHeader('access-control-allow-methods', 'GET, OPTIONS');
   res.setHeader('content-type', 'application/json');
   if (req.method === 'OPTIONS') return res.status(204).end();
   const id = String((req.query && req.query.id) || '');
-  if (!/^\d{1,12}$/.test(id)) return res.status(400).send(JSON.stringify({ error: 'bad id' }));
+  // hata yanıtları cache'lenmemeli: geçici bir 403'ü yarım saat boyunca "video yok" diye servis etmeyelim.
+  const fail = (code, body, extra) => {
+    res.setHeader('cache-control', 'no-store');
+    if (extra) for (const [k, v] of Object.entries(extra)) res.setHeader(k, v);
+    return res.status(code).send(JSON.stringify(body));
+  };
+  if (!/^\d{1,12}$/.test(id)) return fail(400, { error: 'bad id' });
 
+  const deadline = Date.now() + 15000;
   try {
     const shell = `https://video.sibnet.ru/shell.php?videoid=${id}`;
-    const html = await (await fetch(shell, { headers: { 'user-agent': UA } })).text();
+    const html = await (await fetchRetry(shell, { headers: { 'user-agent': UA } }, deadline)).text();
     const m = /src:\s*"(\/v\/[^"]+\.mp4)"/.exec(html);
-    if (!m) return res.status(404).send(JSON.stringify({ error: 'video not found' }));
+    // buraya 200 ile gelindi: sayfa açıldı ama link yok => video gerçekten kalkmış.
+    if (!m) return fail(404, { error: 'video not found' });
 
     // /v/<hash>/<id>.mp4 sadece sibnet referer'ıyla açılıyor; yönlendirmeleri elle takip edip
     // referer gerektirmeyen nihai CDN linkini (cvs*.sibnet.ru/...?st=..&e=..) döndürüyoruz.
     let url = 'https://video.sibnet.ru' + m[1];
     for (let i = 0; i < 6; i++) {
-      const r = await fetch(url, { headers: { 'user-agent': UA, referer: shell, range: 'bytes=0-0' }, redirect: 'manual' });
+      const r = await fetchRetry(url, { headers: { 'user-agent': UA, referer: shell, range: 'bytes=0-0' }, redirect: 'manual' }, deadline);
       const loc = r.headers.get('location');
-      if (!loc) { if (r.status >= 400) return res.status(502).send(JSON.stringify({ error: `cdn ${r.status}` })); break; }
+      if (!loc) { if (r.status >= 400) return fail(502, { error: `cdn ${r.status}` }); break; }
       url = new URL(loc, url).href;
     }
     // st/e imzası birkaç saat geçerli; kısa süre cache'lenebilir
     res.setHeader('cache-control', 'public, max-age=1800, s-maxage=1800');
     res.status(200).send(JSON.stringify({ url }));
   } catch (e) {
-    res.status(502).send(JSON.stringify({ error: String(e.message || e) }));
+    // engellendiyse 404 değil 503 dönüyoruz: istemci bunu "video yok" sanıp pes etmesin, tekrar denesin.
+    if (e && e.blocked) return fail(503, { error: 'sibnet busy', status: e.status }, { 'retry-after': '2' });
+    return fail(502, { error: String((e && e.message) || e) });
   }
 };
