@@ -29,18 +29,49 @@ değişiklik günlüğünde ve commit mesajında durur.
 
 ## 0. Projenin bugünkü hâli (özet)
 
+*(2026-09-22 akşamı, tüm turlar sonrası ölçüldü. Planın ilk yazıldığı andaki değerler maddelerin
+kendi "Ölçüm" satırlarında duruyor.)*
+
 | | |
 |---|---|
-| Mimari | Tamamen statik, build adımı yok. `index.html` + `app.js` (856 satır, tek dosya) + `style.css` + iki global veri dosyası |
-| Barındırma | GitHub Pages (site) + Vercel (`api/sibnet.js`) + Cloudflare Workers (`cf/uqload`) |
-| Veri | `kaynak/data.js` (658 KB) ve `meta.js` (924 KB) — ikisi de `<script>` ile senkron yükleniyor |
-| Bölüm verisi | `kaynak/b/<slug>.js` — 6107 dosya, 205 MB, detay sayfasında talep üzerine yükleniyor |
+| Mimari | Tamamen statik, build adımı yok. `index.html` + `js/` altında **22 ES modülü** (2.119 satır) + `style.css` + iki global veri dosyası |
+| Barındırma | GitHub Pages (site) + Vercel (`api/sibnet.js`, `api/okru.js`) + Cloudflare Workers (`cf/uqload`) |
+| Veri | `kaynak/data.js` **396 KB** (658'di) ve `meta.js` **524 KB** (924'tü) — ikisi de `<script>` ile senkron |
+| Bölüm verisi | `kaynak/b/<slug>.js` — 6107 dosya, **143 MB** (205'ti), detayda talep üzerine |
 | Ham veri | `kaynak/animeler/` — 697 MB, 89.597 dosya; sadece `info.json` runtime'da kullanılıyor |
 | Router | `location.hash` (`#/`, `#/anime/<slug>`, `#/yasal`) |
-| Test / lint / CI | **Yok** (`package.json` da yok) |
+| Test / lint / CI | **53 birim testi** (`node --test`), **112 duman testi** (Playwright), ESLint, GitHub Actions (2 iş) |
 
-**En kritik üç şey:** (1) açılışta ~354 KB gzip'li zorunlu JS, (2) repoda 697 MB kullanılmayan ham veri,
-(3) linklerin %25'i ölü ama yine de basılıyor.
+---
+
+## 0.1 Geriye kalanlar (tek bakışta)
+
+Planın **40 başlığından 35'i tamamen kapandı**; kalan 5 başlıkta toplam **12 açık madde** var
+ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazılı.
+
+### A. Repo sahibinin kararını bekleyenler — **(YAPILMAYACAK)** işaretli
+| madde | ne | neden bekliyor |
+|---|---|---|
+| §3.1 adım 2–4 | 697 MB ham veriyi ayrı repoya/Release'e taşıma + `git filter-repo` ile geçmiş temizliği | 4. adım **force-push** gerektiriyor: her fork'u ve mevcut klonu bozar. 2. adım "veri nereye taşınacak, orayı kim bakacak" kararı. Hazırlık bitti (`scripts/build-b.js`), karar verilirse güvenle uygulanabilir. |
+| §7.4 | Her anime için gerçek URL + 6107 URL'lik sitemap (SEO) | Teknik değil **telif** kararı: arşivi arama motorlarına 6107 kapıdan açar. Ziyaretçi sayısındaki en büyük sıçramayı bu yapar. Adımlar hazır. |
+
+### B. Repo dışında, elle yapılacaklar (koddan yapılamıyor)
+| madde | ne |
+|---|---|
+| §4.4.1 | `npx vercel deploy --prod` — köken kısıtlaması **canlıda değil**, uçlar hâlâ herkese açık |
+| §4.4.2 | Aynı deploy + başka bir ağdan tek bölüm denemesi → sonra `js/links.js`'te `OKRU_ETKIN = true` |
+| §7.6 | Repo **About** açıklaması, **topics**, **website** alanı (GitHub arama motoru bunlara bakıyor) |
+| §7.6 | **Google Search Console**: siteyi ekle, `sitemap.xml` gönder |
+
+### C. Sırada bekleyen gerçek işler
+| madde | ne | not |
+|---|---|---|
+| §2.1.3 | `data.js` + `meta.js`'i tek bir `index.json`'a birleştirip `fetch` ile al | JSON parse, JS parse'tan hızlı; `<script>` zincirini kırar. §2.2/§2.3'ten sonra kazanç küçüldü. |
+| §2.1.5 | Google Fonts render-blocking: `Inter`'i self-host et ya da `preload` kalıbı | ~15 KB woff2 subset yeter |
+| §2.1 kabul | Lighthouse mobil skoru (önce/sonra), LCP < 2.5 s (Slow 4G) | Bu ortamda Lighthouse yok; ölçüm repo sahibinde |
+| §4.4 madde 2 | Deploy'un elle yapılması kırılgan — repoyu Vercel projesine bağla ya da `.github/workflows/deploy-api.yml` yaz | Wrangler için de aynısı |
+| §7.5 | Fansub'a göre filtre (veride `fansub` alanı var, hiç kullanılmıyor) | "sadece TAÇE çevirileri" gibi |
+| §4.3 kalan | `matchScore`/`animeOfDay` birim testleri | İkisi de tepe seviyede `window.INDEX`/`window.META` okuyor; önce veri yüklemesi bir fonksiyona alınmalı |
 
 ---
 
@@ -715,7 +746,7 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   `theme-color`, seçimin yenilemede kalması, modalın koyu kalması). Açık temada liste ve detay
   sayfası ekran görüntüsüyle de gözden geçirildi.
 
-### 6.2 Ana sayfa hiyerarşisi — **(TAMAM, biri hariç)**
+### 6.2 Ana sayfa hiyerarşisi — **(TAMAM)**
 - Şu an: istatistik şeridi → Günün Animesi → Son bakılanlar → Tüm Arşiv. Mantıklı ama
   6107 anime "Tüm Arşiv" başlığı altında tek düze alfabetik bir duvar hâlinde akıyor. Keşif yok.
 - **Yapılacak (etkiye göre sıralı):**
@@ -736,7 +767,8 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
     seçili olduğu temiz bir listeye gidiyor (gerçek `<a href="#/?tur=…">`).
   - **"Son bakılanlar"** artık saklanan 16 kaydın tamamını gösteriyor (eskiden 6).
   - Şeritlerin tamamı tek bir `seritHtml()` yardımcısını kullanıyor.
-- **Kalan:** 3. madde ("Devam et" şeridi) §7.1'deki izleme konumu özelliğine bağlı.
+- **3. madde de tamamlandı (§7.1 ile birlikte):** "İzlemeye devam et" şeridi ana sayfada
+  en üstte; bırakılan bölüm ve ilerleme çubuğu kartın üstünde görünüyor.
 
 ### 6.3 Postersiz kartlar (903 adet) çirkin — **(TAMAM)**
 - **Dosya:** `app.js:159` `posterPlaceholder()`
@@ -854,6 +886,21 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   - Ana sayfadaki **keşif şeritlerine ve Günün Animesi'ne hiç girmiyorlar**
     (`animeOfDay` zaten hariç tutuyordu, "En yüksek puanlı" de artık tutuyor).
   - Arama ve filtreler değişmedi: arayan bulabiliyor, uyarıyı görüyor.
+- **İkinci tur (2026-09-22, kullanıcı isteği):**
+  - **Dosyalar:** `js/data.js` (`NSFW_TURLER`), `js/cards.js` (rozet), `js/views/yas-kapisi.js`
+    (kapı + kalıcı panel), `js/store.js` (`ta_18`), `js/views/legal.js` (metin + geri alma).
+  - Ecchi/Hentai/Erotica türündeki başlıklarda kartta **18+** rozeti, detayda uyarı paneli.
+    Rozet önce kartın **sol altındaydı** ve `.card` konumlandırma bağlamı olduğu için başlık/tür
+    yazılarının üstüne biniyordu; **kapağın sağ üstüne** alındı (puan rozeti sol üstte kalıyor).
+    Duman testi rozetin kutusunu ölçüp posterin içinde ve başlığın üstünde olduğunu doğruluyor.
+  - **Yaş kapısı:** Yetişkin başlıkların detay sayfası, "18 yaşından büyüğüm, onaylıyorum" /
+    "Beni buradan çıkar" seçeneği olmadan açılmıyor; onay verilmeden `info.json` ve bölüm
+    verisi bile istenmiyor. Onay `ta_18` anahtarında bu tarayıcıda saklanıyor, `#/yasal`
+    sayfasındaki kutudan geri alınabiliyor.
+  - **Bilerek yapılmayan:** Onay `js/yedek.js`'in yedeklediği anahtarlara dahil edilmedi —
+    bir cihazın yaş beyanı başka bir cihaza taşınmamalı.
+  - **Dürüst sınır:** Bu bir yaş *doğrulaması* değil, beyan. Sunucu, hesap ya da kimlik kontrolü
+    olmayan statik bir sitede yapılabilecek en fazlası bu; yasal metinde de böyle yazıyor.
 
 ---
 
@@ -931,16 +978,13 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   kaldırma talebi süreci kurulu olsa da tetiği repo sahibi çekmeli.
   Karar verilirse işaret kaldırılsın; 1–4. adımlar olduğu gibi uygulanabilir.
 
-### 7.7 Yasal/gizlilik metninin tamamlanması — **(TAMAM)**
-- Metinde eksik olan başlıklar iki dilde de eklendi:
-  **Yetişkin İçerik ve Yaş Sınırı** (§6.8 kapısı, beyan/doğrulama ayrımı, 13 yaş notu),
-  **Tarayıcında Saklanan Veriler** (tüm `localStorage` anahtarları tek tek, yedekleme),
-  **Sorumluluk Reddi** ("olduğu gibi", üçüncü taraf reklam/güvenlik, ölü linkler,
-  turkanime.tv/AniList/stüdyolarla bağlantısızlık, ticari amaç yok),
-  **Barındırma ve 5651 Sayılı Kanun** (kullanıcı içeriği yok, video barındırılmıyor).
-- Kaldırma talebi bölümüne **KVKK md. 11 başvuru kanalı** eklendi (aynı GitHub issue kanalı;
-  kimliği belirli kişiye ait veri işlenmediği notuyla).
-- Sayfanın sonuna **son güncelleme tarihi** eklendi.
+### 7.5 Diğer
+- ~~Klavye kısayolu `/` ile arama kutusuna odaklan.~~ **(TAMAM)** `js/main.js`; `Esc` odaktan
+  çıkarıyor. Bir alana yazarken ve oynatıcı modalı açıkken devre dışı. Kutunun sağında
+  görünen `/` rozeti yalnız fare/klavye olan geniş ekranlarda çıkıyor.
+- Fansub'a göre filtre (veride `fansub` alanı var, hiç kullanılmıyor — "sadece TAÇE çevirileri").
+- "Rastgele" butonuna filtre duyarlılığı zaten var (`pickRandomAnime`, `app.js:91`) — iyi.
+
 
 ### 7.6 Keşfedilebilirlik — GitHub ve Google'da öne çıkmak — **(TAMAM — repodaki kısmı)**
 - **Sorun:** "türk anime arşivi", "turkanime kapandı" gibi aramalarda repo da site de görünmüyordu.
@@ -973,29 +1017,16 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   **(YAPILMAYACAK)** işaretli: teknik değil, telif/görünürlük kararı. Repo sahibi kararı verirse
   §7.4'teki 1–4. adımlar olduğu gibi uygulanabilir ve ziyaretçi sayısındaki asıl sıçrama o zaman olur.
 
-### 6.8 Yetişkin içerik: rozet, uyarı ve yaş kapısı — **(TAMAM)**
-- **Dosyalar:** `js/data.js` (`NSFW_TURLER`), `js/cards.js` (rozet), `js/views/yas-kapisi.js`
-  (kapı + kalıcı panel), `js/store.js` (`ta_18`), `js/views/legal.js` (metin + geri alma).
-- Ecchi/Hentai/Erotica türündeki başlıklarda kartta **18+** rozeti, detayda uyarı paneli.
-  Rozet önce kartın **sol altındaydı** ve `.card` konumlandırma bağlamı olduğu için başlık/tür
-  yazılarının üstüne biniyordu; **kapağın sağ üstüne** alındı (puan rozeti sol üstte kalıyor).
-  Duman testi rozetin kutusunu ölçüp posterin içinde ve başlığın üstünde olduğunu doğruluyor.
-- **Yaş kapısı:** Yetişkin başlıkların detay sayfası, "18 yaşından büyüğüm, onaylıyorum" /
-  "Beni buradan çıkar" seçeneği olmadan açılmıyor; onay verilmeden `info.json` ve bölüm
-  verisi bile istenmiyor. Onay `ta_18` anahtarında bu tarayıcıda saklanıyor, `#/yasal`
-  sayfasındaki kutudan geri alınabiliyor.
-- **Bilerek yapılmayan:** Onay `js/yedek.js`'in yedeklediği anahtarlara dahil edilmedi —
-  bir cihazın yaş beyanı başka bir cihaza taşınmamalı.
-- **Dürüst sınır:** Bu bir yaş *doğrulaması* değil, beyan. Sunucu, hesap ya da kimlik kontrolü
-  olmayan statik bir sitede yapılabilecek en fazlası bu; yasal metinde de böyle yazıyor.
-
-### 7.5 Diğer
-- ~~Klavye kısayolu `/` ile arama kutusuna odaklan.~~ **(TAMAM)** `js/main.js`; `Esc` odaktan
-  çıkarıyor. Bir alana yazarken ve oynatıcı modalı açıkken devre dışı. Kutunun sağında
-  görünen `/` rozeti yalnız fare/klavye olan geniş ekranlarda çıkıyor.
-- Fansub'a göre filtre (veride `fansub` alanı var, hiç kullanılmıyor — "sadece TAÇE çevirileri").
-- "Rastgele" butonuna filtre duyarlılığı zaten var (`pickRandomAnime`, `app.js:91`) — iyi.
-
+### 7.7 Yasal/gizlilik metninin tamamlanması — **(TAMAM)**
+- Metinde eksik olan başlıklar iki dilde de eklendi:
+  **Yetişkin İçerik ve Yaş Sınırı** (§6.8 kapısı, beyan/doğrulama ayrımı, 13 yaş notu),
+  **Tarayıcında Saklanan Veriler** (tüm `localStorage` anahtarları tek tek, yedekleme),
+  **Sorumluluk Reddi** ("olduğu gibi", üçüncü taraf reklam/güvenlik, ölü linkler,
+  turkanime.tv/AniList/stüdyolarla bağlantısızlık, ticari amaç yok),
+  **Barındırma ve 5651 Sayılı Kanun** (kullanıcı içeriği yok, video barındırılmıyor).
+- Kaldırma talebi bölümüne **KVKK md. 11 başvuru kanalı** eklendi (aynı GitHub issue kanalı;
+  kimliği belirli kişiye ait veri işlenmediği notuyla).
+- Sayfanın sonuna **son güncelleme tarihi** eklendi.
 ---
 
 ## 8. Yol haritası (önerilen sıra)
@@ -1095,3 +1126,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §7.3 + §7.5 | JSON yedek al / birleştirerek geri yükle (7 birim + 6 duman testi), "/" arama kısayolu |
 | 2026-09-22 | §4.4.2 | ok.ru resolver'ı (140.428 link, örneklemde %48 canlı): `api/okru.js` + 9 test; `OKRU_ETKIN` bayrağı deploy'u bekliyor |
 | 2026-09-22 | §6.8 + §7.7 | Yaş kapısı (onayla / buradan çıkar), 18+ rozeti kapağın sağ üstüne, yasal metne 4 yeni bölüm + KVKK kanalı |
+| 2026-09-22 | belge | §0 güncel ölçümlerle tazelendi, **§0.1 "Geriye kalanlar"** tablosu eklendi; §6.8/§7.5–7.7 sıralaması düzeltildi |
