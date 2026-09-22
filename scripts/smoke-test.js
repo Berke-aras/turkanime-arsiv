@@ -45,13 +45,20 @@ const results = [];
 const check = (ad, kosul, detay = '') => results.push({ ad, ok: !!kosul, detay });
 
 async function run(page, base) {
+  // Üçüncü taraf istekleri engelleniyor: test bizim uygulamamızı ölçüyor, AniList CDN'ini ya da
+  // sayacı değil. Böylece internetli (CI) ve internetsiz ortamlarda aynı biçimde çalışıyor.
+  await page.route('**/*', r => {
+    const host = new URL(r.request().url()).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+
   const errors = [];
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('response', r => { if (r.status() >= 400) errors.push(`HTTP ${r.status()} ${new URL(r.url()).pathname}`); });
 
   // --- ana sayfa ---
-  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.card', { timeout: 20000 });
   const kart = await page.locator('.card').count();
   check('ana sayfa kart basıyor', kart > 10, kart + ' kart');
@@ -65,7 +72,7 @@ async function run(page, base) {
   check('ana sayfada arama', /naruto|boruto/i.test(ilk), ilk.split('\n')[0]);
 
   // --- detay sayfası ---
-  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.ep', { timeout: 20000 });
   const bolum = await page.locator('.ep').count();
   check('detay bölümleri basıyor', bolum > 5, bolum + ' bölüm');
@@ -89,13 +96,13 @@ async function run(page, base) {
   check('§1.2 detayda arama listeye dönüyor', /^#\/(\?|$)/.test(hash) && kartSonra > 0, `hash=${hash} kart=${kartSonra}`);
 
   // --- §1.3: filtreler hash'te, paylaşılabilir ve yenilemeye dayanıklı ---
-  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.card');
   await page.selectOption('#f-sort', 'puan');
   await page.waitForTimeout(300);
   const sortHash = await page.evaluate(() => location.hash);
   check('§1.3 filtre hash\'e yazılıyor', /sort=puan/.test(sortHash), sortHash);
-  await page.goto(base + '/index.html#/?kategori=TV&sort=puan&sayfa=2', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html#/?kategori=TV&sort=puan&sayfa=2', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.card');
   const restored = await page.evaluate(() => ({
     sort: document.getElementById('f-sort').value,
@@ -109,7 +116,7 @@ async function run(page, base) {
   // --- §1.3 + §1.6: detaydan geri dönünce kaydırma konumu korunur, detaya girince başa gider ---
   // filtreli hash kullanılıyor: filtresiz ana sayfada "Son bakılanlar" şeridi detay ziyaretinden
   // sonra büyüyüp listeyi aşağı kaydırdığı için piksel karşılaştırması anlamsız olurdu.
-  await page.goto(base + '/index.html#/?kategori=TV&sayfa=3', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html#/?kategori=TV&sayfa=3', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.card');
   // html'de scroll-behavior:smooth var; kaydırma oturana kadar bekle
   await page.evaluate(() => window.scrollTo(0, 1500));
@@ -129,7 +136,7 @@ async function run(page, base) {
     `${JSON.stringify(geriDonus)} beklenen y≈${oncekiY}`);
 
   // --- §1.4: tersten sıralamada "Sonraki" ekrandaki yönü izliyor ---
-  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#ep-reverse');
   const epNo = async () => (await page.locator('#player-modal-eplabel').textContent()).trim();
   const oynat = async () => {
@@ -161,7 +168,7 @@ async function run(page, base) {
   const istekler = [];
   const dinle = r => istekler.push(new URL(r.url()).pathname);
   page.on('request', dinle);
-  await page.goto(base + '/index.html#/anime/boyle-bir-anime-yok', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html#/anime/boyle-bir-anime-yok', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.empty', { timeout: 10000 }).catch(() => {});
   page.off('request', dinle);
   const bulunamadi = await page.locator('.empty').textContent().catch(() => '');
@@ -170,12 +177,12 @@ async function run(page, base) {
   check('§1.7 bilinmeyen slug için veri isteği atılmıyor', bosIstek.length === 0, bosIstek.join(', '));
 
   // --- yasal sayfası ---
-  await page.goto(base + '/index.html#/yasal', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html#/yasal', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.legal', { timeout: 10000 });
   check('yasal sayfası açılıyor', true);
 
   // --- §5.1: kartlar gerçek bağlantı, favori butonu iç içe değil ---
-  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.card');
 
   // --- §2.1.1: data.js yalnız kullanılan 4 alanı taşıyor ---
@@ -223,7 +230,7 @@ async function run(page, base) {
     `${sirali.length} kart, ilk üç: ${sirali.slice(0, 3).join(', ')}`);
 
   // detayda Japonca başlık ve yayın yılı
-  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.detail-info');
   const detayEk = await page.evaluate(() => ({
     japonca: (document.querySelector('.detail-japonca') || {}).textContent || '',
@@ -233,7 +240,7 @@ async function run(page, base) {
   check('§3.3 detayda yayın yılı aralığı var', /2004–2005/.test(detayEk.stats), detayEk.stats.replace(/\s+/g, ' ').trim());
 
   // sonraki kontroller liste sayfasında sürüyor
-  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.card');
 
   const kartYapi = await page.evaluate(() => {
@@ -279,7 +286,7 @@ async function run(page, base) {
   await page.waitForTimeout(200);
 
   // --- §1.5: service worker iki ayrı cache kullanıyor, veri cache'i LRU ile sınırlı ---
-  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
   const swHazir = await page.evaluate(() => navigator.serviceWorker.ready.then(r => !!r.active).catch(() => false));
   check('§1.5 service worker kaydoluyor', swHazir);
   if (swHazir) {

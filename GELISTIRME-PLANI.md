@@ -410,6 +410,12 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
     `api/` CommonJS + Fetch API, `cf/` ESM. `npx eslint .` temiz.
   - `.github/workflows/ci.yml`: iki iş — *lint + veri bütünlüğü* ve *tarayıcı duman testi*
     (Playwright + Chromium). push/PR/manuel tetikleme.
+  - **CI'da yakalanan fark (2026-09-22):** duman testi yerelde yeşilken CI'da zaman aşımına düştü.
+    Sebep: geliştirme ortamının dışarıya çıkışı yok, CI'ın var; `waitUntil: 'networkidle'`
+    CI'da AniList kapakları ve sayaç scripti yüzünden hiç oturmuyordu. Test artık
+    `page.route` ile üçüncü taraf isteklerini engelliyor (ölçtüğümüz kendi uygulamamız,
+    CDN değil) ve `domcontentloaded` + `waitForSelector` kullanıyor. Her iki ortamda da
+    aynı sonuç, süre 14 sn.
 - **Ek (2026-09-22, §4.1'den sonra):** `test/util.test.mjs` — `js/util.js`'i doğrudan import eden
   9 birim testi (toplam 18 test): `norm` (Türkçe `ı/İ/I/ş/ğ/ü/ö/ç` eşlemesi, noktalama, boş girdi),
   `esc` (beş karakter + çift kaçış davranışı), `levenshtein` (bilinen mesafeler, simetri, boş dize),
@@ -678,3 +684,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §4.3+ | `test/util.test.mjs` — saf mantık birim testleri (toplam 18 test) |
 | 2026-09-22 | §3.3 | `meta.js`'e yıl + stüdyo; onyıl filtresi, yıl sıralaması, kartta yıl, detayda Japonca başlık |
 | 2026-09-22 | §2.1.2 | Poster öneki sabite alındı + tür/stüdyo dizinlendi: `meta.js` ham 923→506 KB |
+| 2026-09-22 | CI | Duman testi hermetik hâle getirildi (üçüncü taraf istekleri engelli, `networkidle` yerine `domcontentloaded`) |
