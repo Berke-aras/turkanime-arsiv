@@ -85,7 +85,76 @@ async function run(page, base) {
   await page.waitForTimeout(600);
   const hash = await page.evaluate(() => location.hash);
   const kartSonra = await page.locator('.card').count();
-  check('§1.2 detayda arama listeye dönüyor', hash === '#/' && kartSonra > 0, `hash=${hash} kart=${kartSonra}`);
+  check('§1.2 detayda arama listeye dönüyor', /^#\/(\?|$)/.test(hash) && kartSonra > 0, `hash=${hash} kart=${kartSonra}`);
+
+  // --- §1.3: filtreler hash'te, paylaşılabilir ve yenilemeye dayanıklı ---
+  await page.goto(base + '/index.html', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.card');
+  await page.selectOption('#f-sort', 'puan');
+  await page.waitForTimeout(300);
+  const sortHash = await page.evaluate(() => location.hash);
+  check('§1.3 filtre hash\'e yazılıyor', /sort=puan/.test(sortHash), sortHash);
+  await page.goto(base + '/index.html#/?kategori=TV&sort=puan&sayfa=2', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.card');
+  const restored = await page.evaluate(() => ({
+    sort: document.getElementById('f-sort').value,
+    kategori: document.getElementById('f-kategori').value,
+    kart: document.querySelectorAll('.grid:not(.recent-grid) .card').length,
+  }));
+  check('§1.3 hash yenilemede durumu geri yüklüyor',
+    restored.sort === 'puan' && restored.kategori === 'TV' && restored.kart === 120,
+    JSON.stringify(restored));
+
+  // --- §1.3 + §1.6: detaydan geri dönünce kaydırma konumu korunur, detaya girince başa gider ---
+  // filtreli hash kullanılıyor: filtresiz ana sayfada "Son bakılanlar" şeridi detay ziyaretinden
+  // sonra büyüyüp listeyi aşağı kaydırdığı için piksel karşılaştırması anlamsız olurdu.
+  await page.goto(base + '/index.html#/?kategori=TV&sayfa=3', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.card');
+  // html'de scroll-behavior:smooth var; kaydırma oturana kadar bekle
+  await page.evaluate(() => window.scrollTo(0, 1500));
+  await page.waitForFunction(() => Math.abs(window.scrollY - 1500) < 2, null, { timeout: 5000 });
+  const oncekiY = await page.evaluate(() => window.scrollY);
+  const slug = await page.locator('.grid:not(.recent-grid) .card').nth(20).getAttribute('data-slug');
+  await page.evaluate(s => { location.hash = '#/anime/' + s; }, slug);
+  await page.waitForSelector('.ep, .detail', { timeout: 20000 });
+  const detayY = await page.evaluate(() => window.scrollY);
+  check('§1.6 detay sayfası başa kaydırıyor', detayY < 50, 'scrollY=' + detayY);
+  await page.goBack();
+  await page.waitForSelector('.card');
+  await page.waitForTimeout(400);
+  const geriDonus = await page.evaluate(() => ({ y: window.scrollY, kart: document.querySelectorAll('.grid:not(.recent-grid) .card').length }));
+  check('§1.3 geri dönüşte konum ve kart sayısı korunuyor',
+    Math.abs(geriDonus.y - oncekiY) < 60 && geriDonus.kart === 180,
+    `${JSON.stringify(geriDonus)} beklenen y≈${oncekiY}`);
+
+  // --- §1.4: tersten sıralamada "Sonraki" ekrandaki yönü izliyor ---
+  await page.goto(base + '/index.html#/anime/beck', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#ep-reverse');
+  const epNo = async () => (await page.locator('#player-modal-eplabel').textContent()).trim();
+  const oynat = async () => {
+    await page.locator('.ep[data-i="5"] .ep-head').click();
+    await page.waitForTimeout(300);
+    await page.locator('.ep[data-i="5"] .ep-links [data-embed-url]').first().click();
+    await page.waitForTimeout(300);
+  };
+  await oynat();
+  const duz = await epNo();
+  await page.locator('#player-modal-next').click();
+  await page.waitForTimeout(500);
+  const duzSonraki = await epNo();
+  check('§1.4 düz sırada "Sonraki" bir ileri gidiyor', duz === '6 / 26' && duzSonraki === '7 / 26', `${duz} -> ${duzSonraki}`);
+  await page.locator('#player-modal-close').click();
+  await page.locator('#ep-reverse').click();
+  await page.waitForTimeout(300);
+  await oynat();
+  await page.locator('#player-modal-next').click();
+  await page.waitForTimeout(500);
+  const tersSonraki = await epNo();
+  check('§1.4 tersten sırada "Sonraki" listede aşağı gidiyor', tersSonraki === '5 / 26', `6 / 26 -> ${tersSonraki}`);
+  const prevBaslik = await page.locator('#player-modal-prev').getAttribute('title');
+  check('§1.4 buton başlığı hedef bölümü söylüyor', /Önceki: .+Bölüm/.test(prevBaslik || ''), prevBaslik);
+  await page.locator('#player-modal-close').click();
+  await page.locator('#ep-reverse').click(); // varsayılana dön (localStorage'da kalıcı)
 
   // --- yasal sayfası ---
   await page.goto(base + '/index.html#/yasal', { waitUntil: 'networkidle' });

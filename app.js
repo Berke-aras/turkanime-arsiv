@@ -263,8 +263,7 @@ function openPlayerModal(url, epIndex = null, direct = null) {
   currentEpIndex = epIndex;
   const ep = epIndex != null ? currentEpisodes[epIndex] : null;
   playerEpLabel.textContent = ep ? `${epIndex + 1} / ${currentEpisodes.length}` : '';
-  playerPrevBtn.disabled = epIndex == null || epIndex <= 0;
-  playerNextBtn.disabled = epIndex == null || epIndex >= currentEpisodes.length - 1;
+  syncEpNavButtons();
   // bazı sağlayıcılar sandbox içinde hiç yüklenmeyebilir; uzun sürerse "ayrı sayfada aç"ı hatırlat.
   playerLoadTimer = setTimeout(() => { playerLoadingHint.hidden = false; }, 8000);
 }
@@ -385,7 +384,7 @@ function fallbackToEmbed(player, embedUrl) {
   }
 }
 let directToken = 0;
-playerVideo.addEventListener('ended', () => { if (currentEpIndex != null && currentEpIndex < currentEpisodes.length - 1) playerNextBtn.click(); });
+playerVideo.addEventListener('ended', () => { if (!playerNextBtn.disabled) playerNextBtn.click(); });
 playerVideo.addEventListener('error', () => { if (playerVideo.hidden || !playerVideo.getAttribute('src')) return; fallbackToEmbed(currentDirectPlayer, playerNewTab.href); });
 function closePlayerModal() {
   playerModal.hidden = true;
@@ -453,12 +452,25 @@ function openEpisode(epEl) {
   const preferred = [...groups.entries()].find(([, ls]) => ls.some(l => !OLU(l.tip) && directParams(l)));
   if (preferred) linksEl.querySelector(`.fansub-chip[data-fansub="${CSS.escape(preferred[0])}"]`).click();
 }
+// ileri/geri butonlarının durumunu ve "hangi bölüme gider" başlığını tazeler
+function syncEpNavButtons() {
+  for (const [btn, dir, ad] of [[playerPrevBtn, -1, 'Önceki'], [playerNextBtn, 1, 'Sonraki']]) {
+    const i = neighborEp(dir);
+    btn.disabled = !hasEp(i);
+    btn.title = btn.disabled ? `${ad} bölüm yok` : `${ad}: ${currentEpisodes[i].ad}`;
+  }
+}
 // bölümün önerilen (reklamsız) butonu varsa onu döndürür
 const directBtnOf = epEl => epEl.querySelector('.link-btn.direct');
 document.getElementById('player-modal-close').addEventListener('click', closePlayerModal);
 document.getElementById('player-modal-backdrop').addEventListener('click', closePlayerModal);
-playerPrevBtn.addEventListener('click', () => { if (currentEpIndex > 0) jumpToEpisode(currentEpIndex - 1); });
-playerNextBtn.addEventListener('click', () => { if (currentEpIndex < currentEpisodes.length - 1) jumpToEpisode(currentEpIndex + 1); });
+// "Önceki"/"Sonraki" ekrandaki sırayı izler: liste tersten gösteriliyorsa (epReverse) "Sonraki"
+// veri dizisinde bir geriye gider, böylece buton yönü listede gördüğün yönle aynı olur.
+const epStep = () => (epReverse ? -1 : 1);
+const neighborEp = dir => currentEpIndex == null ? -1 : currentEpIndex + dir * epStep();
+const hasEp = i => i >= 0 && i < currentEpisodes.length;
+playerPrevBtn.addEventListener('click', () => { const i = neighborEp(-1); if (hasEp(i)) jumpToEpisode(i); });
+playerNextBtn.addEventListener('click', () => { const i = neighborEp(1); if (hasEp(i)) jumpToEpisode(i); });
 window.addEventListener('keydown', e => {
   if (playerModal.hidden) return;
   if (e.key === 'Escape') closePlayerModal();
@@ -471,6 +483,66 @@ const loadedScripts = new Map();
 const LOADED_CAP = 40;
 const PAGE_SIZE = 60;
 const state = { query: '', page: 1, kategori: '', tur: '', sort: 'isim', favOnly: false };
+
+// Liste görünümünün tamamı hash'te taşınır: #/?q=naruto&kategori=TV&tur=Aksiyon&sort=puan&fav=1&sayfa=3
+// Böylece filtrelenmiş bir görünüm paylaşılabilir, yenilemede ve geri tuşunda kaybolmaz.
+const isListHash = h => !h || h === '#' || h === '#/' || h.startsWith('#/?');
+function listHash() {
+  const p = new URLSearchParams();
+  if (state.query) p.set('q', state.query);
+  if (state.kategori) p.set('kategori', state.kategori);
+  if (state.tur) p.set('tur', state.tur);
+  if (state.sort !== 'isim') p.set('sort', state.sort);
+  if (state.favOnly) p.set('fav', '1');
+  if (state.page > 1) p.set('sayfa', String(state.page));
+  const qs = p.toString();
+  return qs ? `#/?${qs}` : '#/';
+}
+function parseListHash(hash) {
+  const qs = new URLSearchParams(hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '');
+  state.query = qs.get('q') || '';
+  state.kategori = qs.get('kategori') || '';
+  state.tur = qs.get('tur') || '';
+  state.sort = ['isim', 'puan', 'eps'].includes(qs.get('sort')) ? qs.get('sort') : 'isim';
+  state.favOnly = qs.get('fav') === '1';
+  state.page = Math.max(1, Number(qs.get('sayfa')) || 1);
+  if (searchEl.value !== state.query) searchEl.value = state.query;
+}
+// filtre değişiminde her tuş vuruşu için yeni geçmiş girdisi açma; sadece adresi tazele
+function syncListHash() {
+  const h = listHash();
+  if (location.hash !== h) history.replaceState(history.state, '', h);
+}
+// Listeden detaya geçerken kaydırma konumunu sakla, geri dönünce aynı yere koy.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+// html'de scroll-behavior:smooth var; rota geçişlerinde sayfanın animasyonla kayması yerine
+// anında yerine oturması gerekiyor (eski ve yeni sayfa arasında görünür bir kayma olmasın).
+function jumpTo(y) {
+  const el = document.documentElement;
+  const onceki = el.style.scrollBehavior;
+  el.style.scrollBehavior = 'auto';
+  window.scrollTo(0, y);
+  el.style.scrollBehavior = onceki;
+}
+const SCROLL_KEY = 'ta_list_scroll';
+function writeListScroll(hash) {
+  try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ h: hash, y: window.scrollY })); } catch (e) { /* kota/gizli mod */ }
+}
+// Kaydırma sırasında kısıtlı yazım: sayfa yenilenirse konum kaybolmasın diye.
+let scrollSaveTimer = 0;
+function saveListScroll() {
+  if (!isListHash(location.hash) || scrollSaveTimer) return;
+  scrollSaveTimer = setTimeout(() => {
+    scrollSaveTimer = 0;
+    if (isListHash(location.hash)) writeListScroll(location.hash);
+  }, 120);
+}
+function restoreListScroll() {
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem(SCROLL_KEY) || 'null'); } catch (e) { /* yok say */ }
+  const y = saved && saved.h === location.hash ? saved.y : 0;
+  requestAnimationFrame(() => jumpTo(y));
+}
 
 function loadScript(slug) {
   if (loadedScripts.has(slug)) return Promise.resolve();
@@ -534,10 +606,11 @@ function filterBarHtml(count) {
 }
 
 function wireFilterBar() {
-  document.getElementById('f-kategori').addEventListener('change', e => { state.kategori = e.target.value; state.page = 1; renderList(); });
-  document.getElementById('f-tur').addEventListener('change', e => { state.tur = e.target.value; state.page = 1; renderList(); });
-  document.getElementById('f-sort').addEventListener('change', e => { state.sort = e.target.value; state.page = 1; renderList(); });
-  document.getElementById('f-fav').addEventListener('change', e => { state.favOnly = e.target.checked; state.page = 1; renderList(); });
+  const apply = fn => e => { fn(e); state.page = 1; syncListHash(); renderList(); };
+  document.getElementById('f-kategori').addEventListener('change', apply(e => { state.kategori = e.target.value; }));
+  document.getElementById('f-tur').addEventListener('change', apply(e => { state.tur = e.target.value; }));
+  document.getElementById('f-sort').addEventListener('change', apply(e => { state.sort = e.target.value; }));
+  document.getElementById('f-fav').addEventListener('change', apply(e => { state.favOnly = e.target.checked; }));
 }
 
 function renderList() {
@@ -614,6 +687,7 @@ function renderList() {
     if (e.target.closest('#load-more') == null) return;
     const from = state.page * PAGE_SIZE;
     state.page++;
+    syncListHash();
     const tpl = document.createElement('template');
     tpl.innerHTML = items.slice(from, state.page * PAGE_SIZE).map(cardHtml).join('');
     wireCards(tpl.content);
@@ -739,6 +813,7 @@ async function renderDetail(slug, token) {
   if (revBtn) revBtn.addEventListener('click', () => {
     epReverse = !epReverse; writeLS('ta_eprev', epReverse);
     revBtn.classList.toggle('active', epReverse);
+    if (!playerModal.hidden) syncEpNavButtons(); // modal açıkken yön değişirse butonlar tazelensin
     epListEl.innerHTML = epListHtml();
     const epSearchEl = document.getElementById('ep-search');
     if (epSearchEl && epSearchEl.value) epSearchEl.dispatchEvent(new Event('input'));
@@ -828,10 +903,12 @@ function route() {
   const token = ++routeToken;
   if (!playerModal.hidden) closePlayerModal(); // geri tuşuyla sayfa değişince modal açık kalmasın
   const hash = location.hash || '#/';
-  if (hash === '#/yasal') { renderLegal(); return; }
+  if (hash === '#/yasal') { renderLegal(); jumpTo(0); return; }
   const m = hash.match(/^#\/anime\/(.+)$/);
-  if (m) renderDetail(decodeURIComponent(m[1]), token);
-  else renderList();
+  if (m) { renderDetail(decodeURIComponent(m[1]), token); jumpTo(0); return; }
+  parseListHash(hash);
+  renderList();
+  restoreListScroll(); // listeye geri dönüldüyse eski kaydırma konumu, değilse başa
 }
 
 let t;
@@ -841,8 +918,8 @@ searchEl.addEventListener('input', () => {
     state.query = searchEl.value;
     state.page = 1;
     // detay ya da yasal sayfasındayken yazılırsa listeye dön; hash değişimi route() -> renderList() tetikler
-    if (location.hash && location.hash !== '#/') location.hash = '#/';
-    else renderList();
+    if (!isListHash(location.hash)) location.hash = listHash();
+    else { syncListHash(); renderList(); }
   }, 150);
 });
 document.getElementById('random-btn').addEventListener('click', pickRandomAnime);
@@ -852,10 +929,21 @@ if (!IS_TR) {
   nav.title = nav.ariaLabel = 'Privacy & Legal';
   document.getElementById('footer-legal').textContent = 'Privacy & Legal Notice';
 }
+// route()'tan ÖNCE kayıt: bu noktada sayfa hâlâ listenin konumunda duruyor.
+window.addEventListener('hashchange', e => {
+  const eski = e.oldURL ? e.oldURL.slice(e.oldURL.indexOf('#')) : '';
+  if (isListHash(eski) && eski !== location.hash) {
+    clearTimeout(scrollSaveTimer); scrollSaveTimer = 0;
+    writeListScroll(eski || '#/');
+  }
+});
 window.addEventListener('hashchange', route);
 
 const topBtn = document.getElementById('top-btn');
-window.addEventListener('scroll', () => { topBtn.classList.toggle('show', window.scrollY > 500); }, { passive: true });
+window.addEventListener('scroll', () => {
+  topBtn.classList.toggle('show', window.scrollY > 500);
+  saveListScroll();
+}, { passive: true });
 topBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

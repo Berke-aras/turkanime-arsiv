@@ -64,7 +64,7 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   hash `#/` değilse `location.hash = '#/'` (route() -> renderList() tetikler), değilse doğrudan
   `renderList()`. Yasal sayfası için de çalışır. Duman testi: detaydayken yazınca `hash=#/`, 60 kart.
 
-### 1.3 Geri tuşunda liste konumu ve filtreler kayboluyor
+### 1.3 Geri tuşunda liste konumu ve filtreler kayboluyor — **(TAMAM)**
 - **Dosya:** `app.js:822` `route()`, `app.js:468` `state`
 - **Sorun:** Filtre/sıralama/arama yalnız bellekteki `state`'te. Detaydan geri dönünce sayfa en üste
   atıyor; sekme yenilenirse tüm filtreler sıfırlanıyor; filtrelenmiş bir görünüm paylaşılamıyor.
@@ -75,8 +75,15 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   2. Listeden detaya giderken `sessionStorage`'a `scrollY` yaz, listeye dönünce geri yükle.
      `history.scrollRestoration = 'manual'` kur.
 - **Kabul:** 5. sayfaya kadar yükle → bir animeye gir → geri → aynı kaydırma konumu ve aynı kart sayısı.
+- **Yapıldı (2026-09-22):** `listHash()` / `parseListHash()` / `syncListHash()` eklendi; hash artık
+  `#/?q=&kategori=&tur=&sort=&fav=1&sayfa=N` taşıyor, filtre çubuğu ve "daha fazla yükle"
+  `history.replaceState` ile adresi tazeliyor (geçmiş kirlenmiyor). Kaydırma konumu
+  `sessionStorage['ta_list_scroll']`'da; `history.scrollRestoration = 'manual'`.
+  **Ek bulgu:** kısıtlı (throttle) kaydırma yazımı, kullanıcı kaydırmanın hemen ardından bir karta
+  tıklayınca son konumu kaçırıyordu — `hashchange`'in `oldURL`'ü kullanılarak rota değişiminden önce
+  senkron yazım eklendi. Testte konum piksel isabetli dönüyor (1500 → 1500).
 
-### 1.4 Ters sıralamada "sonraki bölüm" yanlış yöne gidiyor
+### 1.4 Ters sıralamada "sonraki bölüm" yanlış yöne gidiyor — **(TAMAM)**
 - **Dosya:** `app.js:394` `jumpToEpisode()`, modal ileri/geri butonları
 - **Sorun:** Gezinme `currentEpisodes` dizisindeki indeksle yapılıyor, ekrandaki sırayla değil.
   "Tersten" açıkken (`epReverse`) "Sonraki" listede yukarıdaki bölümü açıyor.
@@ -84,6 +91,11 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
   bu dizide yürüsün. Ya da daha basiti: modal açıkken `epReverse`'ü dikkate alıp adımı `±1` yerine
   `epReverse ? -1 : +1` yap ve buton etiketlerini de ona göre çevir.
 - **Kabul:** Tersten açıkken "Sonraki" bir sonraki bölüm numarasına (yani listede aşağıya) gider.
+- **Yapıldı (2026-09-22):** `epStep()` / `neighborEp()` / `hasEp()` yardımcıları; adım
+  `epReverse ? -1 : +1`. Buton durumları tek yerden (`syncEpNavButtons()`) tazeleniyor ve
+  `title` artık hedef bölümün adını yazıyor ("Sonraki: BECK 7. Bölüm"), böylece yön hiç
+  belirsiz kalmıyor. Modal açıkken "Tersten" düğmesine basılırsa butonlar yeniden senkronlanıyor.
+  Video bitince otomatik geçiş de aynı yönü izliyor.
 
 ### 1.5 Service Worker sınırsız büyüyor ve güncellemeyi geciktiriyor
 - **Dosya:** `sw.js`
@@ -102,11 +114,17 @@ bölümüne tarihiyle yazılır. Her madde ayrı commit olarak `main`'e gider; �
 - **Kabul:** DevTools → Application → Cache Storage'da veri cache'i 40 girişi aşmaz; `index.html`
   değişikliği ilk yenilemede görünür.
 
-### 1.6 `#/yasal` ve detay sayfaları sayfa başına kaydırmıyor
+### 1.6 `#/yasal` ve detay sayfaları sayfa başına kaydırmıyor — **(TAMAM)**
 - **Dosya:** `app.js:822` `route()`
 - **Sorun:** Listenin ortasından bir animeye tıklayınca detay sayfası ortadan açılıyor.
 - **Yapılacak:** `route()` içinde, geri navigasyonu değilse `window.scrollTo(0,0)` (1.3'teki
   scroll restore ile birlikte kurgula).
+- **Yapıldı (2026-09-22):** `route()` detay ve yasal için `jumpTo(0)`, liste için
+  `restoreListScroll()` çağırıyor.
+  **Ek bulgu:** `style.css:22`'de `html{scroll-behavior:smooth}` global olduğundan rota geçişindeki
+  `scrollTo` animasyonla çalışıyor, sayfalar arasında görünür bir kayma oluyordu. `jumpTo()`
+  yardımcısı kaydırma sırasında `scroll-behavior`'ı geçici olarak `auto` yapıyor; `#top-btn`'in
+  yumuşak kaydırması korundu.
 
 ---
 
@@ -533,3 +551,6 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §1.1 | `tip:"yol"` linkleri artık pasif basılıyor (1.708 kırık iframe linki) |
 | 2026-09-22 | §1.2 | Detay/yasal sayfasında arama kutusu listeye dönüyor |
 | 2026-09-22 | altyapı | `scripts/smoke-test.js` — Playwright tabanlı tarayıcı duman testi eklendi |
+| 2026-09-22 | §1.3 | Liste durumu hash'te (paylaşılabilir/yenilemeye dayanıklı) + kaydırma konumu korunuyor |
+| 2026-09-22 | §1.4 | Ters sıralamada ileri/geri ekrandaki yönü izliyor, buton başlığı hedef bölümü söylüyor |
+| 2026-09-22 | §1.6 | Rota geçişleri sayfa başına, animasyonsuz kaydırıyor |
