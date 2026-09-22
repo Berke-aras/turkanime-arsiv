@@ -869,9 +869,22 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
     köşesinde tik rozeti var.
   - Araç çubuğunda "3 / 26 izlendi" rozeti; tıklanınca o anime için işaretler temizleniyor.
 
-### 7.3 Favorileri/geçmişi dışa-içe aktarma
+### 7.3 Favorileri/geçmişi dışa-içe aktarma — **(TAMAM)**
+- **Dosya:** `js/yedek.js` (mantık) + `js/views/legal.js` (arayüz), `test/yedek.test.mjs` (7 test)
 - Tüm veri `localStorage`'da ve tarayıcı verisi temizlenince gidiyor (yasal metinde de böyle yazıyor).
-  Tek düğmeyle JSON indir / JSON yükle. Sunucu gerekmez, gizlilik duruşu bozulmaz.
+  `#/yasal` sayfasına "Verilerini yedekle" kutusu eklendi: **JSON indir** / **JSON yükle**.
+  Sunucu gerekmiyor, gizlilik duruşu bozulmuyor.
+- **Yedeğe giren anahtarlar:** `ta_favs`, `ta_recent`, `ta_progress`, `ta_eprev`, `ta_epizgara`,
+  `ta_tema`, `ta_ses`, `ta_sessiz`, `ta_hiz`. Dosya biçimi:
+  `{ uygulama: "turkanime-arsiv", surum: 1, tarih, veri: {...} }`.
+- **Geri yükleme üzerine yazmaz, birleştirir** — asıl tasarım kararı bu:
+  - favoriler ve "son bakılanlar": birleşim (geçmişte yedekteki sıra öne alınıp 16'ya kırpılıyor),
+  - ilerleme: kayıt başına `u` (son güncelleme) büyük olan konum kazanıyor, **`izlendi` işaretleri
+    birleşiyor** — iki cihazda izlenmiş bölümlerin hiçbiri kaybolmuyor,
+  - tercihler (tema, hız, ses…): yedektekiler uygulanıyor (kullanıcının açık isteği).
+  Böylece iki cihaz arasında dosya gidip gelse de veri kaybı olmuyor.
+- Birleştirme (`birlestir`) saf fonksiyon: DOM'a ve `localStorage`'a dokunmuyor, Node'da doğrudan
+  test ediliyor. Bozuk/yabancı dosya anlaşılır hata veriyor, kısmi yazma yapılmıyor.
 
 ### 7.4 Gerçek URL'ler (SEO) — **(YAPILMAYACAK)**
 - **Ölçüm:** `sitemap.xml`'de **tek bir URL** var (ana sayfa). 6107 animenin hiçbiri aranabilir değil,
@@ -926,7 +939,9 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   §7.4'teki 1–4. adımlar olduğu gibi uygulanabilir ve ziyaretçi sayısındaki asıl sıçrama o zaman olur.
 
 ### 7.5 Diğer
-- Klavye kısayolu `/` ile arama kutusuna odaklan.
+- ~~Klavye kısayolu `/` ile arama kutusuna odaklan.~~ **(TAMAM)** `js/main.js`; `Esc` odaktan
+  çıkarıyor. Bir alana yazarken ve oynatıcı modalı açıkken devre dışı. Kutunun sağında
+  görünen `/` rozeti yalnız fare/klavye olan geniş ekranlarda çıkıyor.
 - Fansub'a göre filtre (veride `fansub` alanı var, hiç kullanılmıyor — "sadece TAÇE çevirileri").
 - "Rastgele" butonuna filtre duyarlılığı zaten var (`pickRandomAnime`, `app.js:91`) — iyi.
 
@@ -961,12 +976,18 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 18. §7.4 gerçek URL'ler + sitemap — **(YAPILMAYACAK)**, bkz. §7.4
 19. ~~§4.4.1 resolver köken kısıtlaması~~ (kod hazır; **deploy bekliyor**, bkz. §4.4)
 20. ~~§7.6 keşfedilebilirlik~~ — repodaki kısım bitti; About/topics/Search Console elle
-21. §4.4 ODNOKLASSNIKI resolver'ı (en yaygın sağlayıcı, 8721 link)
+21. ~~§7.3 yedek al / geri yükle~~ + ~~§7.5 "/" kısayolu~~
 
 **Tur 6 — performans** — TAMAM (kalan iki madde isteğe bağlı)
 22. ~~§2.2 açılış hazırlığı~~ + ~~§2.3 arama~~ → `naruto` 31.6 → 1.0 ms
 23. ~~§2.1.4 sanal liste (`content-visibility`)~~ → 1560 kartta düzen maliyeti −%60
 24. §2.1.3 bölünmüş veri / tek `index.json` · 25. §2.1.5 Google Fonts render-blocking
+
+**Kalanlar (öncelik sırasıyla)**
+26. §4.4 ODNOKLASSNIKI resolver'ı (8721 link, en yaygın sağlayıcı) — **sıradaki en büyük iş**
+27. §4.4.1 resolver deploy'u (kod hazır, canlıya alınmayı bekliyor)
+28. §7.6'nın elle yapılacakları (About, topics, Search Console)
+29. §2.1.3 · §2.1.5 · §7.5'in kalan iki maddesi (fansub filtresi)
 
 ---
 
@@ -1020,3 +1041,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §7.6 | Keşfedilebilirlik: başlık/meta/yapısal veri, zengin `noscript`, README (SSS + English); elle yapılacaklar listelendi |
 | 2026-09-22 | §2.2 + §2.3 | Tembel arama anahtarı, iki aşamalı arama, tek `Intl.Collator`: `naruto` 31.6 → 1.0 ms, ilk kart 274 → 233 ms |
 | 2026-09-22 | §2.1.4 | Kartlara `content-visibility:auto`: 1560 kartta düzen maliyeti −%60 |
+| 2026-09-22 | §7.3 + §7.5 | JSON yedek al / birleştirerek geri yükle (7 birim + 6 duman testi), "/" arama kısayolu |

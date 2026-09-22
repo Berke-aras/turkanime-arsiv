@@ -1,6 +1,7 @@
 // Yasal ve gizlilik metni (#/yasal). İki dilde; tarayıcı dili Türkçe değilse İngilizce öne alınır.
 import { ic, IS_TR } from '../util.js';
 import { app, fadeApp } from '../dom.js';
+import { indir, yukle } from '../yedek.js';
 
 function renderLegal() {
   document.title = IS_TR ? 'Gizlilik & Yasal · TürkAnime Arşivi' : 'Privacy & Legal · TürkAnime Arşivi';
@@ -38,16 +39,72 @@ function renderLegal() {
       <p>Bir içeriğin veya bağlantının hak sahibiysen ve kaldırılmasını istiyorsan, lütfen
         <a href="https://github.com/Berke-aras/turkanime-arsiv/issues/new" target="_blank" rel="noopener noreferrer">GitHub üzerinden bir issue açarak</a>
         ilgili anime/bölüm/link bilgisini ilet; talep incelenip en kısa sürede kaldırılır.</p>`;
+  // §7.3: veri tamamen tarayıcıda durduğu için tarayıcı verisi temizlenince gidiyor.
+  // Yedek alma/geri yükleme bu sayfada duruyor, çünkü metnin kendisi "veri sende kalıyor" diyor.
+  const yedek = IS_TR ? `
+      <h3>Verilerini yedekle</h3>
+      <p>Favorilerin, son bakılanların ve kaldığın bölümler yalnızca bu tarayıcıda duruyor;
+        tarayıcı verisini temizlediğinde ya da başka bir cihaza geçtiğinde kaybolurlar.
+        Aşağıdan tek dosyaya indirip başka bir cihazda geri yükleyebilirsin. Geri yükleme
+        <strong>üzerine yazmaz, birleştirir</strong>: mevcut favorilerin ve izleme işaretlerin silinmez.</p>`
+    : `
+      <h3>Back up your data</h3>
+      <p>Your favorites, recently viewed list and playback positions live only in this browser;
+        clearing browser data or switching devices loses them. Download them as a single file here
+        and restore it on another device. Restoring <strong>merges</strong> rather than overwrites —
+        nothing you already have is deleted.</p>`;
+
   // tarayıcı dili Türkçe değilse İngilizce bölüm üstte gelir
   app.innerHTML = `
     <a class="back" href="#/">${ic('arrow-left')}${IS_TR ? 'Listeye dön' : 'Back to list'}</a>
     <div class="legal">
       ${IS_TR ? tr : en}
 
+      <div class="veri-kutu">
+        ${yedek}
+        <div class="veri-btnlar">
+          <button type="button" id="veri-indir" class="link-btn">${ic('download')}${IS_TR ? 'JSON indir' : 'Download JSON'}</button>
+          <button type="button" id="veri-yukle-btn" class="link-btn">${ic('upload')}${IS_TR ? 'JSON yükle' : 'Restore JSON'}</button>
+          <input type="file" id="veri-dosya" accept="application/json,.json" hidden>
+        </div>
+        <p id="veri-durum" class="veri-durum" role="status" aria-live="polite"></p>
+      </div>
+
       <hr class="legal-sep">
       ${IS_TR ? en : tr}
     </div>`;
   fadeApp();
+  wireYedek();
+}
+
+function wireYedek() {
+  const durum = document.getElementById('veri-durum');
+  const dosya = document.getElementById('veri-dosya');
+  const yaz = (metin, hata = false) => {
+    durum.textContent = metin;
+    durum.classList.toggle('veri-hata', hata);
+  };
+  document.getElementById('veri-indir').addEventListener('click', () => {
+    indir();
+    yaz(IS_TR ? 'Yedek dosyası indirildi.' : 'Backup file downloaded.');
+  });
+  document.getElementById('veri-yukle-btn').addEventListener('click', () => dosya.click());
+  dosya.addEventListener('change', async () => {
+    const f = dosya.files && dosya.files[0];
+    if (!f) return;
+    try {
+      const ozet = await yukle(f);
+      yaz(IS_TR
+        ? `Geri yüklendi: ${ozet.favori} yeni favori, ${ozet.gecmis} yeni geçmiş kaydı, ${ozet.ilerleme} izleme kaydı. Sayfa yenileniyor…`
+        : `Restored: ${ozet.favori} new favorites, ${ozet.gecmis} history entries, ${ozet.ilerleme} playback records. Reloading…`);
+      // Favori kümesi, geçmiş ve ilerleme kayıtları modül seviyesinde tutuluyor; en temizi tazelemek.
+      setTimeout(() => location.reload(), 1200);
+    } catch (e) {
+      yaz(String((e && e.message) || e), true);
+    } finally {
+      dosya.value = '';
+    }
+  });
 }
 
 

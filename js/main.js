@@ -24,6 +24,22 @@ searchEl.addEventListener('input', () => {
 
 document.getElementById('random-btn').addEventListener('click', pickRandomAnime);
 
+// §7.5: "/" arama kutusuna odaklanır, Esc odaktan çıkarır. Bir alana yazarken ya da
+// oynatıcı modalı açıkken devreye girmiyor (modal kendi kısayollarını kullanıyor).
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const hedef = e.target;
+  const yaziyor = hedef && (hedef.tagName === 'INPUT' || hedef.tagName === 'TEXTAREA' || hedef.tagName === 'SELECT' || hedef.isContentEditable);
+  const modalAcik = !document.getElementById('player-modal').hidden;
+  if (e.key === '/' && !yaziyor && !modalAcik) {
+    e.preventDefault();
+    searchEl.focus();
+    searchEl.select();
+  } else if (e.key === 'Escape' && hedef === searchEl) {
+    searchEl.blur();
+  }
+});
+
 if (!IS_TR) {
   const nav = document.getElementById('legal-link');
   nav.querySelector('span').textContent = 'Privacy & Legal';

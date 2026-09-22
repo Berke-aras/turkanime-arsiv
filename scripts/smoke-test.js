@@ -14,6 +14,7 @@
 'use strict';
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -239,6 +240,87 @@ async function oynaticiTestleri(browser, base) {
 
 // §7.1 / §7.2: izleme konumu ve izlendi işareti. Gerçek <video> gerektiği için resolver
 // yerel test videosuna yönlendiriliyor (oynatıcı testleriyle aynı yöntem).
+// §7.3 yedek indirme / geri yükleme + §7.5 "/" kısayolu.
+async function yedekTestleri(browser, base) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
+  const p = await ctx.newPage();
+  await p.route('**/*', r => {
+    const host = new URL(r.request().url()).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+  await p.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.card');
+
+  // --- §7.5: "/" arama kutusuna odaklanıyor ---
+  await p.evaluate(() => document.body.focus());
+  await p.keyboard.press('/');
+  const odak = await p.evaluate(() => document.activeElement && document.activeElement.id);
+  check('§7.5 "/" arama kutusuna odaklanıyor', odak === 'search', odak);
+  const yazilan = await p.evaluate(() => document.getElementById('search').value);
+  check('§7.5 "/" karakteri kutuya yazılmıyor', yazilan === '', JSON.stringify(yazilan));
+  await p.keyboard.press('Escape');
+  const odakSonra = await p.evaluate(() => document.activeElement && document.activeElement.id);
+  check('§7.5 Esc odaktan çıkarıyor', odakSonra !== 'search', String(odakSonra));
+
+  // --- §7.3: veri yaz, yedeği indir ---
+  await p.evaluate(() => {
+    localStorage.setItem('ta_favs', JSON.stringify(['beck', 'naruto']));
+    localStorage.setItem('ta_recent', JSON.stringify(['beck']));
+    localStorage.setItem('ta_progress', JSON.stringify({ beck: { ep: 3, t: 120, d: 1400, u: 500, izlendi: [0, 1] } }));
+    localStorage.setItem('ta_tema', '"acik"');
+  });
+  await p.goto(base + '/index.html#/yasal', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('#veri-indir');
+  const [indirme] = await Promise.all([p.waitForEvent('download'), p.click('#veri-indir')]);
+  const yol = await indirme.path();
+  const yedek = JSON.parse(fs.readFileSync(yol, 'utf8'));
+  check('§7.3 yedek dosyası indiriliyor',
+    yedek.uygulama === 'turkanime-arsiv' && Array.isArray(yedek.veri.ta_favs) && yedek.veri.ta_favs.includes('beck'),
+    indirme.suggestedFilename());
+  check('§7.3 yedekte izleme kaydı da var',
+    !!(yedek.veri.ta_progress && yedek.veri.ta_progress.beck && yedek.veri.ta_progress.beck.ep === 3),
+    JSON.stringify(yedek.veri.ta_progress));
+
+  // --- §7.3: farklı veriyle geri yükleme birleştiriyor, ezmiyor ---
+  await p.evaluate(() => {
+    localStorage.setItem('ta_favs', JSON.stringify(['one-piece']));
+    localStorage.setItem('ta_progress', JSON.stringify({ beck: { ep: 9, t: 5, d: 1400, u: 9000, izlendi: [8] } }));
+  });
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('#veri-indir');
+  await p.setInputFiles('#veri-dosya', yol);
+  await p.waitForFunction(() => /Geri yüklendi|Restored/.test(document.getElementById('veri-durum').textContent), null, { timeout: 5000 })
+    .catch(() => {});
+  const durumMetni = await p.evaluate(() => document.getElementById('veri-durum').textContent);
+  await p.waitForTimeout(1800); // arayüz kendini tazeliyor
+  const sonrasi = await p.evaluate(() => ({
+    favs: JSON.parse(localStorage.getItem('ta_favs') || '[]'),
+    prog: JSON.parse(localStorage.getItem('ta_progress') || '{}').beck,
+  }));
+  check('§7.3 geri yükleme favorileri birleştiriyor',
+    sonrasi.favs.includes('one-piece') && sonrasi.favs.includes('beck') && sonrasi.favs.includes('naruto'),
+    sonrasi.favs.join(', '));
+  check('§7.3 geri yükleme cihazdaki yeni konumu ezmiyor, işaretleri birleştiriyor',
+    sonrasi.prog && sonrasi.prog.ep === 9 && JSON.stringify(sonrasi.prog.izlendi) === '[0,1,8]',
+    JSON.stringify(sonrasi.prog));
+  check('§7.3 kullanıcıya özet gösteriliyor', /Geri yüklendi|Restored/.test(durumMetni), durumMetni);
+
+  // --- §7.3: yanlış dosya anlaşılır hata veriyor ---
+  const kotuYol = path.join(os.tmpdir(), 'tka-kotu-yedek.json');
+  fs.writeFileSync(kotuYol, JSON.stringify({ uygulama: 'baska-sey', veri: {} }));
+  await p.goto(base + '/index.html#/yasal', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('#veri-indir');
+  await p.setInputFiles('#veri-dosya', kotuYol);
+  await p.waitForTimeout(400);
+  const hata = await p.evaluate(() => {
+    const el = document.getElementById('veri-durum');
+    return { metin: el.textContent, hataMi: el.classList.contains('veri-hata') };
+  });
+  check('§7.3 yabancı dosya reddediliyor', hata.hataMi && /yedeği değil|not a TürkAnime/.test(hata.metin), JSON.stringify(hata));
+  fs.unlinkSync(kotuYol);
+  await ctx.close();
+}
+
 async function ilerlemeTestleri(browser, base) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const p = await ctx.newPage();
@@ -962,6 +1044,7 @@ async function run(page, base) {
     await temaTestleri(browser, base);
     await oynaticiTestleri(browser, base);
     await ilerlemeTestleri(browser, base);
+    await yedekTestleri(browser, base);
   } finally {
     await browser.close();
     server.close();
