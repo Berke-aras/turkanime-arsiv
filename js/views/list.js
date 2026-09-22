@@ -7,7 +7,7 @@ import { listHash } from '../state.js';
 import { devamListesi } from '../progress.js';
 import { wireSeritler } from '../serit.js';
 import { getRecent } from '../store.js';
-import { cardHtml, wireCards, posterPlaceholder } from '../cards.js';
+import { cardHtml, wireCards, posterPlaceholder, SERIT_BOYUT } from '../cards.js';
 import { filterAndSort, pickRandomAnime } from '../search.js';
 import { PAGE_SIZE, state, syncListHash } from '../state.js';
 
@@ -47,6 +47,11 @@ function wireFilterBar() {
   document.getElementById('f-fav').addEventListener('change', apply(e => { state.favOnly = e.target.checked; }));
 }
 
+// §2.5 A3: ilk ekranda görünen kartlar `lazy` beklemesin. Sayı ekrana göre: masaüstünde ilk
+// satır ~7 kart, telefonda 2 sütun var. Telefonda 8 demek ekranın altındaki iki satırı da
+// indirmek olurdu (ölçüldü: +115 KB boşa trafik), o yüzden dar ekranda 4.
+const ONCELIKLI_KART = (typeof innerWidth === 'number' && innerWidth < 600) ? 4 : 8;
+
 // Yatay kaydırmalı kart şeridi. Ana sayfadaki keşif bölümlerinin tamamı bunu kullanıyor.
 function seritHtml(baslik, items, altBaslik = '') {
   if (!items.length) return '';
@@ -56,7 +61,7 @@ function seritHtml(baslik, items, altBaslik = '') {
       <h2 class="section-title">${esc(baslik)}${altBaslik ? `<span class="meta">${esc(altBaslik)}</span>` : ''}</h2>
       <div class="serit-sar">
         <button type="button" class="serit-ok serit-ok-sol" aria-label="Sola kaydır" hidden>${ic('chevron-left')}</button>
-        <div class="grid recent-grid">${items.map(cardHtml).join('')}</div>
+        <div class="grid recent-grid">${items.map(a => cardHtml(a, { boyut: SERIT_BOYUT })).join('')}</div>
         <button type="button" class="serit-ok serit-ok-sag" aria-label="Sağa kaydır" hidden>${ic('chevron-right')}</button>
       </div>
     </section>`;
@@ -126,7 +131,7 @@ function renderList() {
     if (featured) {
       featuredHtml = `
         <a class="featured" href="#/anime/${encodeURIComponent(featured.slug)}"${featured.poster ? ` style="--hero:url('${esc(featured.poster)}')"` : ''}>
-          ${posterPlaceholder(featured).replace('class="poster', 'class="featured-poster poster')}
+          ${posterPlaceholder(featured, 0, { oncelik: true }).replace('class="poster', 'class="featured-poster poster')}
           <div class="featured-info">
             <span class="badge tag-main">${ic('sparkles')}Günün Animesi</span>
             <h2>${esc(featured.baslik)}</h2>
@@ -191,7 +196,7 @@ function renderList() {
 
   const archiveTitleHtml = showHome ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
 
-  app.innerHTML = `${statsHtml}${featuredHtml}${devamHtml}${recentHtml}${enIyilerHtml}${janrHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map(cardHtml).join('')}</div>${pager}`;
+  app.innerHTML = `${statsHtml}${featuredHtml}${devamHtml}${recentHtml}${enIyilerHtml}${janrHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map((a, i) => cardHtml(a, { oncelik: i < ONCELIKLI_KART })).join('')}</div>${pager}`;
   fadeApp();
   wireFilterBar();
   wireCards(app);
@@ -205,7 +210,7 @@ function renderList() {
     state.page++;
     syncListHash();
     const tpl = document.createElement('template');
-    tpl.innerHTML = items.slice(from, state.page * PAGE_SIZE).map(cardHtml).join('');
+    tpl.innerHTML = items.slice(from, state.page * PAGE_SIZE).map(a => cardHtml(a)).join('');
     wireCards(tpl.content);
     app.querySelector('.grid:not(.recent-grid)').append(tpl.content);
     e.currentTarget.innerHTML = loadMoreHtml();

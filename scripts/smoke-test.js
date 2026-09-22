@@ -474,6 +474,38 @@ async function run(page, base) {
   const stat = await page.locator('.stats-strip .stat-num').first().textContent();
   check('istatistik şeridi dolu', /\d/.test(stat || ''), stat);
 
+  // --- §2.5: kapak yükleme ipuçları ---
+  const kapak = await page.evaluate(() => {
+    const boyutu = u => ((/cover\/([a-z]+)\//i.exec(u) || [])[1] || '?');
+    const izgara = [...document.querySelectorAll('.grid:not(.recent-grid) .card img')];
+    const serit = [...document.querySelectorAll('.recent-grid img')];
+    const one = document.querySelector('.featured-poster img');
+    return {
+      preconnect: !!document.querySelector('link[rel=preconnect][href*="anilist"]'),
+      oneYukleme: one && one.getAttribute('loading'),
+      oneOncelik: one && one.getAttribute('fetchpriority'),
+      ilkEager: izgara[0] && izgara[0].getAttribute('loading'),
+      sonLazy: izgara[izgara.length - 1] && izgara[izgara.length - 1].getAttribute('loading'),
+      eager: izgara.filter(e => e.getAttribute('loading') === 'eager').length,
+      kodlamaEksik: [...izgara, ...serit].filter(e => e.getAttribute('decoding') !== 'async').length,
+      seritBoyut: serit.length ? boyutu(serit[0].src) : '-',
+      izgaraBoyut: izgara.length ? boyutu(izgara[0].src) : '-',
+      dpr: devicePixelRatio,
+    };
+  });
+  check('§2.5 AniList CDN\'i için preconnect var', kapak.preconnect);
+  check('§2.5 Günün Animesi kapağı öncelikli (LCP öğesi)',
+    kapak.oneYukleme === 'eager' && kapak.oneOncelik === 'high', JSON.stringify([kapak.oneYukleme, kapak.oneOncelik]));
+  check('§2.5 ilk kartlar eager, geri kalanı lazy',
+    kapak.ilkEager === 'eager' && kapak.sonLazy === 'lazy' && kapak.eager >= 4 && kapak.eager <= 8,
+    `${kapak.eager} eager`);
+  check('§2.5 tüm kapaklarda decoding="async"', kapak.kodlamaEksik === 0, kapak.kodlamaEksik + ' eksik');
+  check('§2.5 şerit kartları küçük kapak kullanıyor (DPR<1.5)',
+    kapak.dpr >= 1.5 ? kapak.seritBoyut === 'medium' : kapak.seritBoyut === 'small',
+    `dpr ${kapak.dpr} → şerit ${kapak.seritBoyut}, ızgara ${kapak.izgaraBoyut}`);
+  check('§2.5 ızgara kapakları medium kalıyor', kapak.izgaraBoyut === 'medium', kapak.izgaraBoyut);
+
+
   // --- arama (liste sayfasında) ---
   await page.fill('#search', 'naruto');
   await page.waitForTimeout(500);

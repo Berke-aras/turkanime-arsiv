@@ -68,7 +68,8 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
 ### C. Sırada bekleyen gerçek işler
 | madde | ne | not |
 |---|---|---|
-| §2.1.3 | `data.js` + `meta.js`'i tek bir `index.json`'a birleştirip `fetch` ile al | JSON parse, JS parse'tan hızlı; `<script>` zincirini kırar. §2.2/§2.3'ten sonra kazanç küçüldü. |
+| §2.1.3 | `data.js` + `meta.js`'i tek bir `index.json`'a birleştirip `fetch` ile al | **Sıradaki en büyük perf işi**: kısılmış bağlantı ölçümünde LCP'yi asıl bekleten bu 920 KB (bkz. §2.5) |
+| §2.5 B/C | Kapakları WebP olarak kendimiz servis etmek (−%75 bayt) ve baskın renk yer tutucusu | Ayrı depo/CDN kararı gerektiriyor |
 | §2.1 kabul | Lighthouse mobil skoru (önce/sonra), LCP < 2.5 s (Slow 4G) | Bu ortamda Lighthouse yok; ölçüm repo sahibinde |
 | §4.4 madde 2 | Deploy'un elle yapılması kırılgan — repoyu Vercel projesine bağla ya da `.github/workflows/deploy-api.yml` yaz | Wrangler için de aynısı |
 | §7.5 | Fansub'a göre filtre (veride `fansub` alanı var, hiç kullanılmıyor) | "sadece TAÇE çevirileri" gibi |
@@ -313,6 +314,45 @@ ve hepsi aşağıda. Hiçbiri "unutuldu" değil — her birinin gerekçesi yazı
   `naruto` sonucu 56 → 19 (eskiden "Boruto" da geliyordu). Yazım hatasında öneri mekanizması
   ve "bunu mu demek istedin" bloğu aynen duruyor.
 - **Kabul:** ✅ Hatalı sorguda <50 ms (43.8 ms ölçüldü).
+
+### 2.5 Kapaklar geç geliyor — **(A grubu TAMAM)**
+- **Ölçüm (önce):** Ana sayfa açılışında ilk ekranda **35 kapak** (masaüstü 1280) / **15 kapak**
+  (telefon 390) isteniyor; ilk kapak isteği sayfa açıldıktan **272 ms** sonra atılıyor (liste JS
+  ile çiziliyor) ve tam o anda `s4.anilist.co` bağlantısı sıfırdan kuruluyor — **preconnect yoktu**.
+- **AniList'in verdiği boyutlar** (8 kapak ortalaması): `small` 100×142 **17 KB** ·
+  `medium` 230×326 **57 KB** · `large` 460×652 **231 KB**. Kart ekranda 177×265 css px,
+  şerit kartı 126×189 css px basılıyor. `Accept: image/webp` gönderilse bile CDN **hep JPEG**
+  dönüyor (denendi), yani sağlayıcı tarafında sıkıştırma kazancı yok.
+- **LCP ölçümü:** Sayfanın en büyük içeriği **"Günün Animesi" kapağı** (`A.featured`) — hem `<img>`
+  hem `::before` arka planı aynı adresi kullanıyor. Yani ilk izlenim tek bir kapağa bağlı, ve o
+  kapak `loading="lazy"` ile, önceliksiz isteniyordu.
+- **Yapılan (A grubu, hiçbir bağımlılık eklemeden):**
+  1. `index.html`'e `<link rel="preconnect" href="https://s4.anilist.co" crossorigin>`.
+  2. Günün Animesi ve detay sayfasının büyük kapağı: `loading="eager" fetchpriority="high"`.
+  3. Izgaranın ilk kartları eager (`ONCELIKLI_KART`): geniş ekranda 8, **dar ekranda 4** —
+     telefonda 8 demek ekran altındaki iki satırı da indirmek oluyordu (ölçüldü: +115 KB boşa).
+  4. Tüm kapaklarda `decoding="async"`.
+  5. Şerit kartları (126×189 / 112×168 css px) `small` kapak kullanıyor; yoğunluğu 1.5+ olan
+     ekranlarda gözle görülür yumuşama olduğu için orada `medium` kalıyor (`SERIT_BOYUT`).
+- **Ölçüm (sonra)** — 1.6 Mbps / 150 ms gecikmeye kısılmış bağlantı, kapaklar gerçek
+  ağırlıklarına yakın yer tutucularla, 3 açılışın ortalaması:
+
+  | | önce | sonra |
+  |---|---|---|
+  | masaüstü — ilk ekran kapak trafiği | 1.721 KB | **1.248 KB (−%27)** |
+  | telefon — ilk ekran kapak trafiği | 860 KB | **860 KB** (eager sayısı ekrana göre ayarlandığı için artmadı) |
+
+  **Dürüst sınır:** preconnect ve öncelik ipuçlarının süre kazancı bu ortamda ölçülemiyor —
+  tüm trafik yerel bir vekilden geçiyor ve testte kapak yanıtları ağ katmanını atlıyor. Bayt
+  kazancı ölçüldü, süre kazancı yapısal (bağlantı kurulumu sayfa açılırken başlıyor, LCP kapağı
+  sıraya son değil ilk giriyor).
+- **Bu ölçümde çıkan asıl darboğaz:** Kısılmış bağlantıda LCP ~7 sn ve bunun büyük kısmı
+  **kapaklar değil, kendi veri dosyalarımız** (`kaynak/data.js` 396 KB + `meta.js` 524 KB
+  senkron `<script>`). Yani sıradaki gerçek kazanç **§2.1.3** (tek `index.json` + `fetch`).
+- **Yapılmayanlar (bilerek, ayrı karar):** kapakları WebP'ye çevirip kendimiz servis etmek
+  (ölçüldü: aynı 230 px kapak WebP q75 ile **14 KB**, yani −%75; 6015 kapak ≈ 82 MB) ve
+  baskın renk yer tutucusu. İkisi de ayrı bir depo/CDN kararı gerektiriyor; `wsrv.nl` gibi
+  ücretsiz dönüştürücü proxy'ler AniList'i engelliyor (denendi: `Domain or TLD blocked by policy`).
 
 ### 2.4 Eksik poster: 903 anime — **(TAMAM)**
 - **Dosya:** `scripts/build-posters.js`
@@ -1180,3 +1220,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §4.3 | `js/eslesme.js` ayrıldı + `data.js` `globalThis`'e geçti; `matchScore` ve `animeOfDay` artık birim testli (53 → 72 test) |
 | 2026-09-22 | §7.6 | Google doğrulama dosyası eklendi; `scripts/social-gorsel.py` ile GitHub sosyal önizleme (1280×640) ve yeni `og-image.png` üretildi |
 | 2026-09-22 | §7.6 | `og:image` PNG yerine 141 KB JPEG (WhatsApp önizlemesi büyük dosyaları atlıyor) + `og:image:alt` |
+| 2026-09-22 | §2.5 | Kapak yükleme: preconnect, LCP kapağına öncelik, ilk kartlar eager, `decoding=async`, şeritlerde küçük kapak → masaüstünde kapak trafiği −%27 |

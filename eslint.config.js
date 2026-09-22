@@ -13,7 +13,7 @@ const tarayiciGlobals = {
   Hls: "readonly", performance: "readonly", self: "writable", AbortController: "readonly",
   getComputedStyle: "readonly", matchMedia: "readonly", HTMLInputElement: "readonly",
   Element: "readonly", HTMLImageElement: "readonly", ResizeObserver: "readonly",
-  Blob: "readonly", FileReader: "readonly",
+  Blob: "readonly", FileReader: "readonly", devicePixelRatio: "readonly", innerWidth: "readonly",
 };
 
 const nodeGlobals = {

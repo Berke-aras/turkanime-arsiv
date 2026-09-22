@@ -13,7 +13,18 @@ const META = globalThis.META || {};
 const META_TURLER = globalThis.META_TURLER || [];
 const META_STUDYOLAR = globalThis.META_STUDYOLAR || [];
 // Tarayıcı tarafındaki eş: scripts/poster-onek.js. İkisi birlikte değişmeli.
-const POSTER_ONEK = 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/';
+const POSTER_KOK = 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/';
+const POSTER_ONEK = POSTER_KOK + 'medium/';
+
+// AniList kapağı üç ölçüde veriyor (ölçüldü, 8 kapak ortalaması):
+//   small  100x142   17 KB   ·  medium 230x326  57 KB  ·  large 460x652  231 KB
+// Kartın ekrandaki genişliği 177 css px, şeritlerde 126 px olduğu için varsayılan medium;
+// şeritler `small`e düşüyor (bkz. js/views/list.js SERIT_BOYUT).
+function posterUrl(a, boyut = 'medium') {
+  const ad = a && a.posterAd;
+  if (!ad) return null;
+  return /^https?:\/\//i.test(ad) ? ad : POSTER_KOK + boyut + '/' + ad;
+}
 
 // Yetişkin içerik türleri. Bu türlerden birini taşıyan anime kartında "18+" rozeti,
 // detay sayfasında da uyarı paneli çıkar; ana sayfadaki keşif şeritlerine ve Günün
@@ -37,6 +48,7 @@ const ANIME = (globalThis.INDEX || []).map(r => {
     nsfw: tur.some(t => NSFW_TURLER.has(t)),
     puan: m[2],
     poster: m[3] ? (/^https?:\/\//i.test(m[3]) ? m[3] : POSTER_ONEK + m[3]) : null,
+    posterAd: m[3] || null,   // başka bir ölçü istenebilsin diye ham dosya adı (bkz. posterUrl)
     yil: m[4] || 0,
     studyo: m[5] >= 0 ? (META_STUDYOLAR[m[5]] || '') : ''
   };
@@ -93,4 +105,4 @@ function loadScript(slug) {
 
 
 export { META, ANIME, KATEGORILER, TURLER, ONYILLAR, NSFW_TURLER, TOPLAM_BOLUM, TOPLAM_LINK,
-  TR_SIRA, statsStripHtml, animeOfDay, loadScript };
+  TR_SIRA, posterUrl, statsStripHtml, animeOfDay, loadScript };

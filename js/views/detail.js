@@ -6,7 +6,7 @@ import { cardHtml, wireCards } from '../cards.js';
 import { wireSeritler } from '../serit.js';
 import { epListHtml } from './bolum-listesi.js';
 import { isFav, favLabel, toggleFav, pushRecent, getEpReverse, setEpReverse, getEpIzgara, setEpIzgara } from '../store.js';
-import { posterPlaceholder } from '../cards.js';
+import { posterPlaceholder, SERIT_BOYUT } from '../cards.js';
 import { OLU } from '../links.js';
 import { openEpisode, setCurrentEpisodes, syncEpNavButtons, playerModal, directBtnOf } from '../player.js';
 import { izlendiMi, izlendiAyarla, burayaKadarIsaretle, izlenenSayisi, izlenenleriTemizle } from '../progress.js';
@@ -105,7 +105,7 @@ async function renderDetail(slug, token) {
         <h2 class="section-title">Benzer animeler</h2>
         <div class="serit-sar">
           <button type="button" class="serit-ok serit-ok-sol" aria-label="Sola kaydır" hidden>${ic('chevron-left')}</button>
-          <div class="grid recent-grid">${benzerListe.map(cardHtml).join('')}</div>
+          <div class="grid recent-grid">${benzerListe.map(a => cardHtml(a, { boyut: SERIT_BOYUT })).join('')}</div>
           <button type="button" class="serit-ok serit-ok-sag" aria-label="Sağa kaydır" hidden>${ic('chevron-right')}</button>
         </div>
       </section>` : '';
@@ -120,7 +120,7 @@ async function renderDetail(slug, token) {
     <a class="back" href="#/">${ic('arrow-left')}Listeye dön</a>
     <div class="detail">
       <div class="detail-head" ${titleObj.poster ? `style="--hero:url('${esc(titleObj.poster)}')"` : ''}>
-        ${posterPlaceholder(titleObj).replace('class="poster', 'class="detail-poster poster')}
+        ${posterPlaceholder(titleObj, 0, { oncelik: true }).replace('class="poster', 'class="detail-poster poster')}
         <div class="detail-info">
           <h2>${esc(titleObj.baslik)} <button id="detail-fav" class="fav-btn-lg ${isFav(slug) ? 'active' : ''}" title="Favori" aria-label="${favLabel(slug)}">${ic('star')}</button></h2>
           ${info && info['Japonca'] ? `<p class="detail-japonca" lang="ja">${esc(info['Japonca'])}</p>` : ''}

@@ -55,6 +55,10 @@
      preconnect ve render-blocking stylesheet kalktı. Latin alt kümesi hemen gerekiyor, o yüzden
      preload; latin-ext'i tarayıcı yalnız ğ/ş/İ gibi bir harf geçtiğinde indiriyor. -->
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<!-- §2.5 A1: kapaklar AniList CDN'inden geliyor ve liste JS ile çizildiği için ilk kapak
+     isteği ancak ~270 ms'de atılıyor (ölçüldü). preconnect ile DNS + TCP + TLS el sıkışması
+     HTML ayrıştırılırken başlıyor, kapak sırası geldiğinde bağlantı hazır oluyor. -->
+<link rel="preconnect" href="https://s4.anilist.co" crossorigin>
 <link rel="stylesheet" href="style.css">
 <!-- Yapısal veri (§7.6). WebSite + SearchAction: Google arama sonucunda site içi arama kutusu
      gösterebiliyor; hash rotası query parametresini olduğu gibi alıyor (#/?q=...). -->
