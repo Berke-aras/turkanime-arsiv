@@ -1025,8 +1025,11 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
   GitHub aramasının baktığı alanlar: **repo adı, About açıklaması, topics, README**. Google'ın
   baktıkları: `<title>`, `<meta description>`, sayfadaki metin, yapısal veri, backlink.
 - **Paylaşım görselleri (2026-09-22):** `scripts/social-gorsel.py` ikisini birden üretiyor —
-  `docs/assets/social-preview.png` (1280×640, GitHub) ve `og-image.png` (1200×630, sitenin
-  `og:image`'i). Sanat, README'deki `loop-1.gif`'in bir karesi; yazı tipi Inter, sayılar
+  `docs/assets/social-preview.png` (1280×640 PNG, GitHub) ve `og-image.jpg` (1200×630 JPEG,
+  sitenin `og:image`'i). **Neden JPEG:** WhatsApp'ın önizleme robotu büyük görselleri sessizce
+  atlıyor (aynı tasarımın PNG'si 520 KB, JPEG'i **141 KB**); dosya adı da değiştiği için
+  WhatsApp/Telegram'ın eski önizleme önbelleği kendiliğinden geçersiz oluyor. `og:image:type`,
+  `og:image:alt` ve `twitter:image:alt` eklendi; boyut/ağırlık sınırı testle korunuyor. Sanat, README'deki `loop-1.gif`'in bir karesi; yazı tipi Inter, sayılar
   `kaynak/data.js`'ten okunuyor (6.107 anime · 71.573 bölüm · 1.165.204 link), yani veri
   tazelendiğinde script tekrar çalıştırılıp görseller güncellenebiliyor. Boyut/ağırlık sınırları
   veri bütünlüğü testinde.
@@ -1176,3 +1179,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §2.1.5 | Inter self-host (133 → 63 KB, 0 üçüncü taraf istek, FCP 396 → 100 ms); CSP daraltıldı |
 | 2026-09-22 | §4.3 | `js/eslesme.js` ayrıldı + `data.js` `globalThis`'e geçti; `matchScore` ve `animeOfDay` artık birim testli (53 → 72 test) |
 | 2026-09-22 | §7.6 | Google doğrulama dosyası eklendi; `scripts/social-gorsel.py` ile GitHub sosyal önizleme (1280×640) ve yeni `og-image.png` üretildi |
+| 2026-09-22 | §7.6 | `og:image` PNG yerine 141 KB JPEG (WhatsApp önizlemesi büyük dosyaları atlıyor) + `og:image:alt` |

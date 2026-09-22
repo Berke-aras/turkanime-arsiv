@@ -9,8 +9,12 @@ Sanat, README'deki `docs/assets/loop-1.gif` animasyonunun bir karesi — repodak
 dille aynı kalsın diye yeni bir çizim aranmadı.
 
 Çıktılar:
-  docs/assets/social-preview.png  1280x640  → GitHub Settings > General > Social preview
-  og-image.png                    1200x630  → index.html'deki og:image / twitter:image
+  docs/assets/social-preview.png  1280x640  PNG → GitHub Settings > General > Social preview
+  og-image.jpg                    1200x630  JPEG → index.html'deki og:image / twitter:image
+
+og:image neden JPEG: WhatsApp'ın link önizlemesi büyük görselleri çekmiyor (pratikte ~300 KB
+üstü sessizce atlanıyor, önizleme yazı olarak kalıyor). Aynı tasarımın PNG'si 520 KB, JPEG'i
+~150 KB. GitHub'ın sosyal önizlemesinde böyle bir sınır yok, orada PNG kalıyor.
 
 Yazı tipi: Inter. Render için TTF gerekiyor; repodaki `fonts/*.woff2` PIL tarafından
 okunamadığı için TTF'ler Google Fonts'tan geçici bir dizine indiriliyor (repoya girmiyor).
@@ -121,7 +125,13 @@ def ciz(genislik, yukseklik):
 
 if __name__ == '__main__':
     YOLLAR = fontlar()
-    for yol, boyut in [('docs/assets/social-preview.png', (1280, 640)), ('og-image.png', (1200, 630))]:
+    for yol, boyut, kayit in [
+        ('docs/assets/social-preview.png', (1280, 640), dict(optimize=True)),
+        ('og-image.jpg', (1200, 630), dict(quality=86, optimize=True, progressive=True, subsampling=0)),
+    ]:
         tam = os.path.join(KOK, yol)
-        ciz(*boyut).save(tam, optimize=True)
-        print(f'{yol}  {boyut[0]}x{boyut[1]}  {os.path.getsize(tam) // 1024} KB')
+        ciz(*boyut).save(tam, **kayit)
+        kb = os.path.getsize(tam) // 1024
+        print(f'{yol}  {boyut[0]}x{boyut[1]}  {kb} KB')
+        if yol.endswith('.jpg') and kb > 300:
+            print('! og:image 300 KB üstünde — WhatsApp önizlemeyi atlayabilir', file=sys.stderr)

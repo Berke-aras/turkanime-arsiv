@@ -189,8 +189,21 @@ test("paylaşım görselleri doğru boyutta (§7.6)", () => {
   assert.deepEqual([sosyal.g, sosyal.y], [1280, 640]);
   assert.ok(sosyal.kb < 1024, `social-preview.png ${sosyal.kb} KB — GitHub sınırı 1 MB`);
 
-  const og = olc(path.join(ROOT, "og-image.png"));
+  // og:image JPEG ve küçük olmalı: WhatsApp'ın önizleme robotu büyük dosyaları atlıyor.
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const ogYol = (/property="og:image" content="[^"]*\/([^"/]+)"/.exec(html) || [])[1];
+  assert.equal(ogYol, "og-image.jpg", "og:image dosya adı değişmiş");
+  const jpg = fs.readFileSync(path.join(ROOT, ogYol));
+  assert.ok(jpg.length / 1024 < 300, `${ogYol} ${Math.round(jpg.length / 1024)} KB — WhatsApp sınırı ~300 KB`);
+  // JPEG SOF0/SOF2 çerçevesinden boyut
+  let i = 2, boyut = null;
+  while (i < jpg.length - 9 && !boyut) {
+    if (jpg[i] !== 0xff) { i++; continue; }
+    const tip = jpg[i + 1];
+    if (tip === 0xc0 || tip === 0xc1 || tip === 0xc2) boyut = { y: jpg.readUInt16BE(i + 5), g: jpg.readUInt16BE(i + 7) };
+    else i += 2 + jpg.readUInt16BE(i + 2);
+  }
   const oku = n => Number((new RegExp(`property="og:image:${n}" content="(\\d+)"`).exec(html) || [])[1]);
-  assert.deepEqual([og.g, og.y], [oku("width"), oku("height")], "og:image meta etiketleri dosyayla uyuşmuyor");
+  assert.deepEqual([boyut.g, boyut.y], [oku("width"), oku("height")], "og:image meta etiketleri dosyayla uyuşmuyor");
+  assert.match(html, /twitter:image" content="[^"]*og-image\.jpg"/, "twitter:image aynı dosyayı göstermeli");
 });

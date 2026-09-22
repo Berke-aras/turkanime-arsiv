@@ -104,6 +104,7 @@ scripts/build-posters.js                    AniList kapaklarını meta.js'e göm
 scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
 scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
 scripts/social-gorsel.py                    GitHub sosyal önizlemesi + og:image üretir
+og-image.jpg                                link paylaşımlarında çıkan önizleme (WhatsApp, X…)
 docs/assets/social-preview.png              GitHub Settings > Social preview'a yüklenen görsel
 test/                                       birim ve veri bütünlüğü testleri
 api/ · cf/                                  reklamsız oynatıcı yardımcıları (sibnet · okru · uqload)
