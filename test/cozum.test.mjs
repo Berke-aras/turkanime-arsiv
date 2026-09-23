@@ -118,3 +118,60 @@ test("cozumle: önceden çözme kalıcı hatayla (404) bittiyse asıl istek tekr
   assert.deepEqual(await asil, { hata: 404 });
   assert.equal(f.cagri.length, 1);
 });
+
+// --- birden çok çözücü ---
+const { cozucuSirasi, yogunluk } = await import("../js/cozum.js");
+const ikili = { resolver: ["https://a.test/api", "https://b.test/api"] };
+
+test("cozucuSirasi: başlangıç video numarasına göre sabit, iki çözücüye de dağılıyor", () => {
+  yogunluk.clear();
+  const ilk = new Set();
+  for (let i = 0; i < 20; i++) {
+    const s = cozucuSirasi(ikili, `id=${1000 + i}`);
+    assert.equal(s.length, 2);
+    assert.deepEqual(s, cozucuSirasi(ikili, `id=${1000 + i}`));
+    ilk.add(s[0]);
+  }
+  assert.equal(ilk.size, 2);
+  assert.deepEqual(cozucuSirasi(saglayici, "id=1"), ["https://cozucu.test/api"]);
+});
+
+test("cozumle: çözücü yoğunsa beklemeden ötekine geçiyor ve yoğunu bir süre sona atıyor", async () => {
+  depo.clear(); yogunluk.clear();
+  const [birinci, ikinci] = cozucuSirasi(ikili, "id=900");
+  let baska = 901;                                            // yine `birinci` ile başlayacak başka bir video
+  while (cozucuSirasi(ikili, `id=${baska}`)[0] !== birinci) baska++;
+  const f = sahteFetch([cevap(503), cevap(200, { url: "https://dv1.test/z.mp4" })]);
+  const bildirimler = [];
+  const s = await cozumle(ikili, "SIBNET", "id=900", { tekrar: [1, 1], fetchFn: f, bildir: i => bildirimler.push(i) });
+  assert.equal(s.veri.url, "https://dv1.test/z.mp4");
+  assert.deepEqual(f.cagri, [`${birinci}?id=900`, `${ikinci}?id=900`]);
+  assert.deepEqual(bildirimler, []);                          // bekleme turu yok
+  // aynı çözücüyle başlayacak başka bir video artık önce ötekine gidiyor
+  assert.equal(cozucuSirasi(ikili, `id=${baska}`)[0], ikinci);
+});
+
+test("cozumle: ikisi de yoğunsa tur sonunda bekleyip yeniden deniyor; 404 hemen bitiriyor", async () => {
+  depo.clear(); yogunluk.clear();
+  const f = sahteFetch([cevap(503), new Error("ağ"), cevap(503), cevap(200, { url: "https://dv1.test/q.mp4" })]);
+  const bildirimler = [];
+  const s = await cozumle(ikili, "SIBNET", "id=950", { tekrar: [1, 1], fetchFn: f, bildir: i => bildirimler.push(i) });
+  assert.equal(s.veri.url, "https://dv1.test/q.mp4");
+  assert.equal(f.cagri.length, 4);
+  assert.deepEqual(bildirimler, [1]);
+
+  depo.clear(); yogunluk.clear();
+  const g = sahteFetch([cevap(404)]);
+  assert.deepEqual(await cozumle(ikili, "SIBNET", "id=951", { tekrar: [1, 1], fetchFn: g }), { hata: 404 });
+  assert.equal(g.cagri.length, 1);
+});
+
+test("cozumle: bir çözücü bozuk (502) ise öteki deneniyor; hepsi 502 ise tekrar turu yok", async () => {
+  depo.clear(); yogunluk.clear();
+  const f = sahteFetch([cevap(502), cevap(200, { url: "https://dv1.test/w.mp4" })]);
+  assert.equal((await cozumle(ikili, "SIBNET", "id=960", { tekrar: [1], fetchFn: f })).veri.url, "https://dv1.test/w.mp4");
+  depo.clear(); yogunluk.clear();
+  const g = sahteFetch([cevap(502), cevap(502)]);
+  assert.deepEqual(await cozumle(ikili, "SIBNET", "id=961", { tekrar: [1, 1], fetchFn: g }), { hata: 502 });
+  assert.equal(g.cagri.length, 2);
+});

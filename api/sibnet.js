@@ -28,7 +28,11 @@ async function fetchRetry(url, init, deadline) {
       if (Date.now() + wait > deadline) break;
       await sleep(wait);
     }
-    const r = await fetch(url, init);
+    // Sibnet bazen hiç cevap vermeden bekletiyor; bütçe bitince isteği kesip "yoğun" (503) sayıyoruz ki
+    // istemci öteki çözücüye geçebilsin (platformun kendi zaman aşımı 502/504 olur, geçici sayılmaz).
+    let r;
+    try { r = await fetch(url, { ...init, signal: AbortSignal.timeout(Math.max(1000, deadline - Date.now())) }); }
+    catch (e) { if (e && (e.name === 'TimeoutError' || e.name === 'AbortError')) break; throw e; }
     if (!BLOCKED(r.status)) return r;
     lastStatus = r.status;
     if (Date.now() > deadline) break;

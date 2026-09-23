@@ -89,7 +89,9 @@ yerine sitenin kendi oynatıcısında açar. Orijinal gömülü oynatıcı buton
 
 **Neden bazen çalışmıyor:** Sibnet, bütün ziyaretçilerin istekleri aynı sunucudan geldiği için yoğunlukta
 geçici engel (403) uyguluyor; bunun yanında arşivdeki videoların bir kısmı sağlayıcıdan silinmiş.
-Bu yüzden oynatıcı yoğunluk hatasında 3 kez tekrar dener (ekranda "yoğun, tekrar deneniyor" yazar),
+Bu yüzden Sibnet çözücüsü iki ayrı altyapıda (Vercel ve Netlify, yani iki ayrı IP havuzu) çalışır:
+tarayıcı yükü video numarasına göre ikisine böler, biri yoğunsa beklemeden ötekine geçer ve yoğun olanı
+bir dakika sıranın sonuna koyar. İkisi de yoğunsa oynatıcı 3 kez tekrar dener (ekranda "yoğun, tekrar deneniyor" yazar),
 çözülen linkleri imzaları bitene kadar hem sunucuda hem tarayıcıda önbelleğe alır, düğmenin üstüne
 gelince ve bölümün %60'ında sonraki bölüm için linki önceden çözer. Uqload Worker'ı (`cf/uqload`) GitHub'a
 bağlı değil; değişince elle deploy edilmeli: `cd cf/uqload && npx wrangler deploy`.
@@ -100,9 +102,12 @@ Kendi oynatıcımız olduğu için hız ayarı, kaldığın yerden devam, klavye
 | Sağlayıcı | Nerede | Dosya |
 |---|---|---|
 | Sibnet | Vercel function (`tka-sibnet.vercel.app`) | `api/sibnet.js` |
+| Sibnet (yedek) | Netlify function (`tka-sibnet.netlify.app`) | `cozucu-netlify/` (aynı `api/sibnet.js`'i sarar) |
 | Uqload | Cloudflare Worker (`tka-uqload.turkanime-arsiv.workers.dev`) | `cf/uqload/worker.js` |
 
-Sibnet için Cloudflare denendi, Cloudflare IP'lerini 403 ile engellediği için Vercel'de duruyor.
+Sibnet için Cloudflare denendi, Cloudflare IP'lerini 403 ile engellediği için Vercel ve Netlify'da duruyor.
+Vercel kopyası `main`'e her push'ta kendiliğinden yayınlanır; Netlify kopyası GitHub'a bağlı değil,
+`api/sibnet.js` değişince elle yayınlanmalı (bkz. `cozucu-netlify/README.md`).
 ok.ru için de fonksiyon yazıldı ama döndürdüğü video linki yalnız fonksiyonun IP'sinden açıldığı
 için kapalı (bkz. `js/links.js`, `OKRU_ETKIN`).
 

@@ -619,12 +619,14 @@ async function guvenilirlikTestleri(browser, base) {
     return { ctx, p, istek: () => n };
   };
 
-  // 503, 503, sonra başarı: "yoğun, tekrar deneniyor" görünüyor, sonunda reklamsız oynuyor
-  let { ctx, p, istek } = await ac([503, 503, 200]);
+  // Sibnet'in iki çözücüsü var (Vercel + Netlify); bir tur ikisini de deniyor, üstüne gelince yapılan önceden
+  // çözme de bir tur. 4 kez 503: önceden çözme olsa da olmasa da tıklamanın ilk turu yoğun kalıyor.
+  // "yoğun, tekrar deneniyor" görünüyor, sonunda reklamsız oynuyor.
+  let { ctx, p, istek } = await ac([503, 503, 503, 503, 200]);
   const durumMetni = await p.waitForSelector('#player-modal-loading-durum:not([hidden])', { timeout: 5000 }).then(e => e.textContent(), () => '');
   const oynadi = await p.waitForFunction(() => { const v = document.getElementById('player-modal-video'); return !v.hidden && v.currentTime > 0; }, null, { timeout: 15000 }).then(() => true, () => false);
   check('Güvenilirlik: sağlayıcı yoğunken bekleme mesajı gösterip tekrar deniyor, sonra reklamsız oynuyor',
-    /Sibnet şu an yoğun, tekrar deneniyor \(1\/3\)/.test(durumMetni) && oynadi && istek() === 3, `${durumMetni} · oynadı=${oynadi} · istek=${istek()}`);
+    /Sibnet şu an yoğun, tekrar deneniyor \(1\/3\)/.test(durumMetni) && oynadi && istek() === 5, `${durumMetni} · oynadı=${oynadi} · istek=${istek()}`);
   await ctx.close();
 
   // 404: tekrar denemeden reklamlı oynatıcıya düşüyor ve sebebini söylüyor

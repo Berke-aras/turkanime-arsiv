@@ -1,0 +1,9 @@
+# Sibnet çözücüsünün ikinci kopyası (Netlify, site: tka-sibnet). Yalnız function yayınlanıyor.
+# Function asıl kodu api/sibnet.js'ten aldığı için yayın, depo köküne göre yollarla yapılıyor:
+# bu dosya yükleme kökünde netlify.toml olarak durmalı (bkz. cozucu-netlify/README.md).
+[build]
+  publish = "cozucu-netlify/public"
+  functions = "cozucu-netlify/netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"

@@ -4,7 +4,8 @@ import { esc, ic } from './util.js';
 // Reklamlı/redirect'li sağlayıcıları reklamsız oynatmak için linki çözen küçük servisler.
 // Her sağlayıcı embed URL'inden resolver'a atılacak querystring'i (id, gerekiyorsa host) çıkarır;
 // çıkaramazsa (regex tutmazsa) o link için "Reklamsız izle" butonu hiç gösterilmez, klasik embed kalır.
-// Sibnet Vercel'de (bkz. api/sibnet.js), Uqload Cloudflare Workers'ta (bkz. cf/uqload) çalışıyor —
+// Sibnet Vercel'de ve Netlify'da (aynı kod: api/sibnet.js, Netlify sarmalayıcısı cozucu-netlify/),
+// Uqload Cloudflare Workers'ta (bkz. cf/uqload) çalışıyor —
 // uqload.com'u Vercel'in IP'leri engelliyordu, Cloudflare Workers'ınkiler engellenmiyor.
 // Sendvid ve Doodstream için de resolver yazılmıştı ama production'da (Vercel'de de Cloudflare
 // Workers'ta da) hedef sitenin anti-bot/routing korumaları yüzünden hiç çalışmadı; deploy edilen
@@ -22,8 +23,10 @@ const OKRU = {
   params: url => { const m = /\/videoembed\/(\d{6,20})(?:[?&#]|$)/.exec(url); return m && `id=${m[1]}`; },
 };
 
+// resolver bir dizi olabilir: js/cozum.js yükü video numarasına göre dağıtıyor, biri yoğunsa ötekine geçiyor.
+// Sibnet hız sınırını kaynak IP'ye göre koyduğu için iki ayrı IP havuzu yoğun saatlerde fark ediyor.
 const DIRECT_PROVIDERS = {
-  SIBNET: { resolver: 'https://tka-sibnet.vercel.app/api/sibnet', params: url => { const m = /videoid=(\d+)/.exec(url); return m && `id=${m[1]}`; } },
+  SIBNET: { resolver: ['https://tka-sibnet.vercel.app/api/sibnet', 'https://tka-sibnet.netlify.app/api/sibnet'], params: url => { const m = /videoid=(\d+)/.exec(url); return m && `id=${m[1]}`; } },
   UQLOAD: { resolver: 'https://tka-uqload.turkanime-arsiv.workers.dev', params: url => { const m = /uqload\.[a-z]+\/embed-([a-z0-9]+)\.html/i.exec(url); return m && `id=${m[1]}`; } },
   // veride iki ad da geçiyor: ODNOKLASSNIKI (137k link) ve OK.RU (3.2k link)
   ...(OKRU_ETKIN ? { ODNOKLASSNIKI: OKRU, 'OK.RU': OKRU } : {}),

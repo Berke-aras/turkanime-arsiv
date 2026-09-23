@@ -64,19 +64,19 @@ module.exports = [
       ecmaVersion: 2022, sourceType: "commonjs",
       globals: { module: "writable", require: "readonly", console: "readonly", process: "readonly",
         fetch: "readonly", Response: "readonly", Request: "readonly", URL: "readonly",
-        URLSearchParams: "readonly", AbortController: "readonly", setTimeout: "readonly",
+        URLSearchParams: "readonly", AbortController: "readonly", AbortSignal: "readonly", setTimeout: "readonly",
         clearTimeout: "readonly", TextDecoder: "readonly", atob: "readonly", caches: "readonly" },
     },
     rules: { "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }] },
   },
   {
-    // Cloudflare Worker: ESM (export default).
-    files: ["cf/**/*.js"],
+    // Cloudflare Worker ve Netlify function: ESM (export default).
+    files: ["cf/**/*.js", "cozucu-netlify/**/*.mjs"],
     languageOptions: {
       ecmaVersion: 2022, sourceType: "module",
       globals: { console: "readonly", fetch: "readonly", Response: "readonly", Request: "readonly",
         URL: "readonly", URLSearchParams: "readonly", AbortController: "readonly",
-        setTimeout: "readonly", clearTimeout: "readonly", TextDecoder: "readonly", atob: "readonly", caches: "readonly" },
+        Headers: "readonly", setTimeout: "readonly", clearTimeout: "readonly", TextDecoder: "readonly", atob: "readonly", caches: "readonly" },
     },
     rules: { "no-unused-vars": ["error", { args: "none", caughtErrors: "none" }] },
   },
