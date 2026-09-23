@@ -110,7 +110,10 @@ Amazon Prime'daki X-Ray gibi: oynatıcıda videoyu duraklatınca (ya da **Bilgi*
 soldan bir panel açılır. Panelde animenin karakterleri ve Japon seslendirmenleri, bölümün
 opening/ending şarkıları ve bölümü çeviren fansub görünür. Reklamsız oynatıcıda ayrıca opening/ending
 sırasında sağ üstte **♪ Şu an çalıyor** etiketi ve sağ altta **Opening'i geç** düğmesi çıkar.
-Mobilde panel ekranı kaplar ve kaydırılabilir; kontrol çubuğu her zaman panelin üstünde kalır.
+Bölüm açılınca panel, video yüklenirken ve ilk 5 saniye boyunca yarı saydam bir tanıtım olarak görünür
+(tıklamaları engellemez, **Bilgi** ile sabitlenir); "Şu an çalıyor" etiketi opening/ending başında
+sağ üste kayarak gelir ve 4 saniye sonra çıkar. Mobilde panel ekranı kaplar ve kaydırılabilir;
+kontrol çubuğu her zaman panelin üstünde kalır.
 
 | Veri | Kaynak | Ne zaman |
 |---|---|---|

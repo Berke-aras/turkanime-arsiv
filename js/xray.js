@@ -8,7 +8,7 @@
 //  - AniSkip API: OP/ED'nin bölümdeki saniye aralıkları; bölüm açılınca tarayıcıdan soruluyor
 import { esc } from './util.js';
 import { animeBul, veriYukle, avatar, seslendirmenHref } from './xray-yukle.js';
-import { playerVideo, playerViewport } from './player-dom.js';
+import { playerVideo, playerViewport, playerFrame, playerLoading } from './player-dom.js';
 import { spotifyLink, KARAKTER_ONEK, KISI_ONEK, bolumTemasi, atlamaAraliklari, aralikBul } from './xray-veri.js';
 
 const panel = document.getElementById('player-xray');
@@ -82,6 +82,7 @@ function panelCiz() {
 panel.addEventListener('click', e => { if (e.target.closest('.xray-kapat')) panelGoster(false); });
 
 function panelGoster(acik) {
+  tanitimTemizle();
   panel.hidden = !acik;
   panelBtn.setAttribute('aria-pressed', String(acik));
   if (!acik) elleAcildi = false;
@@ -89,11 +90,50 @@ function panelGoster(acik) {
 // Oynarken elle açılan panel oynatma sürdükçe açık kalıyor; duraklatıp açılan ise (kendiliğinden
 // ya da elle) oynatınca kapanıyor.
 function panelDegistir() {
-  const ac = panel.hidden;
+  // Tanıtım sırasında düğmeye basmak paneli kapatmıyor, sabitliyor.
+  const ac = panel.hidden || tanitimda;
   panelGoster(ac);
   if (ac) elleAcildi = !playerVideo.hidden && !playerVideo.paused;
 }
 panelBtn.addEventListener('click', panelDegistir);
+
+// --- tanıtım: bölüm açılınca panel kısa süre kendiliğinden görünüyor ---
+// Video yüklenirken ve oynatma başladıktan sonra TANITIM_MS boyunca yarı saydam duruyor, sonra
+// süzülerek kayboluyor. Bu sırada tıklamaları geçiriyor (videoya dokunmak engellenmesin); Bilgi
+// düğmesi ya da I paneli sabitliyor. Yükleme hiç bitmezse TANITIM_EN_UZUN sonra yine kapanıyor.
+const TANITIM_MS = 5000, TANITIM_EN_UZUN = 20000, CIKIS_MS = 350;
+let tanitimda = false, tanitimTimer = 0, tanitimSayac = 0, cikisTimer = 0;
+function tanitimTemizle() {
+  tanitimda = false;
+  clearTimeout(tanitimTimer); clearTimeout(tanitimSayac); clearTimeout(cikisTimer);
+  tanitimTimer = tanitimSayac = cikisTimer = 0;
+  panel.classList.remove('tanitim', 'cikiyor');
+}
+function tanitimBitir() {
+  if (!tanitimda) return;
+  panel.classList.add('cikiyor');
+  cikisTimer = setTimeout(() => { if (tanitimda) { tanitimTemizle(); panel.hidden = true; } }, CIKIS_MS);
+}
+// Geri sayım içerik gerçekten başladığında (video oynuyor ya da embed yüklendi) başlıyor, bir kez.
+function tanitimSaymayaBasla() {
+  if (!tanitimda || tanitimSayac) return;
+  clearTimeout(tanitimTimer);
+  tanitimSayac = setTimeout(tanitimBitir, TANITIM_MS);
+}
+function tanitimBaslat() {
+  const veri = durum && durum.veri;
+  if (!veri || !((veri.k && veri.k.length) || (veri.m && veri.m.length)) || !panel.hidden) return;
+  tanitimTemizle();
+  tanitimda = true;
+  panel.classList.add('tanitim');
+  panel.hidden = false;
+  panelBtn.setAttribute('aria-pressed', 'false');
+  tanitimTimer = setTimeout(tanitimBitir, TANITIM_EN_UZUN);
+  // Veri, içerik başladıktan sonra geldiyse sayım hemen başlıyor.
+  if (playerLoading.hidden) tanitimSaymayaBasla();
+}
+playerVideo.addEventListener('playing', tanitimSaymayaBasla);
+playerFrame.addEventListener('load', () => { if (!playerFrame.hidden) tanitimSaymayaBasla(); });
 
 // --- açılış / kapanış (player.js çağırıyor) ---
 async function xrayBolum({ slug, ep, fansub }) {
@@ -111,6 +151,7 @@ async function xrayBolum({ slug, ep, fansub }) {
     durum.temalar = { op: bolumTemasi(veri.m, 'OP', durum.no), ed: bolumTemasi(veri.m, 'ED', durum.no) };
   }
   panelCiz();
+  tanitimBaslat();
   // metadata veriden önce geldiyse AniSkip isteği burada atılıyor
   if (!playerVideo.hidden && playerVideo.duration) atlamaSor();
 }
@@ -143,11 +184,18 @@ async function atlamaSor() {
 }
 
 let aktif = null;          // içinde bulunulan aralık
-let sakinTimer = 0;
+// "Şu an çalıyor" etiketi aralığa girince sağ üste kayarak geliyor, ETIKET_MS görünüp çıkıyor.
+const ETIKET_MS = 4000;
+let etiketTimer = 0, etiketCikis = 0;
+function etiketGizle(animasyonlu) {
+  clearTimeout(etiketTimer); clearTimeout(etiketCikis);
+  if (!animasyonlu || muzikEl.hidden) { muzikEl.hidden = true; muzikEl.classList.remove('cikiyor'); return; }
+  muzikEl.classList.add('cikiyor');
+  etiketCikis = setTimeout(() => { muzikEl.hidden = true; muzikEl.classList.remove('cikiyor'); }, CIKIS_MS);
+}
 function zamanliSifirla() {
   aktif = null;
-  clearTimeout(sakinTimer);
-  muzikEl.hidden = true;
+  etiketGizle(false);
   gecBtn.hidden = true;
 }
 function zamanGuncelle() {
@@ -158,8 +206,7 @@ function zamanGuncelle() {
   gecBtn.hidden = !gecilebilir;
   if (a === aktif) return;
   aktif = a;
-  clearTimeout(sakinTimer);
-  if (!a) { muzikEl.hidden = true; return; }
+  if (!a) { etiketGizle(true); return; }
   gecBtn.textContent = `${TIP_AD[a.tip]}'i geç`;
   gecBtn.dataset.son = String(a.son);
   const tema = durum.temalar[a.tip];
@@ -170,12 +217,11 @@ function zamanGuncelle() {
       + `<a class="xray-muzik-spotify xray-spotify-link" href="${esc(sp.url)}" target="_blank" rel="noopener noreferrer"`
       + ` aria-label="Spotify'da ${sp.parca ? 'dinle' : 'ara'}" title="Spotify'da ${sp.parca ? 'dinle' : 'ara'}">${SPOTIFY_IKON}</a>`;
     muzikEl.classList.toggle('durdu', playerVideo.paused);
-    muzikEl.classList.remove('sakin');
-    muzikEl.hidden = false;
-    // Etiket girişte birkaç saniye görünüyor, sonra kontrol çubuğuyla birlikte gizlenip beliriyor.
-    sakinTimer = setTimeout(() => muzikEl.classList.add('sakin'), 8000);
+    etiketGizle(false);
+    muzikEl.hidden = false; // giriş animasyonu (CSS) her görünüşte yeniden oynuyor
+    etiketTimer = setTimeout(() => etiketGizle(true), ETIKET_MS);
   } else {
-    muzikEl.hidden = true;
+    etiketGizle(false);
   }
 }
 // Spotify'a gidilince bölüm arkada çalmaya devam etmesin.
@@ -209,7 +255,7 @@ playerVideo.addEventListener('pause', () => {
 });
 playerVideo.addEventListener('play', () => {
   clearTimeout(durakTimer);
-  if (!elleAcildi) panelGoster(false);
+  if (!elleAcildi && !tanitimda) panelGoster(false);
 });
 
 const panelAcik = () => !panel.hidden;

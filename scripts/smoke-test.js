@@ -276,6 +276,20 @@ async function xrayTestleri(browser, base) {
   check('X-Ray: test videosu oynuyor', oynadi);
   if (!oynadi) { await ctx.close(); return; }
 
+  // --- tanıtım: açılışta panel yarı saydam görünüyor, tıklamayı geçiriyor, 5 sn sonra kayboluyor ---
+  // Test videosu 9 sn; tanıtım beklenirken bitip sonraki bölüme geçmesin diye yavaşlatılıyor.
+  await p.evaluate(() => { document.getElementById('player-modal-video').playbackRate = 0.25; });
+  const tanitim = await p.evaluate(() => {
+    const el = document.getElementById('player-xray');
+    return { acik: !el.hidden, sinif: el.classList.contains('tanitim'), gecirgen: getComputedStyle(el).pointerEvents === 'none',
+      basili: document.getElementById('player-modal-xray').getAttribute('aria-pressed') };
+  });
+  check('X-Ray: açılışta panel yarı saydam tanıtım olarak görünüyor ve tıklamayı videoya geçiriyor',
+    tanitim.acik && tanitim.sinif && tanitim.gecirgen && tanitim.basili === 'false', JSON.stringify(tanitim));
+  await p.waitForTimeout(6000);
+  const tanitimSonra = await p.evaluate(() => ({ gizli: document.getElementById('player-xray').hidden, oynuyor: !document.getElementById('player-modal-video').paused }));
+  check('X-Ray: tanıtım 5 sn sonra kendiliğinden kayboluyor', tanitimSonra.gizli && tanitimSonra.oynuyor, JSON.stringify(tanitimSonra));
+
   // --- Bilgi düğmesi paneli açıyor: karakterler, seslendirmenler, fansub ---
   await p.locator('#player-modal-xray').click();
   await p.waitForSelector('#player-xray .xray-kisi', { timeout: 5000 }).catch(() => {});
@@ -343,6 +357,11 @@ async function xrayTestleri(browser, base) {
   check('X-Ray: "Şu an çalıyor" etiketinde Spotify düğmesi var', /^https:\/\/open\.spotify\.com\//.test(etiketSpotify), etiketSpotify);
   check('X-Ray: opening sırasında "Şu an çalıyor" şarkıyı gösteriyor',
     opDurum.muzik && /Şu an çalıyor/.test(opDurum.muzikMetin) && /Hit in the USA/.test(opDurum.muzikMetin), opDurum.muzikMetin);
+  // etiket 4 sn görünüp animasyonla çıkıyor (opening sürse de)
+  await p.evaluate(() => document.getElementById('player-modal-video').pause());
+  await p.waitForTimeout(4600);
+  const etiketGitti = await p.evaluate(() => ({ etiket: document.getElementById('player-xray-muzik').hidden, gec: !document.getElementById('player-xray-gec').hidden }));
+  check('X-Ray: "Şu an çalıyor" 4 sn sonra kayboluyor, "geç" düğmesi kalıyor', etiketGitti.etiket && etiketGitti.gec, JSON.stringify(etiketGitti));
   await p.locator('#player-xray-gec').click();
   await p.waitForTimeout(300);
   const gecSonra = await p.evaluate(() => ({ t: document.getElementById('player-modal-video').currentTime,
