@@ -129,8 +129,9 @@ kontrol çubuğu her zaman panelin üstünde kalır.
 | Opening/ending şarkıları | [AnimeThemes](https://animethemes.moe), yoksa [MyAnimeList](https://myanimelist.net) | derleme anında |
 | Opening/ending'in bölümdeki saniyeleri | [AniSkip](https://aniskip.com) | bölüm açılınca, tarayıcıdan |
 
-Bugünkü kapsam (6107 anime): 6014'ünde veri dosyası, 5840'ında karakter + seslendirmen, 4846'sında
-opening/ending şarkıları, 5483'ünde AniSkip için MyAnimeList kimliği var.
+Bugünkü kapsam (6107 anime): 6014'ünde veri dosyası, 5840'ında karakter + seslendirmen, 5056'sında
+opening/ending şarkıları (13.617 şarkının 6160'ı doğrudan Spotify parçasına bağlı), 5718'inde AniSkip için
+MyAnimeList kimliği var.
 
 Hangi şarkının hangi bölümde çaldığından emin olunamıyorsa etiket hiç gösterilmez (yanlış şarkı
 göstermektense boş kalır); panelde serinin bütün şarkıları listelenir. Veriyi güncellemek için:

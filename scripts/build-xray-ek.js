@@ -15,6 +15,7 @@
 //   node scripts/build-xray-ek.js --sezon      yalnız 1. adım
 //   node scripts/build-xray-ek.js --mal        yalnız 2. adım
 //   node scripts/build-xray-ek.js --spotify    yalnız 3. adım: şarkılara Spotify parça kimliği
+//   node scripts/build-xray-ek.js --uyum       yalnız 4. adım: uyum kuralı değişince MAL'sız kayıtları yeniden değerlendir
 //   node scripts/build-xray-ek.js --sinir 20   her adımda en çok 20 anime (deneme için)
 //
 // Tekrar çalıştırılabilir: 2. adım yalnız hâlâ şarkısı olmayan dosyalara bakıyor. Filmlerin ve
@@ -26,7 +27,7 @@ const { malTemalari, sarkiAnahtar } = require("./xray-ortak");
 
 const root = path.join(__dirname, "..");
 const argv = process.argv.slice(2);
-const sadece = argv.includes("--sezon") ? "sezon" : argv.includes("--mal") ? "mal" : argv.includes("--spotify") ? "spotify" : null;
+const sadece = argv.includes("--sezon") ? "sezon" : argv.includes("--mal") ? "mal" : argv.includes("--spotify") ? "spotify" : argv.includes("--uyum") ? "uyum" : null;
 const sinir = argv.includes("--sinir") ? Number(argv[argv.indexOf("--sinir") + 1]) : Infinity;
 
 const MAL_ARALIK = Number(process.env.MAL_ARALIK) || 2000; // MyAnimeList'e nazik davran
@@ -185,7 +186,50 @@ async function spotifyKimlikleri() {
   console.log(`\n  Spotify bitti: ${bulunan}/${toplam} şarkıya parça kimliği yazıldı.`);
 }
 
+// 4. adım: MAL kimliği olmayan (uyumsuz sayılmış) kayıtları güncel uyumlu() kuralıyla yeniden
+// değerlendirir; artık uyanların MAL kimliği, OP/ED şarkıları (AnimeThemes, yoksa MyAnimeList) ve
+// Spotify kimlikleri yazılıyor. Karakterler olduğu gibi kalıyor (AniList kimliği değişmiyor).
+async function yenidenUyum() {
+  const adaylar = INDEX.map(r => ({ slug: r[0], eps: r[2] || 0, yil: META[r[0]][4] || 0, kategori: META[r[0]][0] || "", x: oku(r[0]) }))
+    .filter(a => a.x && a.x.id && !a.x.mal).slice(0, sinir);
+  console.log(`Yeniden uyum: ${adaylar.length} MAL'sız kayıt.`);
+  const idler = [...new Set(adaylar.map(a => a.x.id))];
+  const medyalar = new Map();
+  for (let i = 0; i < idler.length; i += 10) {
+    try { for (const [k, v] of await anilistGrup(idler.slice(i, i + 10))) medyalar.set(k, v); }
+    catch (e) { console.log(`\n  AniList hatası: ${e.message}`); }
+    process.stdout.write(`\r  AniList ${Math.min(i + 10, idler.length)}/${idler.length}`);
+    await sleep(ARAMA_ARALIK);
+  }
+  const uyan = adaylar.filter(a => { const m = medyalar.get(a.x.id); return m && m.idMal && uyumlu(m, a); });
+  console.log(`\n  ${uyan.length} kayıt artık uyumlu; şarkılar çekiliyor.`);
+  const temaIdleri = [...new Set(uyan.map(a => a.x.id))];
+  const temalar = new Map();
+  for (let i = 0; i < temaIdleri.length; i += 40) {
+    try { for (const [k, v] of await temaGrup(temaIdleri.slice(i, i + 40))) temalar.set(k, v); }
+    catch (e) { console.log(`\n  AnimeThemes hatası: ${e.message}`); }
+  }
+  let sayfa = 0, sarkili = 0;
+  const malSonuc = new Map();
+  for (const a of uyan) {
+    const mal = medyalar.get(a.x.id).idMal;
+    if (!malSonuc.has(mal)) {
+      try { malSonuc.set(mal, malTemalari(await malSayfa(mal))); } catch (e) { malSonuc.set(mal, []); }
+      await sleep(MAL_ARALIK);
+    }
+    const malT = malSonuc.get(mal);
+    const at = temalar.get(a.x.id) || [];
+    const m = at.length ? spotifyIsle(at, malT) : malT;
+    const kayit = { ...a.x, mal };
+    if (m.length) { kayit.m = m; sarkili++; }
+    yaz(a.slug, kayit);
+    process.stdout.write(`\r  ${++sayfa}/${uyan.length} kayıt · ${sarkili} şarkılı`);
+  }
+  console.log(`\n  Yeniden uyum bitti: ${uyan.length} kayda MAL kimliği, ${sarkili} tanesine şarkı yazıldı.`);
+}
+
 (async () => {
+  if (sadece === "uyum") { await yenidenUyum(); return; }
   if (!sadece || sadece === "sezon") await sezonDuzelt();
   if (!sadece || sadece === "mal") await malSarkilari();
   if (!sadece || sadece === "spotify") await spotifyKimlikleri();

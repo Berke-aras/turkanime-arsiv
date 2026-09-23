@@ -52,7 +52,7 @@ for (const r of INDEX) {
   if (!id) continue;
   if (!yenile && fs.existsSync(path.join(cikis, r[0] + ".json"))) continue;
   if (!kimlikler.has(id)) kimlikler.set(id, []);
-  kimlikler.get(id).push({ slug: r[0], eps: r[2] || 0, yil: m[4] || 0 });
+  kimlikler.get(id).push({ slug: r[0], eps: r[2] || 0, yil: m[4] || 0, kategori: m[0] || '' });
 }
 
 async function istek(url, secenek, ad, deneme = 1) {
@@ -82,7 +82,7 @@ async function istek(url, secenek, ad, deneme = 1) {
 
 async function anilistGrup(idler) {
   const query = "query{" + idler.map(id =>
-    `m${id}: Media(id:${id}, type: ANIME){ id idMal episodes seasonYear startDate{ year }
+    `m${id}: Media(id:${id}, type: ANIME){ id idMal episodes format seasonYear startDate{ year }
       characters(sort:[ROLE, RELEVANCE, ID], perPage:${KARAKTER_SAYISI}){ edges{ role
         node{ name{ full } image{ medium } }
         voiceActors(language: JAPANESE, sort:[RELEVANCE, ID]){ name{ full } image{ medium } } } } }`
@@ -126,9 +126,16 @@ function karakterler(media) {
 
 // Kapak eşleşmesi bu animeye mi ait, yoksa serinin başka bir sezonuna mı? Yıl ±1 ve bölüm sayısı
 // makul aralıkta ise "uyumlu". Bilinmeyen alanlar (yıl 0, bölüm null) engel sayılmıyor.
+// Arşivin kategorisi -> AniList biçimleri.
+const BICIM = { TV: ["TV", "TV_SHORT"], Movie: ["MOVIE"], OVA: ["OVA"], ONA: ["ONA"], Special: ["SPECIAL", "TV_SHORT"], "TV Special": ["SPECIAL"] };
 function uyumlu(media, a) {
   const aniYil = media.seasonYear || (media.startDate && media.startDate.year) || 0;
   if (a.yil && aniYil && Math.abs(a.yil - aniYil) > 1) return false;
+  // Yıl ve biçim (arşivde TV / AniList'te TV ...) tutuyorsa bölüm sayısı farkı engel değil: arşive
+  // OVA/özel bölüm eklenmiş (Shingeki no Kyojin: arşivde 31, AniList'te 25) ya da dizi eksik
+  // arşivlenmiş olabiliyor. Biçim tutmuyorsa (arşivde "Special", AniList'te ana dizi "TV": bir özet
+  // bölümü ana diziye bağlanmış) bölüm sayısına bakılıyor.
+  if (a.yil && aniYil && a.kategori && media.format && (BICIM[a.kategori] || []).includes(media.format)) return true;
   const aniEps = media.episodes || 0;
   if (a.eps && aniEps && (a.eps > aniEps + 2 || a.eps < Math.floor(aniEps / 2))) return false;
   return true;
