@@ -103,7 +103,7 @@ Kendi oynatıcımız olduğu için hız ayarı, kaldığın yerden devam, klavye
 
 | Sağlayıcı | Nerede | Dosya |
 |---|---|---|
-| Sibnet | Vercel function (`tka-sibnet.vercel.app`) | `api/sibnet.js` |
+| Sibnet | Vercel function (`tka-sibnet.vercel.app`, bölge `fra1` / Frankfurt) | `api/sibnet.js` |
 | Sibnet (ikinci) | Netlify function (`tka-sibnet.netlify.app`) | `cozucu-netlify/` (aynı `api/sibnet.js`'i sarar) |
 | Uqload | Cloudflare Worker (`tka-uqload.turkanime-arsiv.workers.dev`) | `cf/uqload/worker.js` |
 
