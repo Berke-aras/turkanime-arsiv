@@ -132,7 +132,6 @@ async function renderDetail(slug, token) {
       </div>
       ${nsfwHtml}
       ${ozetHtml}
-      <section id="karakter-serit" class="karakter-serit" aria-label="Karakterler ve seslendirmenler" hidden></section>
       ${episodes.length ? `
       <div class="ep-toolbar">
         <h3 class="section-title">Bölümler <span class="meta">(${episodes.length})</span></h3>
@@ -142,6 +141,7 @@ async function renderDetail(slug, token) {
       </div>` : ''}
       ${episodes.length > 20 ? `<input id="ep-search" class="ep-search" placeholder="Bölüm ara... (örn. 12 veya final)">` : ''}
       <div id="ep-list"${getEpIzgara() ? ' class="izgara"' : ''}>${epListHtml(episodes, slug) || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
+      <section id="karakter-serit" class="karakter-serit" aria-label="Karakterler ve seslendirmenler" hidden></section>
       ${benzerHtml}
     </div>`;
   fadeApp();
@@ -247,7 +247,8 @@ async function renderDetail(slug, token) {
 
 
 // Karakterler ve seslendirmenleri (oynatıcıdaki bilgi paneliyle aynı veri, kaynak/x/<slug>.json).
-// Sayfa çizildikten sonra geliyor; veri yoksa bölüm hiç görünmüyor. Seslendirmen adı, arşivdeki
+// Sayfa çizildikten sonra geliyor; veri yoksa bölüm hiç görünmüyor. Bölüm listesinin ALTINDA duruyor:
+// üstünde olunca sonradan belirip bölümleri aşağı itiyordu (sayfa kayması, bölümler ekran dışına). Seslendirmen adı, arşivdeki
 // diğer rollerini listeleyen sayfaya gidiyor.
 async function karakterSeridiCiz(slug, token) {
   const veri = await veriYukle(slug);
