@@ -337,6 +337,12 @@ async function xrayTestleri(browser, base) {
   await p.evaluate(() => document.getElementById('player-modal-video').pause());
   await p.waitForTimeout(1100);
   const durakAcik = await p.evaluate(() => !document.getElementById('player-xray').hidden);
+  // panel açıkken oynat düğmesi panelin altında kalmamalı (kontrol çubuğu panelin üstünde)
+  const oynatErisilir = await p.evaluate(() => {
+    const b = document.getElementById('player-modal-playtoggle'), r = b.getBoundingClientRect();
+    return b.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+  });
+  check('X-Ray: panel açıkken oynat düğmesi erişilebilir', durakAcik && oynatErisilir);
   await p.evaluate(() => document.getElementById('player-modal-video').play().catch(() => {}));
   await p.waitForTimeout(300);
   const oynatKapali = await p.evaluate(() => document.getElementById('player-xray').hidden);
@@ -346,8 +352,35 @@ async function xrayTestleri(browser, base) {
   await p.locator('#player-modal-close').click();
   const kapaninca = await p.evaluate(() => ['player-xray', 'player-xray-gec', 'player-xray-muzik'].every(id => document.getElementById(id).hidden));
   check('X-Ray: oynatıcı kapanınca panel, etiket ve düğme gizleniyor', kapaninca);
-
   await ctx.close();
+
+  // --- telefon: "Şu an çalıyor" etiketinin üstüne dokunmak videoyu duraklatmalı (etiket dokunuşu yutmasın) ---
+  const mctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const m = await mctx.newPage();
+  await m.route('**/*', r => {
+    const u = r.request().url();
+    if (/tka-sibnet|tka-uqload|api\/sibnet/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ url: base + '/test/fixtures/video.webm' }) });
+    if (/api\.aniskip\.com/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ found: true, results: [{ interval: { startTime: 0, endTime: 8 }, skipType: 'op' }] }) });
+    const host = new URL(u).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+  await m.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await m.waitForSelector('.ep');
+  await m.locator('.ep[data-i="0"] .ep-head').tap();
+  await m.waitForTimeout(400);
+  await m.locator('.ep[data-i="0"] .ep-links .link-btn.direct').first().tap();
+  const etiket = await m.waitForSelector('#player-xray-muzik:not([hidden])', { timeout: 20000 }).then(() => true, () => false);
+  let durdu = false, tasma = true;
+  if (etiket) {
+    const k = await m.locator('#player-xray-muzik').boundingBox();
+    await m.touchscreen.tap(k.x + k.width / 2, k.y + k.height / 2);
+    await m.waitForTimeout(1100);
+    durdu = await m.evaluate(() => document.getElementById('player-modal-video').paused && !document.getElementById('player-xray').hidden);
+    tasma = await m.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+  }
+  check('X-Ray mobil: etiketin üstüne dokunmak videoyu duraklatıp paneli açıyor', etiket && durdu, `etiket=${etiket} durdu=${durdu}`);
+  check('X-Ray mobil: 390 px\'te yatay taşma yok', etiket && !tasma);
+  await mctx.close();
 }
 
 // §7.1 / §7.2: izleme konumu ve izlendi işareti. Gerçek <video> gerektiği için resolver

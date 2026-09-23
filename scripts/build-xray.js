@@ -170,7 +170,7 @@ async function temaGrup(idler) {
   return sonuc;
 }
 
-(async () => {
+async function ana() {
   fs.mkdirSync(cikis, { recursive: true });
   const tumIdler = [...kimlikler.keys()].slice(0, sinir);
   const slugSayisi = tumIdler.reduce((s, id) => s + kimlikler.get(id).length, 0);
@@ -222,4 +222,8 @@ async function temaGrup(idler) {
     }
   }));
   console.log(`\nBitti: ${yazilan} dosya yazıldı (${temali} tanesinde OP/ED var, ${uyumsuz} tanesinde yalnız karakterler).`);
-})();
+}
+
+// scripts/build-xray-ek.js aynı istek/ayrıştırma parçalarını kullanıyor.
+module.exports = { UA, sleep, istek, anilistGrup, karakterler, uyumlu, temaGrup, cikis, INDEX, META };
+if (require.main === module) ana();

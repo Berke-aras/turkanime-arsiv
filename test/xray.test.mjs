@@ -96,3 +96,25 @@ test("aralikBul: videonun o anki saniyesine göre aralık", () => {
   assert.equal(aralikBul(a, 140), null, "bitiş anı aralığa dahil değil");
   assert.equal(aralikBul(a, 1350).tip, "ed");
 });
+
+test("malTemalari: MyAnimeList sayfasındaki opening/ending blokları", () => {
+  const td = (i, ad, sanatci, bolum) => `<td width="84%">${i ? `<span class="theme-song-index">${i}:</span>&nbsp;` : ""}`
+    + `<a href="javascript:x()"><span class="theme-song-title">&quot;${ad}&quot;</span></a>`
+    + `<span class="theme-song-artist"> by ${sanatci}</span>${bolum ? `&nbsp;<span class="theme-song-episode">(${bolum})</span>` : ""}</td>`;
+  const html = `<h2>Opening Theme</h2><div class="theme-songs js-theme-songs opnening"><table><tr><td width="8%"></td>`
+    + td(0, "Tank!", "The Seatbelts", "eps 1-25") + `</tr></table></div>`
+    + `<h2>Ending Theme</h2><div class="theme-songs js-theme-songs ending"><table><tr>`
+    + td(1, "The Real Folk Blues", "The Seatbelts feat. Mai Yamane", "eps 1-12, 14-25")
+    + td(2, "Space Lion", "The Seatbelts", "ep 13")
+    + td(3, "Aka no Kakera (緋色のカケラ)", "Suzuki Yuki &amp; Co", "")
+    + `</tr></table></div><h2>Reviews</h2><span class="theme-song-title">"Başka bölüm"</span>`;
+  assert.deepEqual(ortak.malTemalari(html), [
+    ["OP", 0, "Tank!", "The Seatbelts", "1-25"],
+    ["ED", 1, "The Real Folk Blues", "The Seatbelts feat. Mai Yamane", "1-12, 14-25"],
+    ["ED", 2, "Space Lion", "The Seatbelts", "13"],
+    ["ED", 3, "Aka no Kakera (緋色のカケラ)", "Suzuki Yuki & Co", null],
+  ]);
+  assert.deepEqual(ortak.malTemalari("<html>şarkı yok</html>"), []);
+  // MAL'dan gelen bölüm aralığı tarayıcıdaki eşleştiriciyle uyumlu
+  assert.ok(bolumdeMi("1-12, 14-25", 14) && !bolumdeMi("1-12, 14-25", 13));
+});

@@ -11,6 +11,7 @@
     "build:meta": "node scripts/build-meta.js",
     "build:posters": "node scripts/build-posters.js",
     "build:xray": "node scripts/build-xray.js",
+    "build:xray-ek": "node scripts/build-xray-ek.js",
     "trim:data": "node scripts/trim-data.js"
   },
   "devDependencies": {

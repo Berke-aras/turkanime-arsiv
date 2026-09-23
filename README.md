@@ -64,26 +64,65 @@ Ardından `http://localhost:8000` adresini aç. Kurulacak bağımlılık yok.
 
 ## Reklamsız oynatıcı
 
+> **Bu siteye özel.** Reklamsız oynatıcının arkasındaki yardımcı fonksiyonlar yalnızca
+> `https://berke-aras.github.io` kökeninden gelen istekleri kabul eder. Repoyu klonlayıp yerelde
+> ya da başka bir adreste açarsan "Reklamsız izle" çalışmaz ve oynatıcı sessizce sağlayıcının
+> kendi (reklamlı) iframe'ine düşer. Kendi kopyanda istiyorsan fonksiyonları kendi Vercel/Cloudflare
+> hesabına deploy edip `TKA_ALLOWED_ORIGINS` ile kendi adresini, yerel geliştirme için
+> `TKA_ALLOW_LOCALHOST=1` tanımlaman ve `js/links.js`'teki resolver adreslerini değiştirmen gerekir.
+
 Sibnet ve Uqload bölümlerinde "Reklamsız izle" seçeneği, videoyu sağlayıcının reklamlı iframe'i
 yerine sitenin kendi oynatıcısında açar. Orijinal gömülü oynatıcı butonları da yerinde durur.
 
-Bunun için iki küçük yardımcı fonksiyon var:
+**Kısaca nasıl çalışıyor:**
+
+1. Butona basınca tarayıcı, embed linkindeki video numarasını küçük bir yardımcı fonksiyona gönderir.
+2. Fonksiyon isteğin bu siteden geldiğini kontrol eder (Origin/Referer), sağlayıcının sayfasını
+   açıp asıl video dosyasının (mp4 ya da HLS) adresini bulur ve yalnız bu adresi döndürür.
+3. Tarayıcı videoyu doğrudan sağlayıcının sunucusundan çekip kendi `<video>` oynatıcısında oynatır.
+   Video trafiği fonksiyondan geçmez, yani barındırma maliyeti yok denecek kadar azdır.
+4. Herhangi bir adım başarısız olursa (sağlayıcı yoğun, link ölmüş, HLS hatası) oynatıcı otomatik
+   olarak klasik iframe embed'e düşer.
+
+Kendi oynatıcımız olduğu için hız ayarı, kaldığın yerden devam, klavye kısayolları ve
+[bilgi paneli](#bilgi-paneli-x-ray) (şu an çalan şarkı, opening'i geç) yalnızca bu modda tam çalışır.
 
 | Sağlayıcı | Nerede | Dosya |
 |---|---|---|
 | Sibnet | Vercel function (`tka-sibnet.vercel.app`) | `api/sibnet.js` |
 | Uqload | Cloudflare Worker (`tka-uqload.turkanime-arsiv.workers.dev`) | `cf/uqload/worker.js` |
 
-Fonksiyon yalnızca video numarasını alır, gerekiyorsa Referer ile yönlendirmeleri takip eder ve
-Referer istemeyen nihai video adresini döndürür. Video trafiği fonksiyondan geçmez; tarayıcı
-videoyu doğrudan sağlayıcının sunucusundan çeker. (Sibnet için Cloudflare denendi, Cloudflare
-IP'lerini 403 ile engellediği için Vercel'de duruyor.)
+Sibnet için Cloudflare denendi, Cloudflare IP'lerini 403 ile engellediği için Vercel'de duruyor.
+ok.ru için de fonksiyon yazıldı ama döndürdüğü video linki yalnız fonksiyonun IP'sinden açıldığı
+için kapalı (bkz. `js/links.js`, `OKRU_ETKIN`).
 
 <div align="center">
 
 <img src="docs/assets/loop-1.gif" height="280" alt="">
 
 </div>
+
+## Bilgi paneli (X-Ray)
+
+Amazon Prime'daki X-Ray gibi: oynatıcıda videoyu duraklatınca (ya da **Bilgi** düğmesi / `I`)
+soldan bir panel açılır. Panelde animenin karakterleri ve Japon seslendirmenleri, bölümün
+opening/ending şarkıları ve bölümü çeviren fansub görünür. Reklamsız oynatıcıda ayrıca opening/ending
+sırasında sağ üstte **♪ Şu an çalıyor** etiketi ve sağ altta **Opening'i geç** düğmesi çıkar.
+Mobilde panel ekranı kaplar ve kaydırılabilir; kontrol çubuğu her zaman panelin üstünde kalır.
+
+| Veri | Kaynak | Ne zaman |
+|---|---|---|
+| Karakterler, seslendirmenler | [AniList](https://anilist.co) | derleme anında → `kaynak/x/<slug>.json` |
+| Opening/ending şarkıları | [AnimeThemes](https://animethemes.moe), yoksa [MyAnimeList](https://myanimelist.net) | derleme anında |
+| Opening/ending'in bölümdeki saniyeleri | [AniSkip](https://aniskip.com) | bölüm açılınca, tarayıcıdan |
+
+Hangi şarkının hangi bölümde çaldığından emin olunamıyorsa etiket hiç gösterilmez (yanlış şarkı
+göstermektense boş kalır); panelde serinin bütün şarkıları listelenir. Veriyi güncellemek için:
+
+```bash
+npm run build:xray      # yeni animeler: AniList + AnimeThemes
+npm run build:xray-ek   # yanlış sezona bağlanmış kapakları düzelt, eksik şarkıları MyAnimeList'ten tamamla
+```
 
 ## Proje yapısı
 
@@ -105,6 +144,7 @@ kaynak/animeler/<slug>/info.json            özet, kategori, puan gibi detay bil
 scripts/build-meta.js                       info.json'lardan meta.js üretir
 scripts/build-posters.js                    AniList kapaklarını meta.js'e gömer
 scripts/build-xray.js                       AniList + AnimeThemes'ten kaynak/x/ dosyalarını üretir
+scripts/build-xray-ek.js                    sezon eşleşmesini düzeltir, eksik şarkıları MAL'dan tamamlar
 scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
 scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
 scripts/social-gorsel.py                    GitHub sosyal önizlemesi + og:image üretir
@@ -129,6 +169,7 @@ Veride bir değişiklik olduğunda sırasıyla:
 node scripts/build-meta.js
 node scripts/build-posters.js
 node scripts/build-xray.js     # yeni kapağı olan animelere bilgi paneli verisi
+node scripts/build-xray-ek.js  # sezon düzeltme + eksik şarkılar
 ```
 
 ## Sık sorulan sorular
