@@ -289,7 +289,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .card .meta{margin:0 6px 8px;font-size:11.5px;color:var(--text-2)}  /* §5.4: 12px altı metinde --muted yorucu */
 .badges{display:flex;flex-wrap:wrap;gap:4px;margin:0 6px 6px}
-.badge{font-size:10.5px;padding:3px 8px;border-radius:999px;background:var(--surface-3);color:var(--text-2);border:1px solid transparent}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--surface-3);color:var(--text-2);border:1px solid transparent}
 .poster{position:relative;width:100%;height:0;padding-bottom:150%;border-radius:calc(var(--r-lg) - 6px);background:var(--surface-3);display:flex;align-items:center;justify-content:center;
   overflow:hidden;color:var(--on-art-fg);font-weight:700;font-size:22px;letter-spacing:1px}
 .poster img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .4s ease,transform .35s var(--ease)}
@@ -313,7 +313,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .poster-bos .poster-init{font-size:26px;font-weight:800;letter-spacing:1px;opacity:.5;line-height:1}
 .poster-bos .poster-ad{font-size:12.5px;font-weight:600;line-height:1.3;color:rgba(255,255,255,.92);
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
-.poster-bos .poster-not{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+.poster-bos .poster-not{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.45)}
 .recent-grid .poster-bos .poster-ad,.recent-grid .poster-bos .poster-not{display:none}
 .poster.featured-poster .poster-ad,.poster.detail-poster .poster-ad{-webkit-line-clamp:4}
 
@@ -335,7 +335,7 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 /* Rozet kapağın SAĞ ÜSTÜNDE duruyor: .card konumlandırma bağlamı olduğu için alt kenara
    yaslandığında başlık ve tür etiketlerinin üstüne biniyordu. Puan rozeti sol üstte. */
 .yas-rozet{position:absolute;right:12px;top:12px;z-index:2;display:inline-flex;align-items:center;
-  padding:3px 8px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.04em;
+  padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;
   background:var(--on-art-bg-strong);color:#ff8a8a;border:1px solid rgba(255,120,120,.45);
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 
@@ -396,7 +396,8 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 .ozet-more{background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;padding:6px 0 0;margin:0;line-height:1.7;text-align:left}
 .ozet-more:hover{text-decoration:underline}
 
-.ep-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+/* dar ekranda (320 px) 'izlendi' rozeti + ızgara + Tersten sığmıyor, 'Tersten' kesiliyordu: alt satıra geçsin */
+.ep-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px}
 .ep-toolbar .section-title{margin:0;flex:1;font-size:18px;font-weight:800;letter-spacing:-.02em;color:var(--text)}
 .ep-search{width:100%;padding:10px 14px;margin-bottom:12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface-2);font-size:13.5px;
   transition:border-color .15s,box-shadow .15s}
@@ -500,7 +501,8 @@ main{padding:clamp(18px,3vw,30px) var(--gutter) 60px;max-width:var(--container);
 /* ---------- footer ---------- */
 footer{max-width:var(--container);margin:0 auto;padding:20px var(--gutter) calc(36px + var(--safe-b));text-align:center;color:var(--muted);font-size:12.5px;
   display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 0;border-top:1px solid var(--border)}
-footer a{color:var(--text-2);text-decoration:none}
+/* dokunma hedefi en az 24 px (WCAG 2.5.8); metin satırı 19 px'ti */
+footer a{display:inline-block;padding:4px 0;color:var(--text-2);text-decoration:none}
 footer a:hover{color:var(--text);text-decoration:underline}
 .footer-sep{margin:0 10px;opacity:.5}
 
@@ -624,7 +626,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .xray-sarki-metin{flex:1;min-width:0;display:flex;flex-direction:column}
 .xray-sarki-metin b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .xray-sarki-metin .meta{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.xray-sarki-tip{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)}
+.xray-sarki-tip{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)}
 .xray-spotify{flex:none;display:inline-flex;align-items:center;gap:5px;padding:5px 9px 5px 6px;border-radius:999px;font-size:11.5px;font-weight:700;
   color:#1db954;background:rgba(29,185,84,.14);transition:background .2s,color .2s}
 .xray-spotify .ic{width:16px;height:16px}
@@ -650,6 +652,8 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .xray-yok{font-size:13px}
 .xray-kaynak{margin:16px 0 0;font-size:11.5px}
 .xray-kaynak a{color:#b7bccb}
+/* satır içi kaynak linkleri: dokunması kolay olsun diye dikey pay */
+.xray-kaynak a,.sv-kaynak a{display:inline-block;padding:5px 0}
 
 /* dokunmatik çift dokunuş sarma göstergesi: sarılan tarafta yarım daire ve "+10 sn" */
 .sar-ipucu{position:absolute;top:0;bottom:0;z-index:2;width:38%;display:flex;align-items:center;justify-content:center;pointer-events:none;
@@ -690,7 +694,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .ao-metin{min-width:0;display:flex;flex-direction:column;line-height:1.3}
 .ao-metin b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ao-metin .meta{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ao-fazla{display:inline-block;padding:0 5px;border-radius:999px;font-size:10.5px;background:var(--surface-3)}
+.ao-fazla{display:inline-block;padding:0 5px;border-radius:999px;font-size:11px;background:var(--surface-3)}
 .ao-bekle{padding:8px 10px;font-size:12px}
 
 /* ---------- detay sayfası: opening/ending şarkıları ---------- */
@@ -722,7 +726,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .ks-foto-va{position:absolute;right:-12px;bottom:-4px;width:30px;height:30px;font-size:10px;border:2px solid var(--surface)}
 .ks-ad{font-size:13px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ks-kart .meta{font-size:11px}
-.ks-va{margin-top:4px;font-size:12px;color:var(--accent-ink);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ks-va{margin-top:0;padding:4px 6px;font-size:12px;color:var(--accent-ink);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ks-va:hover,.ks-va:focus-visible{text-decoration:underline}
 
 /* ---------- seslendirmen sayfası ---------- */
@@ -745,7 +749,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
   pointer-events:none} /* yalnız bilgi: altındaki videoya dokunmak (oynat/duraklat) etiket yüzünden kaçmasın */
 .xray-muzik[hidden]{display:none}
 .xray-muzik .meta{color:#9aa0b2}
-.xray-muzik-ust{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.xray-muzik-ust{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
 .xray-muzik-metin{min-width:0}
 /* Etiket dokunuşu videoya geçiriyor; yalnız Spotify düğmesi tıklanabilir. */
 .xray-muzik-spotify{pointer-events:auto;flex:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
@@ -824,10 +828,10 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .card h3{font-size:12.5px;margin:8px 5px 3px}
   .card .meta{font-size:11px;margin:0 5px 6px}
   .badges{margin:0 5px 5px}
-  .badge{font-size:10px;padding:2px 7px}
+  .badge{font-size:11px;padding:2px 7px}
   .fav-btn{top:9px;right:9px;width:28px;height:28px}
-  .rating-badge{top:9px;left:9px;font-size:10.5px;padding:3px 8px}
-  .yas-rozet{top:9px;right:9px;font-size:10px;padding:2px 7px}
+  .rating-badge{top:9px;left:9px;font-size:11px;padding:3px 8px}
+  .yas-rozet{top:9px;right:9px;font-size:11px;padding:2px 7px}
   .yas-kapi{margin:24px auto;padding:20px 16px}
 
   .detail-head{gap:14px;align-items:flex-start;padding:14px;margin-bottom:16px;border-radius:var(--r-lg)}
@@ -835,7 +839,7 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .detail h2{font-size:19px;gap:8px;margin-bottom:8px}
   .fav-btn-lg{width:32px;height:32px;font-size:15px}
   .detail-head .info-tags{gap:5px;margin-bottom:8px}
-  .detail-head .info-tags .tag{font-size:10.5px;padding:3px 9px}
+  .detail-head .info-tags .tag{font-size:11px;padding:3px 9px}
   .detail-head .info-stats{gap:6px 12px;font-size:12px;margin-bottom:12px}
   .start-btn{font-size:13px;padding:9px 16px}
   .info{padding:14px}
@@ -892,4 +896,12 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .card-wrap:hover .poster img{transform:none}
   .featured:hover{transform:none}
   .card:active{transform:scale(.98)}
+}
+
+/* 400 px'den dar ekranda oynatıcı kontrol çubuğu (oynat, ses, süre, hız, resim içinde resim, tam ekran)
+   sığmıyor, tam ekran düğmesi dışarıda kalıyordu. Ses kaydırıcısı gizleniyor: telefonda ses donanım
+   tuşlarıyla ayarlanıyor, sessize alma düğmesi yerinde. */
+@media (max-width:400px){
+  #player-modal-volume{display:none}
+  #player-modal-controls-row{gap:2px}
 }

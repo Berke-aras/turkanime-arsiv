@@ -553,7 +553,11 @@ async function anaSayfaTestleri(browser, base) {
 
   // --- sonsuz kaydırma ---
   await p.goto(base + '/index.html#/?kategori=TV', { waitUntil: 'domcontentloaded' });
-  await p.waitForSelector('.card');
+  // Aynı sayfa içinde hash değişimi: ana sayfanın eski kartları hâlâ yerinde olduğundan '.card' beklemek
+  // yetmiyor (test eski listeyi kaydırıyor, yeni liste çizilince konum başa alınıyordu). Yeni listenin
+  // çizildiğini ve kaydırma konumunun (bir sonraki karede) yerine oturduğunu bekle.
+  await p.waitForFunction(() => { const f = document.getElementById('f-kategori'); return f && f.value === 'TV'; });
+  await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   const onceKart = await p.evaluate(() => document.querySelectorAll('.grid:not(.recent-grid) .card').length);
   await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await p.waitForFunction(n => document.querySelectorAll('.grid:not(.recent-grid) .card').length > n, onceKart, { timeout: 5000 }).catch(() => {});
