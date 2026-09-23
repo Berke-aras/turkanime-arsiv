@@ -162,6 +162,18 @@ test("kimliği olan her anime için bilgi paneli dosyası var (kaynak/x)", () =>
   assert.deepEqual(fazla.slice(0, 5), [], `${fazla.length} fazladan kaynak/x dosyası`);
 });
 
+test("seslendirmen dizini: her kova var ve her ad kendi kovasında (kaynak/sv)", () => {
+  const { SV_KOVA, svKova } = require("../scripts/xray-ortak.js");
+  const yanlis = [], slugKume = new Set(sluglar);
+  for (let i = 0; i < SV_KOVA; i++) {
+    const kova = JSON.parse(fs.readFileSync(path.join(ROOT, "kaynak", "sv", i + ".json"), "utf8"));
+    for (const [ad, d] of Object.entries(kova)) {
+      if (svKova(ad) !== i || !Array.isArray(d.r) || !d.r.length || d.r.some(r => !slugKume.has(r[0]))) yanlis.push(ad);
+    }
+  }
+  assert.deepEqual(yanlis.slice(0, 5), [], `${yanlis.length} seslendirmen kaydı hatalı (npm run build:seslendirmen)`);
+});
+
 test("kaynak/x dosyaları beklenen biçimde", () => {
   const dizin = path.join(ROOT, "kaynak", "x");
   const bozuk = [];

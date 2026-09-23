@@ -626,12 +626,49 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .xray-bos{display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;background:hsl(var(--h,230) 40% 32%)}
 .xray-kisi-ad,.xray-kisi-va{min-width:0;display:flex;flex-direction:column;font-size:13px;line-height:1.3}
 .xray-kisi-ad{flex:1}
-.xray-kisi-va{flex:1;text-align:right}
+.xray-kisi-va{flex:1;text-align:right;color:inherit;text-decoration:none;border-radius:6px}
+.xray-kisi-va:hover span:first-child,.xray-kisi-va:focus-visible span:first-child{color:var(--accent);text-decoration:underline}
 .xray-kisi-ad b,.xray-kisi-va span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .xray-kisi .meta{font-size:11.5px}
 .xray-yok{font-size:13px}
 .xray-kaynak{margin:16px 0 0;font-size:11.5px}
 .xray-kaynak a{color:#b7bccb}
+
+/* dokunmatik çift dokunuş sarma göstergesi: sarılan tarafta yarım daire ve "+10 sn" */
+.sar-ipucu{position:absolute;top:0;bottom:0;z-index:2;width:38%;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  color:#fff;font-size:15px;font-weight:700;opacity:0;background:rgba(255,255,255,.12)}
+.sar-ipucu.sol{left:0;border-radius:0 50% 50% 0 / 0 50% 50% 0}
+.sar-ipucu.sag{right:0;border-radius:50% 0 0 50% / 50% 0 0 50%}
+.sar-ipucu.goster{animation:sar-ipucu .7s ease-out}
+@keyframes sar-ipucu{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
+
+/* ---------- detay sayfası: karakter şeridi ---------- */
+.karakter-serit{margin:22px 0 6px}
+.karakter-serit[hidden]{display:none}
+.ks-liste{list-style:none;margin:0;padding:2px 2px 10px;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+.ks-kart{flex:none;width:132px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;
+  padding:12px 8px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border)}
+.ks-fotolar{position:relative;margin-bottom:6px}
+.ks-foto{width:62px;height:62px;border-radius:50%;object-fit:cover;background:var(--surface-3);display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+/* baş harf yer tutucusu (görsel yok / yüklenemedi): temadan bağımsız renkli zemin, beyaz yazı okunsun */
+.ks-foto.xray-bos,.sv-foto.xray-bos{background:hsl(var(--h,230) 42% 38%)}
+.ks-foto-va{position:absolute;right:-12px;bottom:-4px;width:30px;height:30px;font-size:10px;border:2px solid var(--surface)}
+.ks-ad{font-size:13px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ks-kart .meta{font-size:11px}
+.ks-va{margin-top:4px;font-size:12px;color:var(--accent-ink);text-decoration:none;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ks-va:hover,.ks-va:focus-visible{text-decoration:underline}
+
+/* ---------- seslendirmen sayfası ---------- */
+.sv-bas{display:flex;align-items:center;gap:18px;margin:6px 0 22px}
+.sv-foto{flex:none;width:96px;height:96px;border-radius:50%;object-fit:cover;background:var(--surface-3);display:inline-flex;align-items:center;
+  justify-content:center;font-size:28px;font-weight:700;color:#fff;box-shadow:var(--shadow)}
+.sv-ad{margin:2px 0 4px;font-size:clamp(22px,4vw,30px);line-height:1.15}
+.sv-bas .meta{margin:0}
+.sv-rol{display:flex;flex-direction:column;min-width:0}
+.sv-karakter{margin:6px 2px 0;display:flex;flex-direction:column;font-size:13px;line-height:1.3}
+.sv-karakter b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-karakter .meta{font-size:11.5px}
+.sv-kaynak{margin-top:24px;font-size:12px}
 
 /* "♪ Şu an çalıyor" etiketi ve "Opening'i geç" düğmesi (yalnız reklamsız <video>) */
 .xray-muzik{position:absolute;top:14px;right:14px;z-index:2;max-width:min(360px,70%);display:flex;align-items:center;gap:10px;
@@ -751,6 +788,8 @@ footer a:hover{color:var(--text);text-decoration:underline}
   #player-modal{padding:0}
   .xray-panel{width:100%;padding:14px 14px calc(110px + var(--safe-b));background:rgba(6,7,11,.93)}
   .xray-kapat{width:40px;height:40px}
+  .sv-foto{width:72px;height:72px;font-size:22px}
+  .sv-bas{gap:14px}
   .xray-muzik{top:10px;right:10px;max-width:calc(100% - 20px);font-size:12px}
   .xray-gec{right:10px;bottom:calc(96px + var(--safe-b));font-size:13px}
   /* dokunmatikte 44px'lik hedef (§6.6.4) */

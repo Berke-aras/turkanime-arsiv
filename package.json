@@ -12,6 +12,7 @@
     "build:posters": "node scripts/build-posters.js",
     "build:xray": "node scripts/build-xray.js",
     "build:xray-ek": "node scripts/build-xray-ek.js",
+    "build:seslendirmen": "node scripts/build-seslendirmen.js",
     "trim:data": "node scripts/trim-data.js"
   },
   "devDependencies": {

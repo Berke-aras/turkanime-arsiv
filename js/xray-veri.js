@@ -57,4 +57,12 @@ function spotifyLink(t) {
   return { url: `https://open.spotify.com/search/${encodeURIComponent(sorgu)}`, parca: false };
 }
 
-export { spotifyLink, anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul };
+// Seslendirmen ters dizininin kovası (bkz. scripts/build-seslendirmen.js). Eşi: scripts/xray-ortak.js svKova.
+const SV_KOVA = 32;
+const svKova = ad => {
+  let h = 0;
+  for (const c of String(ad)) h = (h * 31 + c.codePointAt(0)) >>> 0;
+  return h % SV_KOVA;
+};
+
+export { svKova, spotifyLink, anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul };

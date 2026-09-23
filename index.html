@@ -121,6 +121,7 @@
   <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
   <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
   <symbol id="i-spotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7 9.5c3.5-1 7.3-.7 10.2.9" style="stroke:var(--spotify-ark,#0a0c11)" stroke-width="1.8"/><path d="M7.6 12.6c2.9-.8 5.9-.5 8.3.8" style="stroke:var(--spotify-ark,#0a0c11)" stroke-width="1.6"/><path d="M8.2 15.5c2.3-.6 4.6-.4 6.5.6" style="stroke:var(--spotify-ark,#0a0c11)" stroke-width="1.4"/></symbol>
+  <symbol id="i-pip" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor"/></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5"/><path d="M12 8h.01"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></symbol>
@@ -186,6 +187,7 @@
         <span id="player-modal-loading-hint" hidden>Yüklenmiyor mu? Yukarıdan "Ayrı sayfada aç"ı dene.</span>
       </div>
       <video id="player-modal-video" playsinline preload="metadata" hidden></video>
+      <div id="player-sar-ipucu" class="sar-ipucu" aria-hidden="true"></div>
       <div id="player-xray-muzik" class="xray-muzik" role="status" aria-live="polite" hidden></div>
       <button id="player-xray-gec" type="button" class="xray-gec" hidden></button>
       <aside id="player-xray" class="xray-panel" aria-label="Bölüm bilgisi" hidden></aside>
@@ -198,6 +200,7 @@
           <span id="player-modal-time">0:00 / 0:00</span>
           <span class="player-modal-controls-spacer"></span>
           <button id="player-modal-speed" type="button" title="Oynatma hızı">1x</button>
+          <button id="player-modal-pip" type="button" aria-label="Resim içinde resim" title="Resim içinde resim" hidden><svg class="ic" aria-hidden="true"><use href="#i-pip"/></svg></button>
           <button id="player-modal-fullscreen" type="button" aria-label="Tam ekran"><svg class="ic" aria-hidden="true"><use href="#i-maximize"/></svg></button>
         </div>
       </div>

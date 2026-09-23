@@ -4,7 +4,7 @@ import { readLS, writeLS } from './util.js';
 import { DIRECT_PROVIDERS, NO_EMBED_PLAYERS } from './links.js';
 import { playerVideo, playerFrame, playerViewport, playerControls, playerLoading, playerLoadingHint,
   playerNewTab, playerNextBtn, playerProgress, playerPlayToggle, playerMuteBtn, playerVolume,
-  playerTime, playerSpeedBtn, playerFullscreenBtn, fmtTime, setIcon, clearLoadHint } from './player-dom.js';
+  playerTime, playerSpeedBtn, playerFullscreenBtn, playerPipBtn, fmtTime, setIcon, clearLoadHint } from './player-dom.js';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 // Hız ve ses seviyesi oturumlar arası hatırlanıyor; her açılışta 1x'e ve tam sese dönmüyor.
@@ -21,7 +21,54 @@ const sessizOku = () => readLS('ta_sessiz', false) === true;
 // <video> her yeni kaynakta varsayılana döndüğü için oynatmadan hemen önce uygulanıyor.
 export function applySesTercihi() { playerVideo.volume = sesOku(); playerVideo.muted = sessizOku(); }
 playerPlayToggle.addEventListener('click', () => { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); });
-playerVideo.addEventListener('click', () => { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); });
+const oynatDurdur = () => { playerVideo.paused ? playerVideo.play() : playerVideo.pause(); };
+
+// --- dokunmatik: tek dokunuş oynat/duraklat, çift dokunuş ±10 sn (YouTube gibi) ---
+// Fareyle tık hemen oynatıp duraklatıyor. Dokunuşta tek/çift ayrımı için tek dokunuş kısa bir süre
+// bekletiliyor; ikinci dokunuş gelirse videonun o yarısına göre sarılıyor. Sarmadan hemen sonraki
+// dokunuşlar da sarmaya devam ediyor (art arda +10, +20, ...).
+const CIFT_DOKUNUS_MS = 280;
+let isaretci = 'mouse', tekDokunusTimer = 0, sonDokunus = 0, sarmaSerisi = 0;
+const sarIpucu = document.getElementById('player-sar-ipucu');
+let sarToplam = 0, sarYon = 0, ipucuTimer = 0;
+function dokunusSar(e) {
+  const r = playerVideo.getBoundingClientRect();
+  const yon = e.clientX - r.left < r.width / 2 ? -1 : 1;
+  playerVideo.currentTime = Math.min(Math.max(0, playerVideo.currentTime + yon * 10), playerVideo.duration || Infinity);
+  sarToplam = yon === sarYon ? sarToplam + 10 : 10;
+  sarYon = yon;
+  sarIpucu.textContent = `${yon < 0 ? '−' : '+'}${sarToplam} sn`;
+  sarIpucu.className = `sar-ipucu ${yon < 0 ? 'sol' : 'sag'}`;
+  void sarIpucu.offsetWidth; // animasyonu yeniden başlat
+  sarIpucu.classList.add('goster');
+  clearTimeout(ipucuTimer);
+  ipucuTimer = setTimeout(() => { sarIpucu.classList.remove('goster'); sarToplam = 0; }, 700);
+}
+playerVideo.addEventListener('pointerdown', e => { isaretci = e.pointerType || 'mouse'; });
+playerVideo.addEventListener('click', e => {
+  if (isaretci !== 'touch') { oynatDurdur(); return; }
+  const simdi = Date.now();
+  if (simdi - sarmaSerisi < 600 || (tekDokunusTimer && simdi - sonDokunus < CIFT_DOKUNUS_MS)) {
+    clearTimeout(tekDokunusTimer); tekDokunusTimer = 0;
+    dokunusSar(e);
+    sarmaSerisi = simdi;
+    return;
+  }
+  sonDokunus = simdi;
+  tekDokunusTimer = setTimeout(() => { tekDokunusTimer = 0; oynatDurdur(); }, CIFT_DOKUNUS_MS);
+});
+// Yeni kaynakta bekleyen tek dokunuş eski videoya uygulanmasın.
+export function dokunusSifirla() { clearTimeout(tekDokunusTimer); tekDokunusTimer = 0; sarmaSerisi = 0; }
+
+// --- resim içinde resim ---
+// Tarayıcı desteklemiyorsa (Firefox) düğme hiç görünmüyor.
+const pipDestekli = !!document.pictureInPictureEnabled && !playerVideo.disablePictureInPicture;
+playerPipBtn.hidden = !pipDestekli;
+playerPipBtn.addEventListener('click', () => {
+  if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+  else playerVideo.requestPictureInPicture().catch(() => {});
+});
+export function pipKapat() { if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {}); }
 playerVideo.addEventListener('play', () => setIcon(playerPlayToggle, 'i-pause'));
 playerVideo.addEventListener('pause', () => setIcon(playerPlayToggle, 'i-play'));
 playerVideo.addEventListener('timeupdate', () => {
@@ -87,6 +134,7 @@ let hlsInstance = null;
 
 function stopVideo() {
   if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+  dokunusSifirla();
   playerVideo.pause(); playerVideo.removeAttribute('src'); playerVideo.load();
 }
 

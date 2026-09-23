@@ -286,6 +286,13 @@ async function xrayTestleri(browser, base) {
   });
   check('X-Ray: Bilgi düğmesi karakter ve seslendirmenleri gösteriyor',
     panel.acik && panel.kisi > 0 && /Seslendirmen/.test(panel.metin) && panel.basili === 'true', `kişi=${panel.kisi}`);
+  const vaHref = await p.evaluate(() => { const a = document.querySelector('#player-xray .xray-kisi-va'); return a ? a.getAttribute('href') : ''; });
+  check('X-Ray: seslendirmen adı diğer rollerinin sayfasına gidiyor', vaHref === '#/seslendirmen/Kenji%20Nojima', vaHref);
+  // Media Session: kilit ekranı / bildirim başlığı
+  const ms = await p.evaluate(() => { const m = navigator.mediaSession && navigator.mediaSession.metadata; return m ? { t: m.title, a: m.artist } : null; });
+  check('Media Session: bölüm adı ve anime adı ayarlanıyor', ms && /beck/i.test(ms.t) && ms.a === 'Beck', JSON.stringify(ms));
+  const pip = await p.evaluate(() => ({ gizli: document.getElementById('player-modal-pip').hidden, destek: !!document.pictureInPictureEnabled }));
+  check('PiP: düğme yalnız destekleyen tarayıcıda görünüyor', pip.gizli === !pip.destek, JSON.stringify(pip));
   // Beck'in ilk reklamsız linkinin fansub'ı veride "Varsayılan": anlamsız olduğu için yazılmamalı.
   check('X-Ray: panelde bölüm numarası var, "Çeviri: Varsayılan" yazmıyor', /1\. bölüm/.test(panel.metin) && !/Varsayılan/.test(panel.metin));
   // AniList CDN'i testte kapalı: görseller kırık resim yerine baş harflere düşmeli.
@@ -403,7 +410,64 @@ async function xrayTestleri(browser, base) {
   }
   check('X-Ray mobil: etiketin üstüne dokunmak videoyu duraklatıp paneli açıyor', etiket && durdu, `etiket=${etiket} durdu=${durdu}`);
   check('X-Ray mobil: 390 px\'te yatay taşma yok', etiket && !tasma);
+
+  // --- çift dokunuş: sağ yarı +10 sn, sol yarı −10 sn; tek dokunuş sarmıyor ---
+  if (etiket) {
+    await m.evaluate(() => { const v = document.getElementById('player-modal-video'); v.pause(); v.currentTime = 2; });
+    await m.locator('#player-xray .xray-kapat').tap().catch(() => {});
+    const vb = await m.locator('#player-modal-video').boundingBox();
+    const y = vb.y + vb.height * 0.45;
+    await m.touchscreen.tap(vb.x + vb.width * 0.8, y);
+    await m.waitForTimeout(80);
+    await m.touchscreen.tap(vb.x + vb.width * 0.8, y);
+    await m.waitForTimeout(150);
+    const ileri = await m.evaluate(() => ({ t: document.getElementById('player-modal-video').currentTime, ipucu: document.getElementById('player-sar-ipucu').textContent }));
+    await m.waitForTimeout(700);
+    await m.touchscreen.tap(vb.x + vb.width * 0.2, y);
+    await m.waitForTimeout(80);
+    await m.touchscreen.tap(vb.x + vb.width * 0.2, y);
+    await m.waitForTimeout(150);
+    const geri = await m.evaluate(() => document.getElementById('player-modal-video').currentTime);
+    check('Mobil: çift dokunuş sağda +10 sn, solda −10 sn sarıyor',
+      ileri.t >= 8.5 && /\+10 sn/.test(ileri.ipucu) && geri < ileri.t - 5, `ileri=${ileri.t.toFixed(1)} (${ileri.ipucu}) geri=${geri.toFixed(1)}`);
+  }
   await mctx.close();
+}
+
+// Seslendirmen sayfası ve detay sayfasındaki karakter şeridi.
+async function seslendirmenTestleri(browser, base) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.route('**/*', r => {
+    const host = new URL(r.request().url()).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+  await p.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('#karakter-serit:not([hidden]) .ks-kart', { timeout: 8000 }).catch(() => {});
+  const serit = await p.evaluate(() => ({
+    kart: document.querySelectorAll('#karakter-serit .ks-kart').length,
+    va: (document.querySelector('#karakter-serit .ks-va') || {}).textContent || '',
+  }));
+  check('Detay: karakter ve seslendirmen şeridi çiziliyor', serit.kart === 12 && serit.va === 'Kenji Nojima', JSON.stringify(serit));
+
+  await p.locator('#karakter-serit .ks-va').first().click();
+  await p.waitForSelector('.sv-rol', { timeout: 8000 }).catch(() => {});
+  const sv = await p.evaluate(() => ({
+    hash: location.hash, baslik: (document.querySelector('.sv-ad') || {}).textContent,
+    rol: document.querySelectorAll('.sv-rol').length,
+    beck: [...document.querySelectorAll('.sv-rol')].some(r => /Beck/.test(r.textContent) && /Yoshiyuki Taira/.test(r.textContent)),
+    title: document.title,
+  }));
+  check('Seslendirmen sayfası: diğer rolleri karakter adıyla listeleniyor',
+    sv.hash === '#/seslendirmen/Kenji%20Nojima' && sv.baslik === 'Kenji Nojima' && sv.rol > 10 && sv.beck, JSON.stringify(sv));
+  await p.locator('.back[data-geri]').click();
+  await p.waitForTimeout(400);
+  check('Seslendirmen sayfası: Geri detay sayfasına dönüyor', await p.evaluate(() => location.hash === '#/anime/beck'));
+
+  await p.goto(base + '/index.html#/seslendirmen/Olmayan%20Biri', { waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(600);
+  check('Seslendirmen sayfası: bilinmeyen adda boş sonuç mesajı', /kayıt bulunamadı/.test(await p.locator('#app').textContent()));
+  await ctx.close();
 }
 
 // §7.1 / §7.2: izleme konumu ve izlendi işareti. Gerçek <video> gerektiği için resolver
@@ -1346,6 +1410,7 @@ async function run(page, base) {
     await temaTestleri(browser, base);
     await oynaticiTestleri(browser, base);
     await xrayTestleri(browser, base);
+    await seslendirmenTestleri(browser, base);
     await ilerlemeTestleri(browser, base);
     await yedekTestleri(browser, base);
   } finally {

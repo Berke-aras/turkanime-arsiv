@@ -7,7 +7,9 @@ import { OLU, directParams, epLinksHtml } from './links.js';
 import { playerModal, playerFrame, playerVideo, playerNewTab, playerPrevBtn, playerNextBtn,
   playerEpLabel, playerLoading, playerLoadingHint, playerControls,
   startLoadHint, clearLoadHint } from './player-dom.js';
-import { playDirect, stopVideo, bumpDirectToken, videoKlavye, kontrolleriGoster } from './player-video.js';
+import { playDirect, stopVideo, bumpDirectToken, videoKlavye, kontrolleriGoster, pipKapat } from './player-video.js';
+import { animeBul } from './xray-yukle.js';
+import { posterUrl } from './data.js';
 import { ilerlemeYaz, devamSaniyesi, izlendiAyarla } from './progress.js';
 import { xrayBolum, xrayKapat, panelDegistir, panelGoster, panelAcik } from './xray.js';
 
@@ -76,8 +78,40 @@ function openPlayerModal(url, epIndex = null, direct = null, fansub = '') {
   playerEpLabel.textContent = ep ? `${epIndex + 1} / ${currentEpisodes.length}` : '';
   xrayBolum({ slug: currentSlug, ep, fansub });
   syncEpNavButtons();
+  medyaOturumu(direct ? ep : null); // önceki/sonraki düğmelerinin durumu belli olduktan sonra
   startLoadHint();
   modalOdakAl();
+}
+
+// --- Media Session: telefonun kilit ekranı / bildirimi, klavyedeki medya tuşları ---
+// Yalnız reklamsız <video>'da: iframe embed'i biz kontrol edemiyoruz. Başlık bölüm adı, sanatçı
+// yerine anime adı, kapak AniList'ten. Önceki/sonraki bölüm düğmeleri modaldakilerle aynı işi görüyor.
+const MS = 'mediaSession' in navigator ? navigator.mediaSession : null;
+function msEylem(ad, fn) { try { MS.setActionHandler(ad, fn); } catch (e) { /* tarayıcı bu eylemi desteklemiyor */ } }
+function medyaOturumu(ep) {
+  if (!MS) return;
+  if (!ep) {
+    MS.metadata = null;
+    for (const ad of ['play', 'pause', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack']) msEylem(ad, null);
+    return;
+  }
+  const a = animeBul(currentSlug);
+  const kapak = a && posterUrl(a, 'large');
+  try {
+    MS.metadata = new window.MediaMetadata({
+      title: ep.ad || `${ep.no}. bölüm`,
+      artist: a ? a.baslik : '',
+      album: 'TürkAnime Arşivi',
+      artwork: kapak ? [{ src: kapak, sizes: '460x652' }] : [],
+    });
+  } catch (e) { /* MediaMetadata yok */ }
+  msEylem('play', () => playerVideo.play());
+  msEylem('pause', () => playerVideo.pause());
+  msEylem('seekbackward', d => { playerVideo.currentTime = Math.max(0, playerVideo.currentTime - ((d && d.seekOffset) || 10)); });
+  msEylem('seekforward', d => { playerVideo.currentTime = Math.min(playerVideo.duration || Infinity, playerVideo.currentTime + ((d && d.seekOffset) || 10)); });
+  msEylem('seekto', d => { if (d && isFinite(d.seekTime)) playerVideo.currentTime = d.seekTime; });
+  msEylem('previoustrack', playerPrevBtn.disabled ? null : () => playerPrevBtn.click());
+  msEylem('nexttrack', playerNextBtn.disabled ? null : () => playerNextBtn.click());
 }
 
 // --- §5.2 odak yönetimi ---
@@ -115,6 +149,8 @@ function closePlayerModal() {
   currentEpIndex = null; // kapandıktan sonra gelen pause/pagehide kayıt yazmasın
   playerModal.hidden = true;
   xrayKapat();
+  pipKapat();
+  medyaOturumu(null);
   modalOdakBirak();
   bumpDirectToken();
   stopVideo();

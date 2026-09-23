@@ -45,6 +45,8 @@ Dosyayı açtığın anda çalışır.
 | **Rastgele** | Tek tuşla arşivden rastgele bir başlık |
 | **Reklamsız oynatıcı** | Sibnet ve Uqload bölümleri sitenin kendi oynatıcısında, reklamsız açılır |
 | **Bilgi paneli (X-Ray)** | Oynatıcıda duraklatınca (ya da **Bilgi** / `I`) karakterler, Japon seslendirmenleri, bölümün opening/ending şarkıları ve çeviren fansub görünür. Reklamsız oynatıcıda opening/ending sırasında **♪ Şu an çalıyor** etiketi ve **Opening'i geç** düğmesi çıkar |
+| **Seslendirmenler** | Detay sayfasında karakter şeridi; seslendirmen adına tıklayınca arşivde seslendirdiği bütün animeler ve karakterleri (`#/seslendirmen/<ad>`) |
+| **Mobil oynatıcı** | Çift dokunuşla ±10 sn sarma, resim içinde resim, kilit ekranı / bildirimde bölüm adı, kapak ve oynatma düğmeleri (Media Session) |
 | **İzlemeye devam et** | Bıraktığın yeri hatırlar, izlenen bölümleri işaretler, ilerleme çubuğu gösterir |
 | **Benzer animeler** | Detay sayfasında aynı seri ve aynı türden öneriler |
 | **18+ uyarısı** | Ecchi/Hentai/Erotica başlıklarında NSFW uyarısı ve kartlarda `18+` rozeti |
@@ -139,15 +141,18 @@ js/                                         ES modülleri (giriş: js/main.js)
   links · cards · views/                    link butonları, kart, liste/detay/yasal görünümleri
   views/yas-kapisi                          18+ onay ekranı ve uyarı paneli
   player · player-dom · player-video        reklamsız oynatıcı modalı
-  xray · xray-veri                          oynatıcı bilgi paneli, şu an çalan şarkı, opening'i geç
+  xray · xray-veri · xray-yukle             oynatıcı bilgi paneli, şu an çalan şarkı, opening'i geç
+  views/seslendirmen                        seslendirmenin arşivdeki rolleri
 kaynak/data.js                              anime listesi (slug, başlık, bölüm/link sayısı)
 kaynak/b/<slug>.js                          her anime için bölüm ve izleme linkleri
 kaynak/x/<slug>.json                        bilgi paneli: karakterler, seslendirmenler, OP/ED şarkıları
+kaynak/sv/<0-31>.json                       seslendirmen -> seslendirdiği animeler (32 kovaya bölünmüş)
 kaynak/animeler/<slug>/info.json            özet, kategori, puan gibi detay bilgisi
 scripts/build-meta.js                       info.json'lardan meta.js üretir
 scripts/build-posters.js                    AniList kapaklarını meta.js'e gömer
 scripts/build-xray.js                       AniList + AnimeThemes'ten kaynak/x/ dosyalarını üretir
 scripts/build-xray-ek.js                    sezon eşleşmesini düzeltir, eksik şarkıları MAL'dan tamamlar
+scripts/build-seslendirmen.js               kaynak/x'ten seslendirmen ters dizinini (kaynak/sv/) üretir
 scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
 scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
 scripts/social-gorsel.py                    GitHub sosyal önizlemesi + og:image üretir
@@ -172,7 +177,8 @@ Veride bir değişiklik olduğunda sırasıyla:
 node scripts/build-meta.js
 node scripts/build-posters.js
 node scripts/build-xray.js     # yeni kapağı olan animelere bilgi paneli verisi
-node scripts/build-xray-ek.js  # sezon düzeltme + eksik şarkılar
+node scripts/build-xray-ek.js  # sezon düzeltme + eksik şarkılar + Spotify kimlikleri
+node scripts/build-seslendirmen.js
 ```
 
 ## Sık sorulan sorular

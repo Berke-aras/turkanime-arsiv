@@ -1,10 +1,11 @@
-// Hash router: #/ (liste, filtreler querystring'de), #/anime/<slug> ve #/yasal.
+// Hash router: #/ (liste, filtreler querystring'de), #/anime/<slug>, #/seslendirmen/<ad> ve #/yasal.
 import { jumpTo } from './util.js';
 import { parseListHash, restoreListScroll } from './state.js';
 import { playerModal, closePlayerModal } from './player.js';
 import { renderList } from './views/list.js';
 import { renderDetail } from './views/detail.js';
 import { renderLegal } from './views/legal.js';
+import { renderSeslendirmen } from './views/seslendirmen.js';
 
 // Detay sayfası veriyi asenkron yüklüyor; bu sayaç, kullanıcı beklerken başka rotaya geçtiğinde
 // geç gelen yanıtın ekrana çizilmesini engelliyor.
@@ -18,6 +19,8 @@ function route() {
   if (hash === '#/yasal') { renderLegal(); jumpTo(0); return; }
   const m = hash.match(/^#\/anime\/(.+)$/);
   if (m) { renderDetail(decodeURIComponent(m[1]), token); jumpTo(0); return; }
+  const sv = hash.match(/^#\/seslendirmen\/(.+)$/);
+  if (sv) { renderSeslendirmen(decodeURIComponent(sv[1]), token); jumpTo(0); return; }
   parseListHash(hash);
   renderList();
   restoreListScroll(); // listeye geri dönüldüyse eski kaydırma konumu, değilse başa

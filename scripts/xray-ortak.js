@@ -60,4 +60,13 @@ function malTemalari(html) {
 // "Aka no Kakera" yazıyor; parantez içi, büyük/küçük harf ve noktalama farkı yok sayılıyor.
 const sarkiAnahtar = s => String(s || "").replace(/\([^)]*\)/g, "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
 
-module.exports = { anilistId, KARAKTER_ONEK, KISI_ONEK, gorselKisalt, malTemalari, sarkiAnahtar };
+// Seslendirmen ters dizini kaynak/sv/<kova>.json'a bölünüyor; tarayıcı yalnız aradığı adın
+// kovasını indiriyor. Tarayıcı tarafındaki eşi: js/xray-veri.js svKova. İkisi birlikte değişmeli.
+const SV_KOVA = 32;
+const svKova = ad => {
+  let h = 0;
+  for (const c of String(ad)) h = (h * 31 + c.codePointAt(0)) >>> 0;
+  return h % SV_KOVA;
+};
+
+module.exports = { anilistId, KARAKTER_ONEK, KISI_ONEK, gorselKisalt, malTemalari, sarkiAnahtar, SV_KOVA, svKova };

@@ -6,10 +6,10 @@
 // Veri iki yerden geliyor:
 //  - kaynak/x/<slug>.json: AniList + AnimeThemes, derleme anında toplanmış (scripts/build-xray.js)
 //  - AniSkip API: OP/ED'nin bölümdeki saniye aralıkları; bölüm açılınca tarayıcıdan soruluyor
-import { esc, initials, hue } from './util.js';
-import { ANIME } from './data.js';
+import { esc } from './util.js';
+import { animeBul, veriYukle, avatar, seslendirmenHref } from './xray-yukle.js';
 import { playerVideo, playerViewport } from './player-dom.js';
-import { spotifyLink, anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumTemasi, atlamaAraliklari, aralikBul } from './xray-veri.js';
+import { spotifyLink, KARAKTER_ONEK, KISI_ONEK, bolumTemasi, atlamaAraliklari, aralikBul } from './xray-veri.js';
 
 const panel = document.getElementById('player-xray');
 const panelBtn = document.getElementById('player-modal-xray');
@@ -20,26 +20,6 @@ const ANISKIP = 'https://api.aniskip.com/v2/skip-times/';
 const TIP_AD = { op: 'Opening', ed: 'Ending' };
 // Veride fansub adı bilinmeyen linkler "Varsayılan" olarak duruyor; "Çeviri: Varsayılan" yazmak anlamsız.
 const BILINMEYEN_FANSUB = new Set(['Varsayılan', 'Bilinmeyen']);
-
-let slugIndex = null;
-const animeBul = slug => {
-  if (!slugIndex) slugIndex = new Map(ANIME.map(a => [a.slug, a]));
-  return slugIndex.get(slug) || null;
-};
-
-// slug -> Promise<veri|null>. Kimliği çıkmayan animede hiç istek atılmıyor: derleme betiği de aynı
-// kuralla dosya yazmıyor, böylece 404 oluşmuyor.
-const veriCache = new Map();
-function veriYukle(slug) {
-  const a = animeBul(slug);
-  if (!a || !anilistId(a.posterAd)) return Promise.resolve(null);
-  if (!veriCache.has(slug)) {
-    veriCache.set(slug, fetch(`kaynak/x/${encodeURIComponent(slug)}.json`)
-      .then(r => r.ok ? r.json() : null)
-      .catch(() => { veriCache.delete(slug); return null; }));
-  }
-  return veriCache.get(slug);
-}
 
 // Açık bölümün durumu. token, bölüm değişince uçuştaki isteklerin eski bölüme yazmasını engelliyor.
 let token = 0;
@@ -60,20 +40,6 @@ function temaSatiri(t, etiket) {
     + `<span class="xray-sarki-metin"><span class="xray-sarki-tip">${etiket}</span><b>${esc(ad)}</b>${t[3] ? `<span class="meta">${esc(t[3])}</span>` : ''}</span>`
     + `<span class="xray-spotify">${SPOTIFY_IKON}<span>${sp.parca ? 'Dinle' : 'Ara'}</span></span></a></li>`;
 }
-
-const basHarfler = (ad, sinif) => `<span class="${sinif} xray-bos" style="--h:${hue(ad)}" aria-hidden="true">${esc(initials(ad))}</span>`;
-function avatar(ad, gorsel, onek, sinif) {
-  const url = gorselAc(gorsel, onek);
-  return url
-    ? `<img class="${sinif}" src="${esc(url)}" alt="" loading="lazy" decoding="async" data-ad="${esc(ad)}">`
-    : basHarfler(ad, sinif);
-}
-// Görsel yüklenemezse (AniList CDN'i erişilemez, silinmiş görsel) kırık resim yerine baş harfler.
-// CSP satır içi onerror'a izin vermediği için 'error' yakalama aşamasında dinleniyor (bubble etmiyor).
-panel.addEventListener('error', e => {
-  const img = e.target;
-  if (img.tagName === 'IMG' && img.dataset.ad !== undefined) img.outerHTML = basHarfler(img.dataset.ad, img.className);
-}, true);
 
 function panelCiz() {
   if (!durum) { panel.innerHTML = ''; return; }
@@ -100,7 +66,7 @@ function panelCiz() {
     const kisiler = veri.k.map(([ad, gorsel, rol, va, vaGorsel]) => `<li class="xray-kisi">
       ${avatar(ad, gorsel, KARAKTER_ONEK, 'xray-foto')}
       <div class="xray-kisi-ad"><b>${esc(ad)}</b><span class="meta">${rol === 'A' ? 'Ana karakter' : 'Yan karakter'}</span></div>
-      ${va ? `<div class="xray-kisi-va"><span>${esc(va)}</span><span class="meta">Seslendirmen</span></div>${avatar(va, vaGorsel, KISI_ONEK, 'xray-foto xray-foto-va')}` : ''}
+      ${va ? `<a class="xray-kisi-va" href="${esc(seslendirmenHref(va))}" title="${esc(va)} — arşivdeki diğer rolleri"><span>${esc(va)}</span><span class="meta">Seslendirmen ›</span></a>${avatar(va, vaGorsel, KISI_ONEK, 'xray-foto xray-foto-va')}` : ''}
     </li>`).join('');
     parca.push(`<section><h3 class="xray-h">Karakterler ve seslendirmenler</h3><ul class="xray-kisiler">${kisiler}</ul></section>`);
   } else {

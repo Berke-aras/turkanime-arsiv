@@ -12,6 +12,8 @@ import { openEpisode, setCurrentEpisodes, syncEpNavButtons, playerModal, directB
 import { izlendiMi, izlendiAyarla, burayaKadarIsaretle, izlenenSayisi, izlenenleriTemizle } from '../progress.js';
 import { getRouteToken } from '../router.js';
 import { yasKapisiGerekli, yasKapisiCiz, nsfwPanelHtml } from './yas-kapisi.js';
+import { veriYukle, avatar, seslendirmenHref } from '../xray-yukle.js';
+import { KARAKTER_ONEK, KISI_ONEK } from '../xray-veri.js';
 
 async function renderDetail(slug, token) {
   const meta = ANIME.find(a => a.slug === slug);
@@ -130,6 +132,7 @@ async function renderDetail(slug, token) {
       </div>
       ${nsfwHtml}
       ${ozetHtml}
+      <section id="karakter-serit" class="karakter-serit" aria-label="Karakterler ve seslendirmenler" hidden></section>
       ${episodes.length ? `
       <div class="ep-toolbar">
         <h3 class="section-title">Bölümler <span class="meta">(${episodes.length})</span></h3>
@@ -143,6 +146,7 @@ async function renderDetail(slug, token) {
     </div>`;
   fadeApp();
 
+  karakterSeridiCiz(slug, token);
   wireCards(app);       // benzer animeler şeridindeki favori düğmeleri
   wireSeritler(app);    // ve ok düğmeleri
 
@@ -241,5 +245,23 @@ async function renderDetail(slug, token) {
   }
 }
 
+
+// Karakterler ve seslendirmenleri (oynatıcıdaki bilgi paneliyle aynı veri, kaynak/x/<slug>.json).
+// Sayfa çizildikten sonra geliyor; veri yoksa bölüm hiç görünmüyor. Seslendirmen adı, arşivdeki
+// diğer rollerini listeleyen sayfaya gidiyor.
+async function karakterSeridiCiz(slug, token) {
+  const veri = await veriYukle(slug);
+  const el = document.getElementById('karakter-serit');
+  if (token !== getRouteToken() || !el || !veri || !veri.k || !veri.k.length) return;
+  el.innerHTML = `<h3 class="section-title">Karakterler ve seslendirmenler</h3>
+    <ul class="ks-liste">${veri.k.map(([ad, gorsel, rol, va, vaGorsel]) => `
+      <li class="ks-kart">
+        <div class="ks-fotolar">${avatar(ad, gorsel, KARAKTER_ONEK, 'ks-foto')}${va ? avatar(va, vaGorsel, KISI_ONEK, 'ks-foto ks-foto-va') : ''}</div>
+        <b class="ks-ad">${esc(ad)}</b>
+        <span class="meta">${rol === 'A' ? 'Ana karakter' : 'Yan karakter'}</span>
+        ${va ? `<a class="ks-va" href="${esc(seslendirmenHref(va))}" title="${esc(va)} — arşivdeki diğer rolleri">${esc(va)}</a>` : ''}
+      </li>`).join('')}</ul>`;
+  el.hidden = false;
+}
 
 export { renderDetail };

@@ -20,6 +20,7 @@ const playerVolume = document.getElementById('player-modal-volume');
 const playerTime = document.getElementById('player-modal-time');
 const playerSpeedBtn = document.getElementById('player-modal-speed');
 const playerFullscreenBtn = document.getElementById('player-modal-fullscreen');
+const playerPipBtn = document.getElementById('player-modal-pip');
 const playerViewport = document.getElementById('player-modal-viewport');
 
 const fmtTime = s => !isFinite(s) ? '0:00' : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -37,5 +38,5 @@ export function clearLoadHint() { clearTimeout(playerLoadTimer); }
 
 export { playerModal, playerFrame, playerVideo, playerViewport, playerNewTab, playerPrevBtn, playerNextBtn,
   playerEpLabel, playerLoading, playerLoadingHint, playerControls, playerProgress,
-  playerPlayToggle, playerMuteBtn, playerVolume, playerTime, playerSpeedBtn, playerFullscreenBtn,
+  playerPlayToggle, playerMuteBtn, playerVolume, playerTime, playerSpeedBtn, playerFullscreenBtn, playerPipBtn,
   fmtTime, setIcon };

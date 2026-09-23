@@ -4,7 +4,7 @@
 import test from "node:test";
 import assert from "node:assert";
 import { createRequire } from "node:module";
-import { spotifyLink, anilistId, gorselAc, KARAKTER_ONEK, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul } from "../js/xray-veri.js";
+import { svKova, spotifyLink, anilistId, gorselAc, KARAKTER_ONEK, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul } from "../js/xray-veri.js";
 
 const require = createRequire(import.meta.url);
 const ortak = require("../scripts/xray-ortak.js");
@@ -138,4 +138,11 @@ test("malTemalari: Spotify parça kimliği 6. alana okunuyor; sarkiAnahtar ad fa
   assert.equal(ortak.malTemalari(html)[0][5], "2VqRxxZFbC0uZaTJcZY36c");
   assert.equal(ortak.sarkiAnahtar("Aka no Kakera (緋色のカケラ)"), ortak.sarkiAnahtar("aka no kakera"));
   assert.notEqual(ortak.sarkiAnahtar("Avid"), ortak.sarkiAnahtar("Hands Up to the Sky"));
+});
+
+test("svKova: tarayıcı ve derleme betiği aynı kovayı hesaplıyor", () => {
+  for (const ad of ["Kenji Nojima", "Mitsuki Saiga", "Aoi Yuuki", "花澤香菜", "", "Kaolip"]) {
+    assert.equal(svKova(ad), ortak.svKova(ad), ad);
+    assert.ok(svKova(ad) >= 0 && svKova(ad) < ortak.SV_KOVA);
+  }
 });
