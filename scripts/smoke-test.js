@@ -453,6 +453,58 @@ async function xrayTestleri(browser, base) {
   await mctx.close();
 }
 
+// Reklamsız oynatmanın güvenilirliği: sağlayıcı yoğunken bekleme mesajı ve tekrar deneme, silinmiş videoda
+// sebebini söyleyerek reklamlı oynatıcıya düşme; tanıtım sırasında Esc'nin oynatıcıyı kapatması.
+async function guvenilirlikTestleri(browser, base) {
+  const ac = async cevaplar => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage();
+    let n = 0;
+    await p.route('**/*', r => {
+      const u = r.request().url();
+      if (/tka-sibnet|tka-uqload|api\/sibnet/.test(u)) {
+        const c = cevaplar[Math.min(n++, cevaplar.length - 1)];
+        return r.fulfill({ status: c, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify(c === 200 ? { url: base + '/test/fixtures/video.webm' } : { error: c === 404 ? 'video not found' : 'sibnet busy' }) });
+      }
+      const host = new URL(u).hostname;
+      return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+    });
+    await p.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+    await p.waitForSelector('.ep');
+    await p.locator('.ep[data-i="0"] .ep-head').click();
+    await p.waitForTimeout(400);
+    await p.locator('.ep[data-i="0"] .ep-links .link-btn.direct').first().click();
+    return { ctx, p, istek: () => n };
+  };
+
+  // 503, 503, sonra başarı: "yoğun, tekrar deneniyor" görünüyor, sonunda reklamsız oynuyor
+  let { ctx, p, istek } = await ac([503, 503, 200]);
+  const durumMetni = await p.waitForSelector('#player-modal-loading-durum:not([hidden])', { timeout: 5000 }).then(e => e.textContent(), () => '');
+  const oynadi = await p.waitForFunction(() => { const v = document.getElementById('player-modal-video'); return !v.hidden && v.currentTime > 0; }, null, { timeout: 15000 }).then(() => true, () => false);
+  check('Güvenilirlik: sağlayıcı yoğunken bekleme mesajı gösterip tekrar deniyor, sonra reklamsız oynuyor',
+    /Sibnet şu an yoğun, tekrar deneniyor \(1\/3\)/.test(durumMetni) && oynadi && istek() === 3, `${durumMetni} · oynadı=${oynadi} · istek=${istek()}`);
+  await ctx.close();
+
+  // 404: tekrar denemeden reklamlı oynatıcıya düşüyor ve sebebini söylüyor
+  ({ ctx, p, istek } = await ac([404]));
+  const bildirim = await p.waitForSelector('#player-modal-bildirim:not([hidden])', { timeout: 5000 }).then(e => e.textContent(), () => '');
+  const iframe = await p.evaluate(() => { const f = document.getElementById('player-modal-frame'); return !f.hidden && /sibnet/.test(f.src); });
+  check('Güvenilirlik: silinmiş videoda sebebini söyleyip sağlayıcının oynatıcısına düşüyor',
+    /kaldırılmış/.test(bildirim) && iframe && istek() === 1, `${bildirim} · iframe=${iframe} · istek=${istek()}`);
+  await ctx.close();
+
+  // Tanıtım paneli görünürken Esc oynatıcıyı kapatıyor (eskiden yalnız tanıtımı kapatıp videoyu çalar bırakıyordu)
+  ({ ctx, p } = await ac([200]));
+  await p.waitForFunction(() => { const v = document.getElementById('player-modal-video'); return !v.hidden && v.currentTime > 0.2; }, null, { timeout: 15000 }).catch(() => {});
+  const tanitimdaMi = await p.evaluate(() => document.getElementById('player-xray').classList.contains('tanitim'));
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(1500);
+  const escSonra = await p.evaluate(() => ({ modal: !document.getElementById('player-modal').hidden, caliyor: !document.getElementById('player-modal-video').paused }));
+  check('Esc: tanıtım görünürken de oynatıcıyı kapatıyor, ses arkada devam etmiyor', tanitimdaMi && !escSonra.modal && !escSonra.caliyor, JSON.stringify({ tanitimdaMi, ...escSonra }));
+  await ctx.close();
+}
+
 // Seslendirmen sayfası ve detay sayfasındaki karakter şeridi.
 async function seslendirmenTestleri(browser, base) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -468,6 +520,17 @@ async function seslendirmenTestleri(browser, base) {
     va: (document.querySelector('#karakter-serit .ks-va') || {}).textContent || '',
   }));
   check('Detay: karakter ve seslendirmen şeridi çiziliyor', serit.kart === 12 && serit.va === 'Kenji Nojima', JSON.stringify(serit));
+  const muzik = await p.evaluate(() => {
+    const kartlar = [...document.querySelectorAll('#muzik-bolum .xray-sarki-kart')];
+    return { sayi: kartlar.length, spotify: kartlar.every(a => /^https:\/\/open\.spotify\.com\//.test(a.href)), metin: document.getElementById('muzik-bolum').textContent };
+  });
+  check('Detay: opening/ending şarkıları Spotify linkiyle listeleniyor',
+    muzik.sayi === 4 && muzik.spotify && /Hit in the USA/.test(muzik.metin) && /21-25\. bölümler/.test(muzik.metin), JSON.stringify({ ...muzik, metin: muzik.metin.slice(0, 80) }));
+  const okOnce = await p.evaluate(() => ({ sag: !document.querySelector('#karakter-serit .serit-ok-sag').hidden, sol: !document.querySelector('#karakter-serit .serit-ok-sol').hidden }));
+  await p.locator('#karakter-serit .serit-ok-sag').click();
+  await p.waitForTimeout(700);
+  const okSonra = await p.evaluate(() => ({ kaydi: document.querySelector('#karakter-serit .ks-liste').scrollLeft, sol: !document.querySelector('#karakter-serit .serit-ok-sol').hidden }));
+  check('Detay: karakter şeridinde PC için sağ/sol oklar kaydırıyor', okOnce.sag && !okOnce.sol && okSonra.kaydi > 100 && okSonra.sol, JSON.stringify({ okOnce, okSonra }));
 
   await p.locator('#karakter-serit .ks-va').first().click();
   await p.waitForSelector('.sv-rol', { timeout: 8000 }).catch(() => {});
@@ -1430,6 +1493,7 @@ async function run(page, base) {
     await oynaticiTestleri(browser, base);
     await xrayTestleri(browser, base);
     await seslendirmenTestleri(browser, base);
+    await guvenilirlikTestleri(browser, base);
     await ilerlemeTestleri(browser, base);
     await yedekTestleri(browser, base);
   } finally {

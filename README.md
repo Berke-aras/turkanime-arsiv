@@ -83,8 +83,15 @@ yerine sitenin kendi oynatıcısında açar. Orijinal gömülü oynatıcı buton
    açıp asıl video dosyasının (mp4 ya da HLS) adresini bulur ve yalnız bu adresi döndürür.
 3. Tarayıcı videoyu doğrudan sağlayıcının sunucusundan çekip kendi `<video>` oynatıcısında oynatır.
    Video trafiği fonksiyondan geçmez, yani barındırma maliyeti yok denecek kadar azdır.
-4. Herhangi bir adım başarısız olursa (sağlayıcı yoğun, link ölmüş, HLS hatası) oynatıcı otomatik
-   olarak klasik iframe embed'e düşer.
+4. Herhangi bir adım başarısız olursa oynatıcı otomatik olarak klasik iframe embed'e düşer ve
+   nedenini kısa bir notla söyler (video sağlayıcıdan kaldırılmış / sağlayıcı yoğun / dosya açılmadı).
+
+**Neden bazen çalışmıyor:** Sibnet, bütün ziyaretçilerin istekleri aynı sunucudan geldiği için yoğunlukta
+geçici engel (403) uyguluyor; bunun yanında arşivdeki videoların bir kısmı sağlayıcıdan silinmiş.
+Bu yüzden oynatıcı yoğunluk hatasında 3 kez tekrar dener (ekranda "yoğun, tekrar deneniyor" yazar),
+çözülen linkleri imzaları bitene kadar hem sunucuda hem tarayıcıda önbelleğe alır, düğmenin üstüne
+gelince ve bölümün %60'ında sonraki bölüm için linki önceden çözer. Uqload Worker'ı (`cf/uqload`) GitHub'a
+bağlı değil; değişince elle deploy edilmeli: `cd cf/uqload && npx wrangler deploy`.
 
 Kendi oynatıcımız olduğu için hız ayarı, kaldığın yerden devam, klavye kısayolları ve
 [bilgi paneli](#bilgi-paneli-x-ray) (şu an çalan şarkı, opening'i geç) yalnızca bu modda tam çalışır.

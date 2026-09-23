@@ -1,8 +1,8 @@
-// Yatay kart şeritlerinin ok düğmeleri. Ana sayfa keşif şeritleri (§6.2) ve detay sayfasındaki
-// "Benzer animeler" (§6.5) aynı işaretlemeyi kullanıyor.
+// Yatay kart şeritlerinin ok düğmeleri. Ana sayfa keşif şeritleri (§6.2), detay sayfasındaki
+// "Benzer animeler" (§6.5) ve karakter şeridi aynı işaretlemeyi kullanıyor.
 export function wireSeritler(kok) {
   kok.querySelectorAll('.serit-sar').forEach(sar => {
-    const serit = sar.querySelector('.recent-grid');
+    const serit = sar.querySelector('.recent-grid, .ks-liste');
     const sol = sar.querySelector('.serit-ok-sol');
     const sag = sar.querySelector('.serit-ok-sag');
     const tazele = () => {

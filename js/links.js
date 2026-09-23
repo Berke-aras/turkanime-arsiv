@@ -47,12 +47,28 @@ function playerRank(player) {
 const OLU = tip => tip !== 'url';
 
 // fansub bilgisi çağıran taraftan (fansub grubu zaten seçilmiş) geldiği için buton üstünde tekrar edilmiyor.
+// çalışmayan (mask) linkler sona, bilinen güvenilir sağlayıcılar öne alınıyor.
+const siralaLinkler = links => [...links].sort((a, b) => {
+  if (OLU(a.tip) !== OLU(b.tip)) return OLU(a.tip) - OLU(b.tip);
+  return playerRank(a.player) - playerRank(b.player);
+});
+
+// Bölüm açılınca otomatik seçilen reklamsız link (bkz. player.js openEpisode): reklamsız linki olan ilk
+// fansub grubunun, sıralamadaki ilk reklamsız linki. Sonraki bölümü önceden çözmek için kullanılıyor.
+function onerilenDirectLink(links) {
+  const gruplar = new Map();
+  for (const l of links || []) {
+    const ad = l.fansub || 'Bilinmeyen';
+    if (!gruplar.has(ad)) gruplar.set(ad, []);
+    gruplar.get(ad).push(l);
+  }
+  const reklamsiz = l => !OLU(l.tip) && directParams(l);
+  const grup = [...gruplar.values()].find(ls => ls.some(reklamsiz));
+  return grup ? siralaLinkler(grup).find(reklamsiz) : null;
+}
+
 function epLinksHtml(links) {
-  // çalışmayan (mask) linkler sona, bilinen güvenilir sağlayıcılar öne alınıyor.
-  const sorted = [...links].sort((a, b) => {
-    if (OLU(a.tip) !== OLU(b.tip)) return OLU(a.tip) - OLU(b.tip);
-    return playerRank(a.player) - playerRank(b.player);
-  });
+  const sorted = siralaLinkler(links);
   // reklamsız butonları en başa (önerilen); orijinal embed butonları aynen kalır
   const direct = sorted.filter(l => !OLU(l.tip) && directParams(l)).map((l, i, arr) =>
     `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-fansub="${esc(l.fansub || '')}" data-direct-player="${l.player}" data-direct-params="${esc(directParams(l))}" title="${esc(l.player)} videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`);
@@ -65,4 +81,4 @@ function epLinksHtml(links) {
 }
 
 
-export { DIRECT_PROVIDERS, OKRU, OKRU_ETKIN, directParams, NO_EMBED_PLAYERS, PREFERRED_PLAYERS, playerRank, OLU, epLinksHtml };
+export { onerilenDirectLink, DIRECT_PROVIDERS, OKRU, OKRU_ETKIN, directParams, NO_EMBED_PLAYERS, PREFERRED_PLAYERS, playerRank, OLU, epLinksHtml };

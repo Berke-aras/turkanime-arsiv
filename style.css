@@ -573,6 +573,13 @@ footer a:hover{color:var(--text);text-decoration:underline}
 #player-modal-loading[hidden]{display:none}
 .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.12);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+#player-modal-loading-durum{color:var(--text-2);font-size:13px;text-align:center;padding:0 24px}
+#player-modal-loading-durum[hidden]{display:none}
+/* reklamlı oynatıcıya düşülünce sebebini söyleyen şerit (7 sn) */
+.oynatici-bildirim{position:absolute;left:50%;bottom:calc(84px + var(--safe-b));z-index:4;transform:translateX(-50%);max-width:min(560px,calc(100% - 24px));
+  padding:10px 14px;border-radius:var(--r);font-size:13px;line-height:1.4;color:#eef0f6;background:rgba(6,7,11,.9);
+  border:1px solid rgba(255,255,255,.12);box-shadow:var(--shadow);pointer-events:none;animation:xray-gir .3s var(--ease)}
+.oynatici-bildirim[hidden]{display:none}
 #player-modal-loading-hint{color:var(--muted);font-size:12.5px;text-align:center;padding:0 24px}
 
 /* ---------- bilgi paneli (X-Ray): karakterler, seslendirmenler, müzik ----------
@@ -652,10 +659,26 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .sar-ipucu.goster{animation:sar-ipucu .7s ease-out}
 @keyframes sar-ipucu{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
 
+/* ---------- detay sayfası: opening/ending şarkıları ---------- */
+.muzik-bolum{margin:22px 0 6px}
+.muzik-bolum[hidden]{display:none}
+.muzik-liste{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+/* oynatıcıdaki kart video üstünde durduğu için sabit koyu; sayfada temaya uyuyor */
+.muzik-liste .xray-sarki-kart{color:var(--text);border-color:var(--border);
+  background:linear-gradient(115deg,rgba(var(--accent-rgb),.12),rgba(169,125,255,.08) 45%,rgba(29,185,84,.08) 70%,rgba(var(--accent-rgb),.12)),var(--surface);
+  background-size:260% 100%,auto}
+.muzik-liste .xray-sarki-kart .meta{color:var(--muted)}
+.muzik-liste .xray-sarki-kart:hover,.muzik-liste .xray-sarki-kart:focus-visible{border-color:rgba(29,185,84,.6);box-shadow:var(--shadow-sm)}
+.muzik-liste .xray-sarki-tip{color:var(--accent-ink)}
+:root[data-theme="light"] .muzik-liste .xray-spotify{color:#138a3f}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .muzik-liste .xray-spotify{color:#138a3f}}
+.karakter-serit .serit-ok{top:calc(50% - 6px)}
+
 /* ---------- detay sayfası: karakter şeridi ---------- */
 .karakter-serit{margin:22px 0 6px}
 .karakter-serit[hidden]{display:none}
-.ks-liste{list-style:none;margin:0;padding:2px 2px 10px;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+.ks-liste{list-style:none;margin:0;padding:2px 2px 10px;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain;scrollbar-width:none}
+.ks-liste::-webkit-scrollbar{display:none}
 .ks-kart{flex:none;width:132px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;
   padding:12px 8px 10px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border)}
 .ks-fotolar{position:relative;margin-bottom:6px}

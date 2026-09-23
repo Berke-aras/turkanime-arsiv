@@ -2,6 +2,7 @@
 // Modal kabuğu ayrı (player.js); burası yalnız oynatma katmanı.
 import { readLS, writeLS } from './util.js';
 import { DIRECT_PROVIDERS, NO_EMBED_PLAYERS } from './links.js';
+import { cozumle, cozumAnahtari, onbellektenSil } from './cozum.js';
 import { playerVideo, playerFrame, playerViewport, playerControls, playerLoading, playerLoadingHint,
   playerNewTab, playerNextBtn, playerProgress, playerPlayToggle, playerMuteBtn, playerVolume,
   playerTime, playerSpeedBtn, playerFullscreenBtn, playerPipBtn, fmtTime, setIcon, clearLoadHint } from './player-dom.js';
@@ -134,6 +135,7 @@ let hlsInstance = null;
 
 function stopVideo() {
   if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+  oynaticiDurumuSifirla();
   dokunusSifirla();
   playerVideo.pause(); playerVideo.removeAttribute('src'); playerVideo.load();
 }
@@ -150,23 +152,6 @@ function ensureHls() {
   });
 }
 
-// Sibnet yoğun anlarda geçici olarak 403 verip resolver'ın 503 dönmesine yol açıyor (bkz. api/sibnet.js).
-// Bu kalıcı bir hata değil, o yüzden reklamlı embed'e düşmeden önce kısa aralıklarla tekrar deniyoruz.
-// 404/502 gibi kalıcı hatalarda beklemeden vazgeçiyoruz.
-const RESOLVE_RETRY = [900, 2000];
-async function resolveDirect(provider, params, stillWanted) {
-  for (let i = 0; i <= RESOLVE_RETRY.length; i++) {
-    if (i) {
-      await new Promise(r => setTimeout(r, RESOLVE_RETRY[i - 1]));
-      if (!stillWanted()) return null;
-    }
-    const r = await fetch(`${provider.resolver}?${params}`);
-    if (!stillWanted()) return null;
-    if (r.ok) return r.json();
-    if (r.status !== 503) return null;
-  }
-  return null;
-}
 // mp4 yolunda <video>'nun kendi 'error' olayı embed'e düşürüyor, ama hls.js kendi hatalarını oraya
 // taşımıyor: manifest yüklendikten sonra gelen fatal hata (süresi dolmuş token, ölü segment,
 // desteklenmeyen codec) yakalanmazsa oynatıcı boş ekranda asılı kalıyordu. hls.js'in önerdiği
@@ -180,7 +165,7 @@ function wireHlsRecovery(Hls, hls, player, embedUrl, stillWanted) {
     if (!stillWanted()) return;
     hls.destroy();
     if (hlsInstance === hls) hlsInstance = null;
-    fallbackToEmbed(player, embedUrl);
+    fallbackToEmbed(player, embedUrl, 'video');
   };
   // Kurtarma çağrısı sessizce hiçbir şey yapmayabiliyor (ör. manifest hiç yüklenmediyse startLoad'ın
   // yeniden deneyeceği bir seviye yok), o zaman ikinci bir hata da gelmiyor ve oynatıcı asılı kalıyor.
@@ -207,16 +192,47 @@ function wireHlsRecovery(Hls, hls, player, embedUrl, stillWanted) {
     vazgec();
   });
 }
-// resolver'dan mp4/m3u8 linkini alıp <video> ile oynatır; olmazsa sessizce klasik iframe embed'e düşer.
+// --- kullanıcıya durum: "yoğun, tekrar deneniyor" ve reklamlı oynatıcıya düşme sebebi ---
+const SAGLAYICI_AD = { SIBNET: 'Sibnet', UQLOAD: 'Uqload', ODNOKLASSNIKI: 'ok.ru', 'OK.RU': 'ok.ru' };
+const durumEl = document.getElementById('player-modal-loading-durum');
+const bildirimEl = document.getElementById('player-modal-bildirim');
+let bildirimTimer = 0;
+function durumYaz(metin) { durumEl.textContent = metin || ''; durumEl.hidden = !metin; }
+function bildir(metin) {
+  clearTimeout(bildirimTimer);
+  bildirimEl.textContent = metin;
+  bildirimEl.hidden = false;
+  bildirimTimer = setTimeout(() => { bildirimEl.hidden = true; }, 7000);
+}
+function oynaticiDurumuSifirla() { durumYaz(''); clearTimeout(bildirimTimer); bildirimEl.hidden = true; }
+// Neden düşüldüğü: 404 kalıcı (video silinmiş), 503/429 geçici (sağlayıcı yoğun), 0 ağ, 'video' dosya açılmadı.
+function dusmeSebebi(player, hata) {
+  const ad = SAGLAYICI_AD[player] || player;
+  if (hata === 404) return `Reklamsız oynatılamadı: bu video ${ad}'ten kaldırılmış görünüyor. Açılmazsa başka bir link dene.`;
+  if (hata === 503 || hata === 429) return `${ad} şu an yoğun, reklamsız oynatılamadı; ${ad}'in kendi oynatıcısı açıldı. Birazdan tekrar deneyebilirsin.`;
+  if (hata === 'video') return `Video dosyası açılamadı; ${ad}'in kendi oynatıcısı açıldı.`;
+  return `Reklamsız oynatıcıya bağlanılamadı; ${ad}'in kendi oynatıcısı açıldı.`;
+}
+
+// resolver'dan mp4/m3u8 linkini alıp <video> ile oynatır; olmazsa klasik iframe embed'e düşer ve sebebini söyler.
 let currentDirectPlayer = null;
-async function playDirect(direct, embedUrl) {
+let sonDirect = null; // { direct, embedUrl, onbellekten, tazelendi } — önbellekteki link bayatsa bir kez tazelemek için
+async function playDirect(direct, embedUrl, { tazele = false } = {}) {
   const token = ++directToken;
   currentDirectPlayer = direct.player;
+  const ad = SAGLAYICI_AD[direct.player] || direct.player;
   try {
     const provider = DIRECT_PROVIDERS[direct.player];
-    const data = await resolveDirect(provider, direct.params, () => token === directToken);
+    if (tazele) onbellektenSil(cozumAnahtari(direct.player, direct.params));
+    const sonuc = await cozumle(provider, direct.player, direct.params, {
+      istenmeye: () => token === directToken,
+      bildir: (i, n) => { if (token === directToken) durumYaz(`${ad} şu an yoğun, tekrar deneniyor (${i}/${n})…`); },
+    });
     if (token !== directToken) return;
-    if (!data || !data.url) throw new Error('resolve failed');
+    durumYaz('');
+    if (!sonuc.veri) { fallbackToEmbed(direct.player, embedUrl, sonuc.hata); return; }
+    const data = sonuc.veri;
+    sonDirect = { direct, embedUrl, onbellekten: sonuc.onbellekten, tazelendi: tazele };
     if (data.hls && !playerVideo.canPlayType('application/vnd.apple.mpegurl')) {
       const Hls = await ensureHls();
       if (token !== directToken) return;
@@ -234,13 +250,15 @@ async function playDirect(direct, embedUrl) {
     playerLoading.hidden = true; clearLoadHint();
   } catch (e) {
     if (token !== directToken) return;
-    fallbackToEmbed(direct.player, embedUrl);
+    durumYaz('');
+    fallbackToEmbed(direct.player, embedUrl, 'video');
   }
 }
 // bazı sağlayıcılar (NO_EMBED_PLAYERS) iframe'de hiç açılmaz; onlar için boş bir iframe'e düşüp
 // sessizce başarısız olmak yerine direkt "ayrı sayfada aç" ipucunu göster.
-function fallbackToEmbed(player, embedUrl) {
+function fallbackToEmbed(player, embedUrl, sebep) {
   playerVideo.hidden = true; playerControls.hidden = true;
+  if (sebep !== undefined) bildir(dusmeSebebi(player, sebep));
   if (NO_EMBED_PLAYERS.has(player)) {
     playerFrame.hidden = true;
     playerLoadingHint.hidden = false;
@@ -253,7 +271,12 @@ function fallbackToEmbed(player, embedUrl) {
 
 let directToken = 0;
 playerVideo.addEventListener('ended', () => { if (!playerNextBtn.disabled) playerNextBtn.click(); });
-playerVideo.addEventListener('error', () => { if (playerVideo.hidden || !playerVideo.getAttribute('src')) return; fallbackToEmbed(currentDirectPlayer, playerNewTab.href); });
+playerVideo.addEventListener('error', () => {
+  if (playerVideo.hidden || !playerVideo.getAttribute('src')) return;
+  // Önbellekten gelen link bayatlamış olabilir (imza erken düşmüş): bir kez taze çözüp tekrar dene.
+  if (sonDirect && sonDirect.onbellekten && !sonDirect.tazelendi) { playDirect(sonDirect.direct, sonDirect.embedUrl, { tazele: true }); return; }
+  fallbackToEmbed(currentDirectPlayer, playerNewTab.href, 'video');
+});
 
 // Modal kapanınca uçuştaki çözümleme/oynatma isteklerini geçersiz kılar.
 export function bumpDirectToken() { directToken++; }

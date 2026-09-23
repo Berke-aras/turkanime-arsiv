@@ -66,6 +66,23 @@ const basliklar = koken => ({
 const json = (koken, body, status = 200, extra = {}) =>
   new Response(JSON.stringify(body), { status, headers: { ...basliklar(koken), ...extra } });
 
+// Uqload'ın cevabını sınıflandırır. Eskiden durum koduna hiç bakılmıyordu: Cloudflare'in "Just a moment..."
+// bot sayfası (403) ya da geçici bir 5xx da "oynatıcı bulunamadı" sayılıp 404 "video not found"
+// dönüyordu. İstemci 404'ü kalıcı sayıp hemen reklamlı embed'e düştüğü için, aslında yerinde duran
+// videolar da "yok" görünüyordu. test/uqload.test.mjs bu ayrımı sınıyor.
+export function sayfaSinifla(status, html) {
+  const engel = status === 403 || status === 429 || status >= 500
+    || /<title>\s*Just a moment|challenge-platform|cf-chl-/i.test(html);
+  if (engel) return { kod: 503, hata: 'uqload busy' };
+  if (status === 404 || /no longer available|expired|file (was|has been) deleted|file not found/i.test(html)) {
+    return { kod: 404, hata: 'video not found' };
+  }
+  const unpacked = unpack(html);
+  const m = unpacked && /"(https?:\/\/[^"]+\.m3u8[^"]*)"/.exec(unpacked);
+  if (!m) return { kod: 502, hata: 'player not recognised' };
+  return { m3u8: m[1] };
+}
+
 export default {
   async fetch(request, env) {
     const koken = kokenDogrula(request, env);
@@ -78,15 +95,16 @@ export default {
 
     try {
       const embed = `https://uqload.com/embed-${id}.html`;
-      const html = await (await fetch(embed, { headers: { 'user-agent': UA } })).text();
-      if (/no longer available|expired/i.test(html)) return json(koken, { error: 'video not found' }, 404);
-
-      const unpacked = unpack(html);
-      const m = unpacked && /"(https?:\/\/[^"]+\.m3u8[^"]*)"/.exec(unpacked);
-      if (!m) return json(koken, { error: 'video not found' }, 404);
-
+      const r = await fetch(embed, { headers: { 'user-agent': UA } });
+      const html = await r.text();
+      const sonuc = sayfaSinifla(r.status, html);
+      if (sonuc.hata) {
+        // 503 geçici (engel/yoğunluk): istemci tekrar deniyor. 404 kalıcı. 502: sayfa açıldı ama tanınmadı.
+        return json(koken, { error: sonuc.hata, status: r.status }, sonuc.kod,
+          sonuc.kod === 503 ? { 'cache-control': 'no-store', 'retry-after': '2' } : { 'cache-control': 'no-store' });
+      }
       // linkteki e= parametresi ~4 saatlik geçerlilik süresi; kısa süre cache'lenebilir
-      return json(koken, { url: m[1], hls: true }, 200, { 'cache-control': 'public, max-age=1800, s-maxage=1800' });
+      return json(koken, { url: sonuc.m3u8, hls: true }, 200, { 'cache-control': 'public, max-age=1800, s-maxage=1800' });
     } catch (e) {
       return json(koken, { error: String(e.message || e) }, 502);
     }

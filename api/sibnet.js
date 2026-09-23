@@ -16,7 +16,7 @@ const { kokenDogrula, kokenReddet } = require('./_koken.js');
 // tekrarı kısa tutuyoruz: çok denemek yükü artırıp engeli uzatıyor. Kısa engeller burada yakalanır,
 // uzun sürenler 503 olarak istemciye bırakılır.
 const BLOCKED = s => s === 403 || s === 429 || s >= 500;
-const BACKOFF = [700, 1800]; // denemeler arası bekleme (ms)
+const BACKOFF = [700, 1800, 3500]; // denemeler arası bekleme (ms); hepsi 15 sn'lik bütçenin içinde
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // vercel.json'da maxDuration 20sn; tekrarlar bu bütçeyi aşmasın diye ortak bir son tarih tutuyoruz.
@@ -64,9 +64,16 @@ module.exports = async (req, res) => {
       const loc = r.headers.get('location');
       if (!loc) { if (r.status >= 400) return fail(502, { error: `cdn ${r.status}` }); break; }
       url = new URL(loc, url).href;
+      // İlk yönlendirme doğrudan CDN'e (dvXX.sibnet.ru/...mp4?st=..&e=..) gidiyor: o link zaten son
+      // link. Eskiden CDN'e bir istek daha atılıyordu; ~1 sn ekliyordu ve tarayıcı zaten kendisi deniyor.
+      if (new URL(url).hostname !== 'video.sibnet.ru') break;
     }
-    // st/e imzası birkaç saat geçerli; kısa süre cache'lenebilir
-    res.setHeader('cache-control', 'public, max-age=1800, s-maxage=1800');
+    // st/e imzası linkin geçerlilik sonunu (e=, unix saniye) taşıyor. Önbellek süresi ona göre: aynı bölümü
+    // açan herkes Sibnet'e hiç gitmeden linki alıyor, bu da hız sınırına takılmayı azaltıyor. Link bitmeden
+    // 15 dk önce önbellekten düşüyor; e= okunamazsa eskisi gibi 30 dk.
+    const e = Number(new URL(url).searchParams.get('e')) || 0;
+    const ttl = e ? Math.max(300, Math.min(6 * 3600, e - Math.floor(Date.now() / 1000) - 900)) : 1800;
+    res.setHeader('cache-control', `public, max-age=${ttl}, s-maxage=${ttl}`);
     res.status(200).send(JSON.stringify({ url }));
   } catch (e) {
     // engellendiyse 404 değil 503 dönüyoruz: istemci bunu "video yok" sanıp pes etmesin, tekrar denesin.

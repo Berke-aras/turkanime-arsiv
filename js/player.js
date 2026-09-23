@@ -3,7 +3,8 @@
 import { esc } from './util.js';
 import { app } from './dom.js';
 import { getEpReverse } from './store.js';
-import { OLU, directParams, epLinksHtml } from './links.js';
+import { OLU, directParams, epLinksHtml, onerilenDirectLink, DIRECT_PROVIDERS } from './links.js';
+import { onceCozumle } from './cozum.js';
 import { playerModal, playerFrame, playerVideo, playerNewTab, playerPrevBtn, playerNextBtn,
   playerEpLabel, playerLoading, playerLoadingHint, playerControls,
   startLoadHint, clearLoadHint } from './player-dom.js';
@@ -40,6 +41,26 @@ function ilerlemeKaydet(zorla = false) {
   }
 }
 playerVideo.addEventListener('timeupdate', () => ilerlemeKaydet());
+
+// --- önceden çözme: sonraki bölüm hazır beklesin ---
+// Bölümün %60'ı geçilince sonraki bölümün (oynatıcının otomatik seçeceği) reklamsız linki sessizce
+// çözülüp önbelleğe alınıyor; "Sonraki"ye basınca ya da bölüm bitince bekleme olmuyor. Bölüm başına bir kez.
+let onceCozulenEp = null;
+playerVideo.addEventListener('timeupdate', () => {
+  const d = playerVideo.duration;
+  if (!d || currentEpIndex == null || playerVideo.currentTime < d * 0.6 || onceCozulenEp === currentEpIndex) return;
+  onceCozulenEp = currentEpIndex;
+  const sonraki = currentEpisodes[neighborEp(1)];
+  const l = sonraki && onerilenDirectLink(sonraki.links);
+  if (l) onceCozumle(DIRECT_PROVIDERS[l.player], l.player, directParams(l));
+});
+// "Reklamsız izle"nin üstüne gelinince (ya da klavyeyle odaklanınca) çözmeye başla: tıklayınca hazır.
+for (const olay of ['pointerover', 'focusin']) {
+  document.addEventListener(olay, e => {
+    const b = e.target instanceof Element && e.target.closest('.link-btn.direct');
+    if (b) onceCozumle(DIRECT_PROVIDERS[b.dataset.directPlayer], b.dataset.directPlayer, b.dataset.directParams);
+  }, { passive: true });
+}
 playerVideo.addEventListener('pause', () => ilerlemeKaydet(true));
 playerVideo.addEventListener('seeked', () => ilerlemeKaydet(true));
 window.addEventListener('pagehide', () => ilerlemeKaydet(true));

@@ -184,10 +184,12 @@
     <div id="player-modal-viewport">
       <div id="player-modal-loading" role="status" aria-live="polite">
         <div class="spinner"></div>
+        <span id="player-modal-loading-durum" hidden></span>
         <span id="player-modal-loading-hint" hidden>Yüklenmiyor mu? Yukarıdan "Ayrı sayfada aç"ı dene.</span>
       </div>
       <video id="player-modal-video" playsinline preload="metadata" hidden></video>
       <div id="player-sar-ipucu" class="sar-ipucu" aria-hidden="true"></div>
+      <div id="player-modal-bildirim" class="oynatici-bildirim" role="status" aria-live="polite" hidden></div>
       <div id="player-xray-muzik" class="xray-muzik" role="status" aria-live="polite" hidden></div>
       <button id="player-xray-gec" type="button" class="xray-gec" hidden></button>
       <aside id="player-xray" class="xray-panel" aria-label="Bölüm bilgisi" hidden></aside>

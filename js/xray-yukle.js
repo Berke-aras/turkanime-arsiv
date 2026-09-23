@@ -2,7 +2,7 @@
 // sayfasının paylaştığı küçük HTML parçaları (avatar, seslendirmen linki).
 import { esc, initials, hue } from './util.js';
 import { ANIME } from './data.js';
-import { anilistId, gorselAc, svKova } from './xray-veri.js';
+import { anilistId, gorselAc, svKova, spotifyLink } from './xray-veri.js';
 
 let slugIndex = null;
 const animeBul = slug => {
@@ -51,4 +51,21 @@ document.addEventListener('error', e => {
 
 const seslendirmenHref = ad => `#/seslendirmen/${encodeURIComponent(ad)}`;
 
-export { animeBul, veriYukle, seslendirmenYukle, avatar, basHarfler, seslendirmenHref };
+// Ekolayzır çubukları: şarkı kartlarında ve "Şu an çalıyor" etiketinde dönen küçük müzik animasyonu.
+const EKOLAYZIR = '<span class="xray-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+const SPOTIFY_IKON = '<svg class="ic" aria-hidden="true"><use href="#i-spotify"/></svg>';
+
+// Şarkı kartı (oynatıcı paneli ve detay sayfası): tıklanınca Spotify'da parçaya (ya da aramaya) gidiyor.
+// ek: sanatçının yanına eklenecek kısa not (ör. "1–12. bölümler").
+function sarkiKartHtml(t, etiket, ek = '') {
+  const sp = spotifyLink(t);
+  const ad = t[2] || 'Bilinmeyen şarkı';
+  const alt = [t[3], ek].filter(Boolean).map(esc).join(' · ');
+  return `<li class="xray-sarki"><a class="xray-sarki-kart xray-spotify-link" href="${esc(sp.url)}" target="_blank" rel="noopener noreferrer"`
+    + ` title="${esc(ad)} — Spotify'da ${sp.parca ? 'dinle' : 'ara'}">`
+    + EKOLAYZIR
+    + `<span class="xray-sarki-metin"><span class="xray-sarki-tip">${etiket}</span><b>${esc(ad)}</b>${alt ? `<span class="meta">${alt}</span>` : ''}</span>`
+    + `<span class="xray-spotify">${SPOTIFY_IKON}<span>${sp.parca ? 'Dinle' : 'Ara'}</span></span></a></li>`;
+}
+
+export { animeBul, veriYukle, seslendirmenYukle, avatar, basHarfler, seslendirmenHref, sarkiKartHtml, EKOLAYZIR, SPOTIFY_IKON };

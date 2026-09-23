@@ -12,7 +12,7 @@ import { openEpisode, setCurrentEpisodes, syncEpNavButtons, playerModal, directB
 import { izlendiMi, izlendiAyarla, burayaKadarIsaretle, izlenenSayisi, izlenenleriTemizle } from '../progress.js';
 import { getRouteToken } from '../router.js';
 import { yasKapisiGerekli, yasKapisiCiz, nsfwPanelHtml } from './yas-kapisi.js';
-import { veriYukle, avatar, seslendirmenHref } from '../xray-yukle.js';
+import { veriYukle, avatar, seslendirmenHref, sarkiKartHtml } from '../xray-yukle.js';
 import { KARAKTER_ONEK, KISI_ONEK } from '../xray-veri.js';
 
 async function renderDetail(slug, token) {
@@ -141,12 +141,13 @@ async function renderDetail(slug, token) {
       </div>` : ''}
       ${episodes.length > 20 ? `<input id="ep-search" class="ep-search" placeholder="Bölüm ara... (örn. 12 veya final)">` : ''}
       <div id="ep-list"${getEpIzgara() ? ' class="izgara"' : ''}>${epListHtml(episodes, slug) || '<div class="empty">Bölüm verisi bulunamadı.</div>'}</div>
+      <section id="muzik-bolum" class="muzik-bolum" aria-label="Opening ve ending şarkıları" hidden></section>
       <section id="karakter-serit" class="karakter-serit" aria-label="Karakterler ve seslendirmenler" hidden></section>
       ${benzerHtml}
     </div>`;
   fadeApp();
 
-  karakterSeridiCiz(slug, token);
+  xrayBolumleriCiz(slug, token);
   wireCards(app);       // benzer animeler şeridindeki favori düğmeleri
   wireSeritler(app);    // ve ok düğmeleri
 
@@ -250,19 +251,44 @@ async function renderDetail(slug, token) {
 // Sayfa çizildikten sonra geliyor; veri yoksa bölüm hiç görünmüyor. Bölüm listesinin ALTINDA duruyor:
 // üstünde olunca sonradan belirip bölümleri aşağı itiyordu (sayfa kayması, bölümler ekran dışına). Seslendirmen adı, arşivdeki
 // diğer rollerini listeleyen sayfaya gidiyor.
-async function karakterSeridiCiz(slug, token) {
+async function xrayBolumleriCiz(slug, token) {
   const veri = await veriYukle(slug);
+  if (token !== getRouteToken() || !veri) return;
+  muzikCiz(veri);
+  karakterSeridiCiz(veri);
+}
+
+// Serinin opening/ending şarkıları; kart tıklanınca Spotify'a gidiyor. Önce openingler, sıra numarasıyla.
+function muzikCiz(veri) {
+  const el = document.getElementById('muzik-bolum');
+  if (!el || !veri.m || !veri.m.length) return;
+  const sirali = [...veri.m].sort((a, b) => (a[0] === b[0] ? 0 : a[0] === 'OP' ? -1 : 1) || (a[1] || 0) - (b[1] || 0));
+  const tekMi = tip => veri.m.filter(t => t[0] === tip).length === 1;
+  el.innerHTML = `<h3 class="section-title">Opening ve ending şarkıları</h3>
+    <ul class="muzik-liste">${sirali.map(t => sarkiKartHtml(t,
+      `${t[0] === 'OP' ? 'Opening' : 'Ending'}${t[1] && !tekMi(t[0]) ? ' ' + t[1] : ''}`,
+      t[4] ? `${t[4]}. bölümler` : '')).join('')}</ul>`;
+  el.hidden = false;
+}
+
+function karakterSeridiCiz(veri) {
   const el = document.getElementById('karakter-serit');
-  if (token !== getRouteToken() || !el || !veri || !veri.k || !veri.k.length) return;
+  if (!el || !veri.k || !veri.k.length) return;
+  // PC'de ok düğmeleri (serit.js, "Benzer animeler" ile aynı), dokunmatikte kaydırma.
   el.innerHTML = `<h3 class="section-title">Karakterler ve seslendirmenler</h3>
+    <div class="serit-sar">
+    <button type="button" class="serit-ok serit-ok-sol" aria-label="Sola kaydır" hidden>${ic('chevron-left')}</button>
     <ul class="ks-liste">${veri.k.map(([ad, gorsel, rol, va, vaGorsel]) => `
       <li class="ks-kart">
         <div class="ks-fotolar">${avatar(ad, gorsel, KARAKTER_ONEK, 'ks-foto')}${va ? avatar(va, vaGorsel, KISI_ONEK, 'ks-foto ks-foto-va') : ''}</div>
         <b class="ks-ad">${esc(ad)}</b>
         <span class="meta">${rol === 'A' ? 'Ana karakter' : 'Yan karakter'}</span>
         ${va ? `<a class="ks-va" href="${esc(seslendirmenHref(va))}" title="${esc(va)} — arşivdeki diğer rolleri">${esc(va)}</a>` : ''}
-      </li>`).join('')}</ul>`;
+      </li>`).join('')}</ul>
+    <button type="button" class="serit-ok serit-ok-sag" aria-label="Sağa kaydır" hidden>${ic('chevron-right')}</button>
+    </div>`;
   el.hidden = false;
+  wireSeritler(el);
 }
 
 export { renderDetail };

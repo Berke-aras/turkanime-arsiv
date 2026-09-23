@@ -7,7 +7,7 @@
 //  - kaynak/x/<slug>.json: AniList + AnimeThemes, derleme anında toplanmış (scripts/build-xray.js)
 //  - AniSkip API: OP/ED'nin bölümdeki saniye aralıkları; bölüm açılınca tarayıcıdan soruluyor
 import { esc } from './util.js';
-import { animeBul, veriYukle, avatar, seslendirmenHref } from './xray-yukle.js';
+import { animeBul, veriYukle, avatar, seslendirmenHref, sarkiKartHtml as temaSatiri, EKOLAYZIR, SPOTIFY_IKON } from './xray-yukle.js';
 import { playerVideo, playerViewport, playerFrame, playerLoading } from './player-dom.js';
 import { spotifyLink, KARAKTER_ONEK, KISI_ONEK, bolumTemasi, atlamaAraliklari, aralikBul } from './xray-veri.js';
 
@@ -25,21 +25,6 @@ const BILINMEYEN_FANSUB = new Set(['Varsayılan', 'Bilinmeyen']);
 let token = 0;
 let durum = null; // { slug, no, fansub, veri, yuklendi, araliklar, temalar: { op, ed } }
 let elleAcildi = false;
-
-// Ekolayzır çubukları: şarkı kartlarında ve "Şu an çalıyor" etiketinde dönen küçük müzik animasyonu.
-const EKOLAYZIR = '<span class="xray-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
-const SPOTIFY_IKON = '<svg class="ic" aria-hidden="true"><use href="#i-spotify"/></svg>';
-
-// Her şarkı bir kart: tıklanınca Spotify'da parçaya (ya da aramaya) gidiyor.
-function temaSatiri(t, etiket) {
-  const sp = spotifyLink(t);
-  const ad = t[2] || 'Bilinmeyen şarkı';
-  return `<li class="xray-sarki"><a class="xray-sarki-kart xray-spotify-link" href="${esc(sp.url)}" target="_blank" rel="noopener noreferrer"`
-    + ` title="${esc(ad)} — Spotify'da ${sp.parca ? 'dinle' : 'ara'}">`
-    + EKOLAYZIR
-    + `<span class="xray-sarki-metin"><span class="xray-sarki-tip">${etiket}</span><b>${esc(ad)}</b>${t[3] ? `<span class="meta">${esc(t[3])}</span>` : ''}</span>`
-    + `<span class="xray-spotify">${SPOTIFY_IKON}<span>${sp.parca ? 'Dinle' : 'Ara'}</span></span></a></li>`;
-}
 
 function panelCiz() {
   if (!durum) { panel.innerHTML = ''; return; }
@@ -258,6 +243,8 @@ playerVideo.addEventListener('play', () => {
   if (!elleAcildi && !tanitimda) panelGoster(false);
 });
 
-const panelAcik = () => !panel.hidden;
+// Esc için: tanıtım hâli "açık panel" sayılmıyor. Sayılsaydı ilk 5 sn'de Esc oynatıcıyı değil
+// yalnız tanıtımı kapatıyor, video arkada çalmaya devam ediyordu.
+const panelAcik = () => !panel.hidden && !tanitimda;
 
 export { xrayBolum, xrayKapat, panelDegistir, panelGoster, panelAcik };
