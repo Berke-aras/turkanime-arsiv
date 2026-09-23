@@ -83,10 +83,13 @@ function panelDegistir() {
 panelBtn.addEventListener('click', panelDegistir);
 
 // --- tanıtım: bölüm açılınca panel kısa süre kendiliğinden görünüyor ---
-// Video yüklenirken ve oynatma başladıktan sonra TANITIM_MS boyunca yarı saydam duruyor, sonra
+// Video yüklenirken ve oynatma başladıktan sonra 5 sn (telefonda 3 sn) yarı saydam duruyor, sonra
 // süzülerek kayboluyor. Bu sırada tıklamaları geçiriyor (videoya dokunmak engellenmesin); Bilgi
 // düğmesi ya da I paneli sabitliyor. Yükleme hiç bitmezse TANITIM_EN_UZUN sonra yine kapanıyor.
-const TANITIM_MS = 5000, TANITIM_EN_UZUN = 20000, CIKIS_MS = 350;
+// Telefonda ekran küçük, kart videonun üstünde daha çok yer kaplıyor: tanıtım orada daha kısa.
+const mobilMi = () => typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches;
+const tanitimSuresi = () => (mobilMi() ? 3000 : 5000);
+const TANITIM_EN_UZUN = 20000, CIKIS_MS = 350;
 let tanitimda = false, tanitimTimer = 0, tanitimSayac = 0, cikisTimer = 0;
 function tanitimTemizle() {
   tanitimda = false;
@@ -103,7 +106,7 @@ function tanitimBitir() {
 function tanitimSaymayaBasla() {
   if (!tanitimda || tanitimSayac) return;
   clearTimeout(tanitimTimer);
-  tanitimSayac = setTimeout(tanitimBitir, TANITIM_MS);
+  tanitimSayac = setTimeout(tanitimBitir, tanitimSuresi());
 }
 function tanitimBaslat() {
   const veri = durum && durum.veri;

@@ -859,8 +859,12 @@ footer a:hover{color:var(--text);text-decoration:underline}
   .xray-panel{width:100%;padding:14px 14px calc(110px + var(--safe-b));background:rgba(6,7,11,.93)}
   /* telefonda tanıtım kısa bir önizleme: etiketin altından başlıyor, videonun yarısını geçmiyor, alt kenarı soluyor */
   .xray-panel.tanitim{top:66px;bottom:auto;max-height:50%;width:84%;padding-bottom:14px;border-radius:0 var(--r) var(--r) 0;
-    background:linear-gradient(90deg,rgba(6,7,11,.8),rgba(6,7,11,.55) 80%,rgba(6,7,11,0));
+    background:linear-gradient(90deg,rgba(6,7,11,.38),rgba(6,7,11,.12) 75%,rgba(6,7,11,0));
+    -webkit-backdrop-filter:none;backdrop-filter:none;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.6);
     -webkit-mask-image:linear-gradient(#000 72%,transparent);mask-image:linear-gradient(#000 72%,transparent)}
+  /* telefonda tanıtımda arka plan şeffaf: satır ve kart zeminleri de yalnız ince bir iz */
+  .xray-panel.tanitim .xray-kisi{background:rgba(6,7,11,.22)}
+  .xray-panel.tanitim .xray-sarki-kart{background:rgba(6,7,11,.3);animation:none;border-color:rgba(255,255,255,.14)}
   .xray-kapat{width:40px;height:40px}
   .sv-foto{width:72px;height:72px;font-size:22px}
   .sv-bas{gap:14px}

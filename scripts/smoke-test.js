@@ -430,6 +430,7 @@ async function xrayTestleri(browser, base) {
   check('X-Ray mobil: etiketin üstüne dokunmak videoyu duraklatıp paneli açıyor', etiket && durdu, `etiket=${etiket} durdu=${durdu}`);
   check('X-Ray mobil: 390 px\'te yatay taşma yok', etiket && !tasma);
 
+
   // --- çift dokunuş: sağ yarı +10 sn, sol yarı −10 sn; tek dokunuş sarmıyor ---
   if (etiket) {
     await m.evaluate(() => { const v = document.getElementById('player-modal-video'); v.pause(); v.currentTime = 2; });
@@ -451,6 +452,32 @@ async function xrayTestleri(browser, base) {
       ileri.t >= 8.5 && /\+10 sn/.test(ileri.ipucu) && geri < ileri.t - 5, `ileri=${ileri.t.toFixed(1)} (${ileri.ipucu}) geri=${geri.toFixed(1)}`);
   }
   await mctx.close();
+
+  // --- telefon: tanıtım kartı daha kısa (3 sn) ve arkası şeffaf ---
+  const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const t = await tctx.newPage();
+  await t.route('**/*', r => {
+    const u = r.request().url();
+    if (/tka-sibnet|tka-uqload|api\/sibnet/.test(u)) return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ url: base + '/test/fixtures/video.webm' }) });
+    const host = new URL(u).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+  await t.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await t.waitForSelector('.ep');
+  await t.locator('.ep[data-i="0"] .ep-head').tap();
+  await t.waitForTimeout(400);
+  await t.locator('.ep[data-i="0"] .ep-links .link-btn.direct').first().tap();
+  await t.waitForFunction(() => { const v = document.getElementById('player-modal-video'); return !v.hidden && v.currentTime > 0; }, null, { timeout: 15000 }).catch(() => {});
+  await t.evaluate(() => { document.getElementById('player-modal-video').playbackRate = 0.25; });
+  const zemin = await t.evaluate(() => {
+    const el = document.getElementById('player-xray');
+    const renkler = (getComputedStyle(el).backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(c => Number((c.match(/[\d.]+\)$/) || ['1'])[0].replace(')', '')));
+    return { tanitim: el.classList.contains('tanitim') && !el.hidden, enKoyu: Math.max(...renkler) };
+  });
+  await t.waitForTimeout(3800);
+  const gitti = await t.evaluate(() => document.getElementById('player-xray').hidden);
+  check('X-Ray mobil: tanıtım kartı şeffaf zeminli ve 3 sn sonra kayboluyor', zemin.tanitim && zemin.enKoyu <= 0.4 && gitti, JSON.stringify({ ...zemin, gitti }));
+  await tctx.close();
 }
 
 // Ana sayfa: anında arama önerileri, "İzlemeye devam et"te tek tık devam, etkin filtre çipleri,
