@@ -107,12 +107,15 @@ test("malTemalari: MyAnimeList sayfasındaki opening/ending blokları", () => {
     + td(1, "The Real Folk Blues", "The Seatbelts feat. Mai Yamane", "eps 1-12, 14-25")
     + td(2, "Space Lion", "The Seatbelts", "ep 13")
     + td(3, "Aka no Kakera (緋色のカケラ)", "Suzuki Yuki &amp; Co", "")
+    + `<td width="8%"><div class="oped-preview-button oped-preview-button-gray"></div></td>`
+    + `<td width="84%"><span class="theme-song-index">4:</span>&nbsp;"Aggressive Girl (アグレッシブガール)"<span class="theme-song-artist"> by OTMGirls</span>&nbsp;<span class="theme-song-episode">(eps 7)</span><input type="hidden" value="" /></td>`
     + `</tr></table></div><h2>Reviews</h2><span class="theme-song-title">"Başka bölüm"</span>`;
   assert.deepEqual(ortak.malTemalari(html), [
     ["OP", 0, "Tank!", "The Seatbelts", "1-25"],
     ["ED", 1, "The Real Folk Blues", "The Seatbelts feat. Mai Yamane", "1-12, 14-25"],
     ["ED", 2, "Space Lion", "The Seatbelts", "13"],
     ["ED", 3, "Aka no Kakera (緋色のカケラ)", "Suzuki Yuki & Co", null],
+    ["ED", 4, "Aggressive Girl (アグレッシブガール)", "OTMGirls", "7"], // linksiz şarkı: başlık <span>'sız
   ]);
   assert.deepEqual(ortak.malTemalari("<html>şarkı yok</html>"), []);
   // MAL'dan gelen bölüm aralığı tarayıcıdaki eşleştiriciyle uyumlu

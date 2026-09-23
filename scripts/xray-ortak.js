@@ -37,7 +37,14 @@ function malTemalari(html) {
     const parca = html.slice(bas, son);
     for (const td of parca.split(/<td[^>]*>/).slice(1)) {
       const al = sinif => { const m = new RegExp(`<span class="${sinif}">([\\s\\S]*?)</span>`).exec(td); return m ? metin(m[1]) : ""; };
-      const baslik = al("theme-song-title").replace(/^"+|"+$/g, "").trim();
+      // Dinleme linki olmayan şarkılarda MAL başlığı <span> içine koymuyor: sıra numarasından sonra,
+      // sanatçıdan önce düz metin ("Aggressive Girl (アグレッシブガール)").
+      let ham = al("theme-song-title");
+      if (!ham) {
+        const sanatciYeri = td.indexOf('<span class="theme-song-artist"');
+        if (sanatciYeri > 0) ham = metin(td.slice(0, sanatciYeri).replace(/<span class="theme-song-index">[\s\S]*?<\/span>/, ""));
+      }
+      const baslik = ham.replace(/^"+|"+$/g, "").trim();
       if (!baslik) continue;
       const sira = parseInt(al("theme-song-index"), 10) || 0;
       const sanatci = al("theme-song-artist").replace(/^by\s+/i, "").trim();
