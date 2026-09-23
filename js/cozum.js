@@ -14,6 +14,10 @@ const E_YOKSA = 25 * 60 * 1000;        // linkte e= yoksa varsayılan ömür
 // 503/429 (sağlayıcı yoğun) ve ağ hatası geçici: bu aralıklarla tekrar deneniyor. 404 (video silinmiş) ve
 // diğer hatalar kalıcı, beklemeden vazgeçiliyor.
 const TEKRAR = [1200, 3000, 5000];
+// Bir çözümlemenin toplam süre sınırı: her çözücü engelliyken tek istek sunucuda ~8 sn sürüyor (kendi
+// tekrarlarıyla); iki çözücü × 4 tur izleyiciyi bir dakikadan fazla bekletirdi. Bu süre geçtiyse yeni tur
+// başlamıyor, reklamlı oynatıcıya düşülüyor.
+const BUTCE = 25 * 1000;
 
 const cozumAnahtari = (player, params) => `${player}:${params}`;
 const GECICI = hata => hata === 503 || hata === 429 || hata === 0;
@@ -68,7 +72,7 @@ const KESIN = hata => hata === 404 || hata === 400;
 
 // -> { veri: {url, hls?}, onbellekten } | { hata: HTTP durumu | 0 (ağ) | 'iptal' }
 // bildir(deneme, toplam): tekrar denemeden önce çağrılıyor (oynatıcı "yoğun, tekrar deneniyor" yazıyor).
-async function cozumle(provider, player, params, { istenmeye = () => true, bildir = () => {}, tekrar = TEKRAR, fetchFn = fetch } = {}) {
+async function cozumle(provider, player, params, { istenmeye = () => true, bildir = () => {}, tekrar = TEKRAR, fetchFn = fetch, butce = BUTCE } = {}) {
   const anahtar = cozumAnahtari(player, params);
   const eldeki = onbellekOku(anahtar);
   if (eldeki) return { veri: eldeki, onbellekten: true };
@@ -81,9 +85,14 @@ async function cozumle(provider, player, params, { istenmeye = () => true, bildi
     if (onceki.veri || !istenmeye() || !GECICI(onceki.hata)) return onceki;
   }
   const is = (async () => {
-    let sonHata = 0;
+    const bas = Date.now();
+    let sonHata = 0, turSure = 0;
     for (let i = 0; i <= tekrar.length; i++) {
       if (i) {
+        // Yeni tur, bir öncekinin süresi kadar sürecekmiş gibi sınıra sığıyorsa başlıyor: sağlayıcı hızlıca
+        // "yoğun" diyorsa tekrarlar sürüyor, çözücüler ancak kendi uzun tekrarlarından sonra pes ediyorsa
+        // (Sibnet hepsini engellemiş) bir turdan sonra düşülüyor.
+        if (Date.now() - bas + tekrar[i - 1] + turSure > butce) break;
         bildir(i, tekrar.length);
         await bekle(tekrar[i - 1]);
         if (!istenmeye()) return { hata: 'iptal' };
@@ -91,11 +100,13 @@ async function cozumle(provider, player, params, { istenmeye = () => true, bildi
       // Bir tur: her çözücü bir kez. Tur içinde yalnız geçici hata kalırsa (hepsi yoğun) bekleyip yeni tur;
       // hiç geçici hata yoksa (ör. hepsi 502) tekrar denemenin anlamı yok.
       let geciciVar = false;
+      const turBas = Date.now();
       for (const cozucu of cozucuSirasi(provider, params)) {
         let r;
         try { r = await fetchFn(`${cozucu}?${params}`); }
         catch (e) { sonHata = 0; geciciVar = true; yogunIsaretle(cozucu); continue; }   // ağ hatası: geçici
         if (r.ok) {
+          yogunluk.delete(cozucu);
           const veri = await r.json().catch(() => null);
           if (!veri || !veri.url) { sonHata = 502; continue; }
           onbellegeYaz(anahtar, veri);
@@ -106,6 +117,7 @@ async function cozumle(provider, player, params, { istenmeye = () => true, bildi
         if (GECICI(r.status)) { geciciVar = true; yogunIsaretle(cozucu); }
       }
       if (!geciciVar) return { hata: sonHata };
+      turSure = Date.now() - turBas;
     }
     return { hata: sonHata };
   })();
@@ -121,4 +133,4 @@ function onceCozumle(provider, player, params) {
   cozumle(provider, player, params, { tekrar: [] }).catch(() => {});
 }
 
-export { cozumle, onceCozumle, cozucuSirasi, yogunluk, cozumAnahtari, onbellektenSil, linkBitisi, onbellekOku, onbellegeYaz, TEKRAR };
+export { cozumle, onceCozumle, cozucuSirasi, yogunluk, cozumAnahtari, onbellektenSil, linkBitisi, onbellekOku, onbellegeYaz, TEKRAR, BUTCE };

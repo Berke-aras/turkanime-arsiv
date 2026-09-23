@@ -175,3 +175,19 @@ test("cozumle: bir çözücü bozuk (502) ise öteki deneniyor; hepsi 502 ise te
   assert.deepEqual(await cozumle(ikili, "SIBNET", "id=961", { tekrar: [1, 1], fetchFn: g }), { hata: 502 });
   assert.equal(g.cagri.length, 2);
 });
+
+test("cozumle: çözücüler yavaşça pes ediyorsa (uzun tur) sınırı aşacak ikinci tura başlamıyor", async () => {
+  depo.clear(); yogunluk.clear();
+  const yavas = async () => { await new Promise(r => setTimeout(r, 30)); return cevap(503); };
+  let n = 0;
+  const f = async () => { n++; return yavas(); };
+  assert.deepEqual(await cozumle(ikili, "SIBNET", "id=970", { tekrar: [1, 1], butce: 100, fetchFn: f }), { hata: 503 });
+  assert.equal(n, 2);                                         // 1 tur ~60 ms; ikinci tur 100 ms'ye sığmıyor
+});
+
+test("cozumle: süre sınırı dolunca yeni tura başlamıyor", async () => {
+  depo.clear(); yogunluk.clear();
+  const f = sahteFetch([cevap(503), cevap(503), cevap(200, { url: "https://dv1.test/b.mp4" })]);
+  assert.deepEqual(await cozumle(saglayici, "SIBNET", "id=980", { tekrar: [50, 50], butce: 20, fetchFn: f }), { hata: 503 });
+  assert.equal(f.cagri.length, 1);
+});
