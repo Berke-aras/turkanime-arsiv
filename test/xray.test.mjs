@@ -4,7 +4,7 @@
 import test from "node:test";
 import assert from "node:assert";
 import { createRequire } from "node:module";
-import { anilistId, gorselAc, KARAKTER_ONEK, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul } from "../js/xray-veri.js";
+import { spotifyLink, anilistId, gorselAc, KARAKTER_ONEK, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul } from "../js/xray-veri.js";
 
 const require = createRequire(import.meta.url);
 const ortak = require("../scripts/xray-ortak.js");
@@ -111,13 +111,31 @@ test("malTemalari: MyAnimeList sayfasındaki opening/ending blokları", () => {
     + `<td width="84%"><span class="theme-song-index">4:</span>&nbsp;"Aggressive Girl (アグレッシブガール)"<span class="theme-song-artist"> by OTMGirls</span>&nbsp;<span class="theme-song-episode">(eps 7)</span><input type="hidden" value="" /></td>`
     + `</tr></table></div><h2>Reviews</h2><span class="theme-song-title">"Başka bölüm"</span>`;
   assert.deepEqual(ortak.malTemalari(html), [
-    ["OP", 0, "Tank!", "The Seatbelts", "1-25"],
-    ["ED", 1, "The Real Folk Blues", "The Seatbelts feat. Mai Yamane", "1-12, 14-25"],
-    ["ED", 2, "Space Lion", "The Seatbelts", "13"],
-    ["ED", 3, "Aka no Kakera (緋色のカケラ)", "Suzuki Yuki & Co", null],
-    ["ED", 4, "Aggressive Girl (アグレッシブガール)", "OTMGirls", "7"], // linksiz şarkı: başlık <span>'sız
+    ["OP", 0, "Tank!", "The Seatbelts", "1-25", ""],
+    ["ED", 1, "The Real Folk Blues", "The Seatbelts feat. Mai Yamane", "1-12, 14-25", ""],
+    ["ED", 2, "Space Lion", "The Seatbelts", "13", ""],
+    ["ED", 3, "Aka no Kakera (緋色のカケラ)", "Suzuki Yuki & Co", null, ""],
+    ["ED", 4, "Aggressive Girl (アグレッシブガール)", "OTMGirls", "7", ""], // linksiz şarkı: başlık <span>'sız
   ]);
   assert.deepEqual(ortak.malTemalari("<html>şarkı yok</html>"), []);
   // MAL'dan gelen bölüm aralığı tarayıcıdaki eşleştiriciyle uyumlu
   assert.ok(bolumdeMi("1-12, 14-25", 14) && !bolumdeMi("1-12, 14-25", 13));
+});
+
+test("spotifyLink: parça kimliği varsa parçaya, yoksa Spotify aramasına", () => {
+  assert.deepEqual(spotifyLink(["OP", 0, "Tank!", "The Seatbelts", "1-25", "2VqRxxZFbC0uZaTJcZY36c"]),
+    { url: "https://open.spotify.com/track/2VqRxxZFbC0uZaTJcZY36c", parca: true });
+  // parantez içi Japonca yazım aramadan atılıyor
+  assert.deepEqual(spotifyLink(["OP", 1, "Aka no Kakera (緋色のカケラ)", "Suzuki Yuki", null, ""]),
+    { url: "https://open.spotify.com/search/" + encodeURIComponent("Aka no Kakera Suzuki Yuki"), parca: false });
+  assert.equal(spotifyLink(["ED", 0, "Hitomi no Kotae", "", null]).url, "https://open.spotify.com/search/Hitomi%20no%20Kotae");
+  assert.equal(spotifyLink(["ED", 0, "X", "Y", null, "kısa<script>"]).parca, false, "geçersiz kimlik linke girmiyor");
+});
+
+test("malTemalari: Spotify parça kimliği 6. alana okunuyor; sarkiAnahtar ad farklarını yok sayıyor", () => {
+  const html = `<div class="theme-songs js-theme-songs opnening"><table><tr><td width="84%"><span class="theme-song-title">"Tank!"</span>`
+    + `<span class="theme-song-artist"> by The Seatbelts</span><input type="hidden" id="spotify_url_25957" value="https://open.spotify.com/track/2VqRxxZFbC0uZaTJcZY36c" /></td></tr></table></div>`;
+  assert.equal(ortak.malTemalari(html)[0][5], "2VqRxxZFbC0uZaTJcZY36c");
+  assert.equal(ortak.sarkiAnahtar("Aka no Kakera (緋色のカケラ)"), ortak.sarkiAnahtar("aka no kakera"));
+  assert.notEqual(ortak.sarkiAnahtar("Avid"), ortak.sarkiAnahtar("Hands Up to the Sky"));
 });

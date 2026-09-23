@@ -4,7 +4,7 @@
 //
 // kaynak/x/<slug>.json biçimi (bkz. scripts/build-xray.js):
 //   { id, mal?, k?: [[karakter, karakterGörseli, rol A|Y|F, seslendirmen, seslendirmenGörseli]...],
-//     m?: [[OP|ED, sıra, şarkı, sanatçı, bölümler|null]...] }
+//     m?: [[OP|ED, sıra, şarkı, sanatçı, bölümler|null, spotifyParçaKimliği?]...] }
 
 // Tarayıcı tarafındaki eş: scripts/xray-ortak.js. İkisi birlikte değişmeli.
 const anilistId = ad => {
@@ -47,4 +47,14 @@ function atlamaAraliklari(json) {
 }
 const aralikBul = (araliklar, t) => araliklar.find(a => t >= a.bas && t < a.son) || null;
 
-export { anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul };
+// Şarkının Spotify linki: parça kimliği biliniyorsa (MyAnimeList'ten, bkz. scripts/build-xray-ek.js)
+// doğrudan parçaya, yoksa Spotify aramasına. Aramada parantez içi (çoğunlukla Japonca yazım) atılıyor,
+// romaji ad + sanatçı Spotify'da daha iyi sonuç veriyor.
+function spotifyLink(t) {
+  if (t && /^[A-Za-z0-9]{22}$/.test(t[5] || '')) return { url: `https://open.spotify.com/track/${t[5]}`, parca: true };
+  const ad = String((t && t[2]) || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const sorgu = [ad, (t && t[3]) || ''].filter(Boolean).join(' ');
+  return { url: `https://open.spotify.com/search/${encodeURIComponent(sorgu)}`, parca: false };
+}
+
+export { spotifyLink, anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul };

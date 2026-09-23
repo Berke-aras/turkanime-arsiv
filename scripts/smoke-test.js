@@ -293,6 +293,15 @@ async function xrayTestleri(browser, base) {
   const kirik = await p.evaluate(() => [...document.querySelectorAll('#player-xray img')].filter(i => i.complete && !i.naturalWidth).length);
   check('X-Ray: yüklenemeyen görseller baş harflere düşüyor', kirik === 0, `kırık=${kirik}`);
   check('X-Ray: panelde bölümün şarkıları var (Beck: Hit in the USA)', /Hit in the USA/.test(panel.metin));
+  const kart = await p.evaluate(() => {
+    const a = document.querySelector('#player-xray .xray-sarki-kart');
+    const cubuk = a && a.querySelector('.xray-eq i');
+    return a && { href: a.href, hedef: a.target, eq: a.querySelectorAll('.xray-eq i').length,
+      anim: cubuk ? getComputedStyle(cubuk).animationName : '' };
+  });
+  check('X-Ray: şarkı kartı Spotify\'a gidiyor ve ekolayzır animasyonu var',
+    kart && /^https:\/\/open\.spotify\.com\/(track|search)\//.test(kart.href) && kart.hedef === '_blank' && kart.eq === 4 && kart.anim === 'xray-eq',
+    JSON.stringify(kart));
 
   // --- Esc önce paneli kapatıyor, oynatıcıyı değil ---
   await p.keyboard.press('Escape');
@@ -322,6 +331,9 @@ async function xrayTestleri(browser, base) {
     muzik: !document.getElementById('player-xray-muzik').hidden, muzikMetin: document.getElementById('player-xray-muzik').textContent,
   }));
   check('X-Ray: opening sırasında "Opening\'i geç" düğmesi çıkıyor', opDurum.gec && /Opening'i geç/.test(opDurum.gecMetin), opDurum.gecMetin);
+  const etiketSpotify = await p.evaluate(() => { const a = document.querySelector('#player-xray-muzik .xray-muzik-spotify');
+    return a ? a.href : ''; });
+  check('X-Ray: "Şu an çalıyor" etiketinde Spotify düğmesi var', /^https:\/\/open\.spotify\.com\//.test(etiketSpotify), etiketSpotify);
   check('X-Ray: opening sırasında "Şu an çalıyor" şarkıyı gösteriyor',
     opDurum.muzik && /Şu an çalıyor/.test(opDurum.muzikMetin) && /Hit in the USA/.test(opDurum.muzikMetin), opDurum.muzikMetin);
   await p.locator('#player-xray-gec').click();
@@ -347,6 +359,17 @@ async function xrayTestleri(browser, base) {
   await p.waitForTimeout(300);
   const oynatKapali = await p.evaluate(() => document.getElementById('player-xray').hidden);
   check('X-Ray: duraklatınca panel açılıyor, oynatınca kapanıyor', durakAcik && oynatKapali, `açıldı=${durakAcik} kapandı=${oynatKapali}`);
+
+  // --- Spotify'a tıklayınca bölüm arkada çalmaya devam etmiyor ---
+  await p.evaluate(() => { const v = document.getElementById('player-modal-video'); v.currentTime = 1.5; return v.play().catch(() => {}); });
+  await p.waitForSelector('#player-xray-muzik:not([hidden]) .xray-muzik-spotify', { timeout: 5000 }).catch(() => {});
+  const [sekme] = await Promise.all([
+    ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null),
+    p.evaluate(() => document.querySelector('#player-xray-muzik .xray-muzik-spotify').click()),
+  ]);
+  if (sekme) await sekme.close();
+  const spotifySonra = await p.evaluate(() => document.getElementById('player-modal-video').paused);
+  check('X-Ray: Spotify\'a gidince video duraklıyor', spotifySonra);
 
   // --- kapatınca her şey sıfırlanıyor ---
   await p.locator('#player-modal-close').click();

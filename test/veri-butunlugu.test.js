@@ -170,7 +170,8 @@ test("kaynak/x dosyaları beklenen biçimde", () => {
     const iyi = Number.isInteger(x.id)
       && (x.mal === undefined || Number.isInteger(x.mal))
       && (x.k === undefined || (Array.isArray(x.k) && x.k.every(k => k.length === 5 && "AYF".includes(k[2]))))
-      && (x.m === undefined || (Array.isArray(x.m) && x.m.every(m => m.length === 5 && (m[0] === "OP" || m[0] === "ED"))));
+      && (x.m === undefined || (Array.isArray(x.m) && x.m.every(m => (m.length === 5 || (m.length === 6 && /^([A-Za-z0-9]{22})?$/.test(m[5])))
+        && (m[0] === "OP" || m[0] === "ED"))));
     if (!iyi) bozuk.push(d);
   }
   assert.deepEqual(bozuk.slice(0, 5), [], `${bozuk.length} kaynak/x dosyası biçim dışı`);

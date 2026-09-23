@@ -14,7 +14,7 @@ const KISI_ONEK = "https://s4.anilist.co/file/anilistcdn/staff/medium/";
 const gorselKisalt = (url, onek) => !url || /\/default\.jpg$/.test(url) ? "" : (url.startsWith(onek) ? url.slice(onek.length) : url);
 
 // MyAnimeList anime sayfasındaki "Opening Theme" / "Ending Theme" bloklarını
-// [OP|ED, sıra, şarkı, sanatçı, bölümler|null] listesine çevirir (build-xray.js'teki AnimeThemes
+// [OP|ED, sıra, şarkı, sanatçı, bölümler|null, spotifyParçaKimliği|""] listesine çevirir (build-xray.js'teki AnimeThemes
 // biçimiyle aynı). Her şarkı bir <td> içinde: theme-song-index "1:", theme-song-title "\"Ad\"",
 // theme-song-artist " by Sanatçı", theme-song-episode "(eps 1-12, 14)".
 const HTML_VARLIK = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
@@ -49,10 +49,15 @@ function malTemalari(html) {
       const sira = parseInt(al("theme-song-index"), 10) || 0;
       const sanatci = al("theme-song-artist").replace(/^by\s+/i, "").trim();
       const bolum = al("theme-song-episode").replace(/^\(\s*eps?\s*/i, "").replace(/\)$/, "").trim();
-      sonuc.push([tip, sira, baslik, sanatci, /\d/.test(bolum) ? bolum : null]);
+      const spotify = /spotify_url_\d+" value="https:\/\/open\.spotify\.com\/track\/([A-Za-z0-9]{22})/.exec(td);
+      sonuc.push([tip, sira, baslik, sanatci, /\d/.test(bolum) ? bolum : null, spotify ? spotify[1] : ""]);
     }
   }
   return sonuc;
 }
 
-module.exports = { anilistId, KARAKTER_ONEK, KISI_ONEK, gorselKisalt, malTemalari };
+// Şarkı adlarını karşılaştırmak için: MAL "Aka no Kakera (緋色のカケラ)" yazarken AnimeThemes
+// "Aka no Kakera" yazıyor; parantez içi, büyük/küçük harf ve noktalama farkı yok sayılıyor.
+const sarkiAnahtar = s => String(s || "").replace(/\([^)]*\)/g, "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
+
+module.exports = { anilistId, KARAKTER_ONEK, KISI_ONEK, gorselKisalt, malTemalari, sarkiAnahtar };

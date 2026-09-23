@@ -1,5 +1,5 @@
 "use strict";
-// build-xray.js'in bıraktığı iki boşluğu doldurur (önce o çalışmış olmalı):
+// build-xray.js'in bıraktığı boşlukları doldurur (önce o çalışmış olmalı):
 //
 //  1. Sezon düzeltme: kapağı serinin başka bir sezonuna bağlanmış animelerde (yıl/bölüm sayısı
 //     tutmadığı için dosyasında MAL kimliği yok) AniList'te başlıkla arayıp yılı ve bölüm sayısı
@@ -7,10 +7,14 @@
 //  2. Eksik şarkılar: MAL kimliği olup AnimeThemes'te şarkısı bulunmayan animeler için şarkılar
 //     MyAnimeList'in anime sayfasından ("Opening Theme" / "Ending Theme") okunuyor. Jikan API'si de
 //     aynı veriyi veriyor ama yalnız kendi önbelleğindeki animeler için; gerisinde 504 dönüyor.
+//  3. Spotify: MAL sayfası her şarkının Spotify parça kimliğini de taşıyor (AnimeThemes taşımıyor).
+//     Şarkı listesindeki her kayda 6. alan olarak yazılıyor; bulunamayanlara "" (denendi) yazılıyor,
+//     tarayıcı onlar için Spotify aramasına yönlendiriyor (bkz. js/xray-veri.js spotifyLink).
 //
-//   node scripts/build-xray-ek.js              iki adımı da çalıştırır
+//   node scripts/build-xray-ek.js              üç adımı da çalıştırır
 //   node scripts/build-xray-ek.js --sezon      yalnız 1. adım
 //   node scripts/build-xray-ek.js --mal        yalnız 2. adım
+//   node scripts/build-xray-ek.js --spotify    yalnız 3. adım: şarkılara Spotify parça kimliği
 //   node scripts/build-xray-ek.js --sinir 20   her adımda en çok 20 anime (deneme için)
 //
 // Tekrar çalıştırılabilir: 2. adım yalnız hâlâ şarkısı olmayan dosyalara bakıyor. Filmlerin ve
@@ -18,14 +22,14 @@
 const fs = require("fs");
 const path = require("path");
 const { UA, sleep, istek, anilistGrup, karakterler, uyumlu, temaGrup, cikis, INDEX, META } = require("./build-xray");
-const { malTemalari } = require("./xray-ortak");
+const { malTemalari, sarkiAnahtar } = require("./xray-ortak");
 
 const root = path.join(__dirname, "..");
 const argv = process.argv.slice(2);
-const sadece = argv.includes("--sezon") ? "sezon" : argv.includes("--mal") ? "mal" : null;
+const sadece = argv.includes("--sezon") ? "sezon" : argv.includes("--mal") ? "mal" : argv.includes("--spotify") ? "spotify" : null;
 const sinir = argv.includes("--sinir") ? Number(argv[argv.indexOf("--sinir") + 1]) : Infinity;
 
-const MAL_ARALIK = 2000; // MyAnimeList'e nazik davran: iki saniyede bir sayfa
+const MAL_ARALIK = Number(process.env.MAL_ARALIK) || 2000; // MyAnimeList'e nazik davran
 const ARAMA_GRUP = 8;
 const ARAMA_ARALIK = 2500;
 
@@ -145,7 +149,44 @@ async function malSarkilari() {
   console.log(`\n  Eksik şarkılar bitti: ${sarkili} animeye şarkı eklendi.`);
 }
 
+// Var olan şarkı listesine MAL'daki Spotify kimliklerini işler. Eşleştirme tür (OP/ED) + şarkı adı
+// anahtarıyla; ad tutmazsa aynı türde aynı sıradaki şarkıya bakılıyor.
+function spotifyIsle(temalar, mal) {
+  return temalar.map(t => {
+    if (t.length >= 6 && t[5]) return t;
+    const ayni = mal.filter(x => x[0] === t[0]);
+    const bul = ayni.find(x => x[5] && sarkiAnahtar(x[2]) && sarkiAnahtar(x[2]) === sarkiAnahtar(t[2]))
+      || (t[1] ? ayni.find(x => x[5] && x[1] === t[1] && ayni.filter(y => y[1] === t[1]).length === 1) : null)
+      || (ayni.length === 1 && temalar.filter(y => y[0] === t[0]).length === 1 && ayni[0][5] ? ayni[0] : null);
+    return [...t.slice(0, 5), bul ? bul[5] : ""];
+  });
+}
+
+async function spotifyKimlikleri() {
+  const hedef = INDEX.map(r => ({ slug: r[0], x: oku(r[0]) }))
+    .filter(a => a.x && a.x.mal && a.x.m && a.x.m.some(t => t.length < 6)).slice(0, sinir);
+  const malaGore = new Map();
+  for (const a of hedef) { if (!malaGore.has(a.x.mal)) malaGore.set(a.x.mal, []); malaGore.get(a.x.mal).push(a); }
+  console.log(`Spotify: ${hedef.length} anime, ${malaGore.size} MAL sayfası.`);
+  let sayfa = 0, bulunan = 0, toplam = 0, hata = 0;
+  for (const [mal, liste] of malaGore) {
+    try {
+      const malT = malTemalari(await malSayfa(mal));
+      for (const a of liste) {
+        const x = oku(a.slug); // başka adım arada yazmış olabilir
+        x.m = spotifyIsle(x.m, malT);
+        toplam += x.m.length; bulunan += x.m.filter(t => t[5]).length;
+        yaz(a.slug, x);
+      }
+    } catch (e) { hata++; console.log(`\n  MAL ${mal}: ${e.message}`); }
+    process.stdout.write(`\r  ${++sayfa}/${malaGore.size} sayfa · ${bulunan}/${toplam} şarkıda Spotify · ${hata} hata`);
+    await sleep(MAL_ARALIK);
+  }
+  console.log(`\n  Spotify bitti: ${bulunan}/${toplam} şarkıya parça kimliği yazıldı.`);
+}
+
 (async () => {
-  if (sadece !== "mal") await sezonDuzelt();
-  if (sadece !== "sezon") await malSarkilari();
+  if (!sadece || sadece === "sezon") await sezonDuzelt();
+  if (!sadece || sadece === "mal") await malSarkilari();
+  if (!sadece || sadece === "spotify") await spotifyKimlikleri();
 })();

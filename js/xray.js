@@ -9,7 +9,7 @@
 import { esc, initials, hue } from './util.js';
 import { ANIME } from './data.js';
 import { playerVideo, playerViewport } from './player-dom.js';
-import { anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumTemasi, atlamaAraliklari, aralikBul } from './xray-veri.js';
+import { spotifyLink, anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumTemasi, atlamaAraliklari, aralikBul } from './xray-veri.js';
 
 const panel = document.getElementById('player-xray');
 const panelBtn = document.getElementById('player-modal-xray');
@@ -46,9 +46,19 @@ let token = 0;
 let durum = null; // { slug, no, fansub, veri, yuklendi, araliklar, temalar: { op, ed } }
 let elleAcildi = false;
 
+// Ekolayzır çubukları: şarkı kartlarında ve "Şu an çalıyor" etiketinde dönen küçük müzik animasyonu.
+const EKOLAYZIR = '<span class="xray-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>';
+const SPOTIFY_IKON = '<svg class="ic" aria-hidden="true"><use href="#i-spotify"/></svg>';
+
+// Her şarkı bir kart: tıklanınca Spotify'da parçaya (ya da aramaya) gidiyor.
 function temaSatiri(t, etiket) {
-  return `<li class="xray-sarki"><span class="xray-sarki-tip">${etiket}</span>`
-    + `<span><b>${esc(t[2] || 'Bilinmeyen şarkı')}</b>${t[3] ? `<span class="meta"> — ${esc(t[3])}</span>` : ''}</span></li>`;
+  const sp = spotifyLink(t);
+  const ad = t[2] || 'Bilinmeyen şarkı';
+  return `<li class="xray-sarki"><a class="xray-sarki-kart xray-spotify-link" href="${esc(sp.url)}" target="_blank" rel="noopener noreferrer"`
+    + ` title="${esc(ad)} — Spotify'da ${sp.parca ? 'dinle' : 'ara'}">`
+    + EKOLAYZIR
+    + `<span class="xray-sarki-metin"><span class="xray-sarki-tip">${etiket}</span><b>${esc(ad)}</b>${t[3] ? `<span class="meta">${esc(t[3])}</span>` : ''}</span>`
+    + `<span class="xray-spotify">${SPOTIFY_IKON}<span>${sp.parca ? 'Dinle' : 'Ara'}</span></span></a></li>`;
 }
 
 const basHarfler = (ad, sinif) => `<span class="${sinif} xray-bos" style="--h:${hue(ad)}" aria-hidden="true">${esc(initials(ad))}</span>`;
@@ -188,8 +198,12 @@ function zamanGuncelle() {
   gecBtn.dataset.son = String(a.son);
   const tema = durum.temalar[a.tip];
   if (tema) {
-    muzikEl.innerHTML = `<span class="xray-nota" aria-hidden="true">♪</span><span><span class="xray-muzik-ust">Şu an çalıyor · ${TIP_AD[a.tip]}</span>`
-      + `<b>${esc(tema[2] || 'Bilinmeyen şarkı')}</b>${tema[3] ? `<span class="meta"> — ${esc(tema[3])}</span>` : ''}</span>`;
+    const sp = spotifyLink(tema);
+    muzikEl.innerHTML = `${EKOLAYZIR}<span class="xray-muzik-metin"><span class="xray-muzik-ust">Şu an çalıyor · ${TIP_AD[a.tip]}</span>`
+      + `<b>${esc(tema[2] || 'Bilinmeyen şarkı')}</b>${tema[3] ? `<span class="meta"> — ${esc(tema[3])}</span>` : ''}</span>`
+      + `<a class="xray-muzik-spotify xray-spotify-link" href="${esc(sp.url)}" target="_blank" rel="noopener noreferrer"`
+      + ` aria-label="Spotify'da ${sp.parca ? 'dinle' : 'ara'}" title="Spotify'da ${sp.parca ? 'dinle' : 'ara'}">${SPOTIFY_IKON}</a>`;
+    muzikEl.classList.toggle('durdu', playerVideo.paused);
     muzikEl.classList.remove('sakin');
     muzikEl.hidden = false;
     // Etiket girişte birkaç saniye görünüyor, sonra kontrol çubuğuyla birlikte gizlenip beliriyor.
@@ -198,6 +212,14 @@ function zamanGuncelle() {
     muzikEl.hidden = true;
   }
 }
+// Spotify'a gidilince bölüm arkada çalmaya devam etmesin.
+for (const el of [panel, muzikEl]) {
+  el.addEventListener('click', e => { if (e.target.closest('.xray-spotify-link') && !playerVideo.hidden) playerVideo.pause(); });
+}
+// Etiketteki ekolayzır video durunca duruyor.
+playerVideo.addEventListener('play', () => muzikEl.classList.remove('durdu'));
+playerVideo.addEventListener('pause', () => muzikEl.classList.add('durdu'));
+
 gecBtn.addEventListener('click', () => {
   const son = Number(gecBtn.dataset.son);
   if (isFinite(son)) playerVideo.currentTime = Math.min(son, playerVideo.duration || son);
