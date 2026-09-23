@@ -1221,3 +1221,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §7.6 | `og:image` PNG yerine 141 KB JPEG (WhatsApp önizlemesi büyük dosyaları atlıyor) + `og:image:alt` |
 | 2026-09-22 | §2.5 | Kapak yükleme: preconnect, LCP kapağına öncelik, ilk kartlar eager, `decoding=async`, şeritlerde küçük kapak → masaüstünde kapak trafiği −%27 |
 | 2026-09-23 | yeni | Oynatıcı bilgi paneli (X-Ray): AniList karakter + seslendirmen, AnimeThemes OP/ED (`scripts/build-xray.js` → `kaynak/x/`), AniSkip ile "♪ Şu an çalıyor" ve "Opening'i geç"; duraklatınca panel açılıyor, `I` kısayolu |
+| 2026-09-23 | yeni | Bilgi paneli: mobil düzeltmeleri (etiket dokunuşu yutuyordu, panel kontrol çubuğunu örtüyordu); `scripts/build-xray-ek.js` ile 156 yanlış sezon eşleşmesi düzeltildi, 1272 animeye MAL'dan şarkı eklendi (şarkılı anime 3445 → 4846) |
