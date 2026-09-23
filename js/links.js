@@ -25,10 +25,9 @@ const OKRU = {
 
 // resolver bir dizi olabilir: js/cozum.js yükü video numarasına göre dağıtıyor, biri yoğunsa ötekine geçiyor.
 // Sibnet hız sınırını kaynak IP'ye göre koyduğu için iki ayrı IP havuzu yoğun saatlerde fark ediyor.
-// Netlify kopyası (tka-sibnet.netlify.app) yayında ama ŞİMDİLİK LİSTEDE DEĞİL: 2026-09-23'teki yük testinden
-// sonra Sibnet Netlify'ın çıkış IP'sini saatlerce engelledi (Vercel'inkini ~35 dk). Engelli bir çözücü ilk
-// sıraya geldiğinde izleyici ~8 sn boşuna bekliyor. Engel kalkınca (curl ile 200 dönünce) diziye geri eklenebilir.
-const SIBNET_COZUCULER = ['https://tka-sibnet.vercel.app/api/sibnet'];
+// İki çözücü iki ayrı IP havuzunda: Sibnet'in engelleri geçici ve IP'ye özel. 2026-09-23'te ikisi de
+// sırayla engellendi (biri engelliyken öteki çalışıyordu); Cloudflare'deki gibi kalıcı bir yasak değil.
+const SIBNET_COZUCULER = ['https://tka-sibnet.vercel.app/api/sibnet', 'https://tka-sibnet.netlify.app/api/sibnet'];
 const DIRECT_PROVIDERS = {
   SIBNET: { resolver: SIBNET_COZUCULER, params: url => { const m = /videoid=(\d+)/.exec(url); return m && `id=${m[1]}`; } },
   UQLOAD: { resolver: 'https://tka-uqload.turkanime-arsiv.workers.dev', params: url => { const m = /uqload\.[a-z]+\/embed-([a-z0-9]+)\.html/i.exec(url); return m && `id=${m[1]}`; } },
