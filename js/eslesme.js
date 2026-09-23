@@ -38,4 +38,70 @@ function matchScore(queryTokens, a) {
   return score;
 }
 
-export { aramaAnahtari, aramaKelimeleri, matchScore };
+// --- anında arama önerileri (js/arama-oneri.js) ---
+const ANIME_SAYI = 6, KARAKTER_SAYI = 3, SESLENDIRMEN_SAYI = 2;
+
+// Başlıkla eşleşen animeler: başlık sorguyla başlıyorsa önce, sonra bir kelimesi sorguyla başlayanlar,
+// sonra içinde geçenler. Eşitlikte kısa başlık (genelde ana seri: "Shingeki no Kyojin" önce, "... Final
+// Season Part 2" sonra), o da eşitse puanı yüksek olan. Hiç tam eşleşme yoksa yazım hatasına toleranslı tarama.
+function animeOnerileri(sorgu, liste, n = ANIME_SAYI) {
+  const q = norm(sorgu);
+  const kelimeler = q.split(' ').filter(Boolean);
+  if (!kelimeler.length) return [];
+  const sirali = [];
+  for (const a of liste) {
+    const anahtar = aramaAnahtari(a);
+    if (!kelimeler.every(k => anahtar.includes(k))) continue;
+    const baslik = norm(a.baslik);
+    const derece = baslik.startsWith(q) ? 0 : (' ' + baslik).includes(' ' + kelimeler[0]) ? 1 : 2;
+    sirali.push({ a, derece });
+  }
+  if (sirali.length) {
+    return sirali.sort((x, y) => x.derece - y.derece || x.a.baslik.length - y.a.baslik.length || (y.a.puan || 0) - (x.a.puan || 0))
+      .slice(0, n).map(x => x.a);
+  }
+  return liste.map(a => ({ a, p: matchScore(kelimeler, a) })).filter(x => x.p !== null)
+    .sort((x, y) => x.p - y.p || (y.a.puan || 0) - (x.a.puan || 0)).slice(0, n).map(x => x.a);
+}
+
+// Kişi adı sorguya uyuyor mu: sorgunun her kelimesi adın bir kelimesinin başı olmalı ("lev" -> "Levi",
+// "ackerman lev" -> "Levi Ackerman"). Derece: 0 tam ad, 1 ilk kelimeyle başlıyor, 2 diğer.
+function kisiDerecesi(ad, kelimeler) {
+  const adKelime = norm(ad).split(' ').filter(Boolean);
+  if (!kelimeler.every(k => adKelime.some(a => a.startsWith(k)))) return -1;
+  if (adKelime.join(' ') === kelimeler.join(' ')) return 0;
+  return adKelime[0].startsWith(kelimeler[0]) ? 1 : 2;
+}
+
+// Seri anahtarı: slug'ın ilk kelimesi; kısaysa (one-piece, k-on) ilk iki kelimesi. Eşleri: js/sana-ozel.js,
+// scripts/build-ara.js. "shingeki-no-kyojin" ile "shingeki-kyojin-chuugakkou" aynı seri sayılıyor.
+const seriAnahtari = slug => { const p = slug.split('-'); return p[0].length >= 5 ? p[0] : p.slice(0, 2).join('-'); };
+
+// Aynı adlı karakterin animeleri seriye (slug kökü) göre gruplanıyor; en kalabalık seri öne çıkıyor ve
+// temsilcisi o serinin en kısa slug'lı kaydı (genellikle ana seri). Farklı serilerdeki adaşlar ayrı satır.
+function karakterOnerileri(parca, kelimeler, slugBul, n = KARAKTER_SAYI) {
+  const adaylar = [];
+  for (const [ad, animeler] of parca.k || []) {
+    const d = kisiDerecesi(ad, kelimeler);
+    if (d < 0) continue;
+    const seriler = new Map();
+    for (const ix of animeler) {
+      const a = slugBul(ix);
+      if (!a) continue;
+      const kok = seriAnahtari(a.slug);
+      if (!seriler.has(kok)) seriler.set(kok, []);
+      seriler.get(kok).push(a);
+    }
+    for (const grup of seriler.values()) {
+      const temsilci = [...grup].sort((x, y) => x.slug.length - y.slug.length)[0];
+      adaylar.push({ ad, a: temsilci, fazla: grup.length - 1, d, agirlik: grup.length });
+    }
+  }
+  return adaylar.sort((x, y) => x.d - y.d || y.agirlik - x.agirlik || (y.a.puan || 0) - (x.a.puan || 0)).slice(0, n);
+}
+function seslendirmenOnerileri(parca, kelimeler, n = SESLENDIRMEN_SAYI) {
+  return (parca.s || []).map(ad => ({ ad, d: kisiDerecesi(ad, kelimeler) })).filter(x => x.d >= 0)
+    .sort((x, y) => x.d - y.d || x.ad.length - y.ad.length).slice(0, n).map(x => x.ad);
+}
+
+export { aramaAnahtari, aramaKelimeleri, matchScore, animeOnerileri, kisiDerecesi, karakterOnerileri, seslendirmenOnerileri };

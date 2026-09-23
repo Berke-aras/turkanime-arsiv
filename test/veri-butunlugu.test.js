@@ -174,6 +174,26 @@ test("seslendirmen dizini: her kova var ve her ad kendi kovasında (kaynak/sv)",
   assert.deepEqual(yanlis.slice(0, 5), [], `${yanlis.length} seslendirmen kaydı hatalı (npm run build:seslendirmen)`);
 });
 
+test("arama dizini (kaynak/ara) ve öneri dizini (kaynak/oneri.json) güncel", () => {
+  const dizin = path.join(ROOT, "kaynak", "ara");
+  const dosyalar = fs.readdirSync(dizin);
+  assert.ok(dosyalar.length >= 30 && dosyalar.every(d => /^[a-z0-9_]\.json$/.test(d)), dosyalar.join(","));
+  const bozuk = [];
+  for (const d of dosyalar) {
+    const p = JSON.parse(fs.readFileSync(path.join(dizin, d), "utf8"));
+    for (const [ad, ix] of p.k) if (!ad || !ix.length || ix.some(i => !(i >= 0 && i < INDEX.length))) bozuk.push(`${d}:${ad}`);
+  }
+  assert.deepEqual(bozuk.slice(0, 5), [], `${bozuk.length} bozuk arama kaydı (npm run build:ara)`);
+  // Karakter numaraları INDEX sırasına bağlı: "Levi" Shingeki no Kyojin'i göstermeli.
+  const l = JSON.parse(fs.readFileSync(path.join(dizin, "l.json"), "utf8"));
+  const levi = l.k.find(([ad]) => ad === "Levi");
+  assert.ok(levi && levi[1].some(i => INDEX[i][0] === "shingeki-no-kyojin"), "Levi -> shingeki-no-kyojin (dizin bayat mı?)");
+  const o = JSON.parse(fs.readFileSync(path.join(ROOT, "kaynak", "oneri.json"), "utf8"));
+  assert.equal(o.n, INDEX.length, "oneri.json farklı bir data.js ile üretilmiş (npm run build:ara)");
+  const gecersiz = Object.entries(o.o).filter(([i, l]) => !(i < INDEX.length) || l.some(b => !(b >= 0 && b < INDEX.length)));
+  assert.deepEqual(gecersiz.slice(0, 3), []);
+});
+
 test("kaynak/x dosyaları beklenen biçimde", () => {
   const dizin = path.join(ROOT, "kaynak", "x");
   const bozuk = [];

@@ -4,7 +4,7 @@
 //   npm test
 import test from "node:test";
 import assert from "node:assert";
-import { norm, esc, levenshtein, initials, hue } from "../js/util.js";
+import { norm, esc, levenshtein, initials, hue, onyilEtiketi } from "../js/util.js";
 
 test("norm: Türkçe karakterleri ASCII'ye indiriyor", () => {
   assert.equal(norm("Şİmşek"), "simsek");
@@ -68,4 +68,9 @@ test("hue: kararlı ve 0-359 aralığında", () => {
     const h = hue(s);
     assert.ok(Number.isInteger(h) && h >= 0 && h < 360, `${s} -> ${h}`);
   }
+});
+
+test("onyilEtiketi: on yıl eki ünlü uyumuna göre", () => {
+  assert.deepEqual([1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020].map(onyilEtiketi),
+    ["1910'lar", "1920'ler", "1930'lar", "1940'lar", "1950'ler", "1960'lar", "1970'ler", "1980'ler", "1990'lar", "2000'ler", "2010'lar", "2020'ler"]);
 });

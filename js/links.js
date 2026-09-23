@@ -81,4 +81,4 @@ function epLinksHtml(links) {
 }
 
 
-export { onerilenDirectLink, DIRECT_PROVIDERS, OKRU, OKRU_ETKIN, directParams, NO_EMBED_PLAYERS, PREFERRED_PLAYERS, playerRank, OLU, epLinksHtml };
+export { siralaLinkler, onerilenDirectLink, DIRECT_PROVIDERS, OKRU, OKRU_ETKIN, directParams, NO_EMBED_PLAYERS, PREFERRED_PLAYERS, playerRank, OLU, epLinksHtml };

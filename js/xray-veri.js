@@ -65,4 +65,11 @@ const svKova = ad => {
   return h % SV_KOVA;
 };
 
-export { svKova, spotifyLink, anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul };
+// Arama dizininin parça adı (bkz. scripts/build-ara.js, js/oneri.js): kelimenin normalize edilmiş ilk
+// harfi; a-z ve 0-9 dışındakiler '_' parçasına düşüyor. İki eş birlikte değişmeli.
+const araHarf = kelime => {
+  const c = String(kelime || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/ı/g, 'i').charAt(0);
+  return !c ? '' : /[a-z0-9]/.test(c) ? c : '_';
+};
+
+export { araHarf, svKova, spotifyLink, anilistId, KARAKTER_ONEK, KISI_ONEK, gorselAc, bolumdeMi, bolumTemasi, atlamaAraliklari, aralikBul };

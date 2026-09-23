@@ -453,6 +453,116 @@ async function xrayTestleri(browser, base) {
   await mctx.close();
 }
 
+// Ana sayfa: anında arama önerileri, "İzlemeye devam et"te tek tık devam, etkin filtre çipleri,
+// "Sana özel" şeridi ve sonsuz kaydırma.
+async function anaSayfaTestleri(browser, base) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.route('**/*', r => {
+    const u = r.request().url();
+    if (/tka-sibnet|tka-uqload|api\/sibnet/.test(u)) {
+      return r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ url: base + '/test/fixtures/video.webm' }) });
+    }
+    const host = new URL(u).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+  await p.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.card');
+
+  // --- arama önerileri: karakter adıyla ---
+  await p.locator('#search').click();
+  await p.keyboard.type('levi', { delay: 30 });
+  await p.waitForSelector('#arama-oneri .ao-baslik:text("Karakterler")', { timeout: 8000 }).catch(() => {});
+  const oneri = await p.evaluate(() => {
+    const l = document.getElementById('arama-oneri');
+    return { acik: !l.hidden, metin: l.textContent, secenek: l.querySelectorAll('[role=option]').length,
+      aria: document.getElementById('search').getAttribute('aria-expanded') };
+  });
+  check('Arama önerileri: "levi" yazınca karakter olarak Shingeki no Kyojin geliyor',
+    oneri.acik && oneri.aria === 'true' && /Karakterler/.test(oneri.metin) && /Levi/.test(oneri.metin) && /Shingeki no Kyojin/.test(oneri.metin),
+    `${oneri.secenek} seçenek`);
+  // ↓ ile Levi satırına git, Enter ile aç
+  const leviSira = await p.evaluate(() => [...document.querySelectorAll('#arama-oneri [role=option]')]
+    .findIndex(o => /^Levi/.test(o.querySelector('b').textContent) && /Shingeki no Kyojin/.test(o.textContent)));
+  for (let i = 0; i <= leviSira; i++) await p.keyboard.press('ArrowDown');
+  const secili = await p.evaluate(() => { const s = document.getElementById('search').getAttribute('aria-activedescendant'); return s && document.getElementById(s).getAttribute('href'); });
+  await p.keyboard.press('Enter');
+  await p.waitForTimeout(500);
+  const gidilen = await p.evaluate(() => ({ hash: location.hash, kapali: document.getElementById('arama-oneri').hidden }));
+  check('Arama önerileri: ok tuşları ve Enter seçilen öneriyi açıyor',
+    leviSira >= 0 && secili === '#/anime/shingeki-no-kyojin' && gidilen.hash === '#/anime/shingeki-no-kyojin' && gidilen.kapali, JSON.stringify({ leviSira, secili, ...gidilen }));
+
+  // seslendirmen ve anime başlığı; Esc önce listeyi kapatıyor, odak kutuda kalıyor
+  await p.goto(base + '/index.html', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.card');
+  await p.locator('#search').click();
+  await p.keyboard.type('kenji nojima', { delay: 20 });
+  await p.waitForSelector('#arama-oneri .ao-baslik:text("Seslendirmenler")', { timeout: 8000 }).catch(() => {});
+  const sesHref = await p.evaluate(() => { const a = [...document.querySelectorAll('#arama-oneri a')].find(x => /seslendirmen/.test(x.getAttribute('href'))); return a && a.getAttribute('href'); });
+  check('Arama önerileri: seslendirmen adı seslendirmen sayfasına gidiyor', sesHref === '#/seslendirmen/Kenji%20Nojima', sesHref);
+  await p.locator('#search').fill('');
+  await p.keyboard.type('shingeki', { delay: 20 });
+  await p.waitForTimeout(400);
+  const ilkAnime = await p.evaluate(() => { const a = document.querySelector('#arama-oneri [role=option]'); return a && a.querySelector('b').textContent; });
+  await p.keyboard.press('Escape');
+  const escSonra = await p.evaluate(() => ({ kapali: document.getElementById('arama-oneri').hidden, odak: document.activeElement.id }));
+  check('Arama önerileri: animeler kapaklı geliyor, Esc önce listeyi kapatıyor',
+    ilkAnime === 'Shingeki no Kyojin' && escSonra.kapali && escSonra.odak === 'search', JSON.stringify({ ilkAnime, ...escSonra }));
+
+  // --- etkin filtre çipleri ---
+  await p.goto(base + '/index.html#/?tur=Komedi&onyil=1990', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.filtre-cip');
+  const cipler = await p.evaluate(() => [...document.querySelectorAll('.filtre-cip')].map(b => b.textContent.trim()));
+  await p.locator('.filtre-cip[data-kaldir="tur"]').click();
+  await p.waitForTimeout(300);
+  const cipSonra = await p.evaluate(() => ({ hash: location.hash, tur: document.getElementById('f-tur').value, cip: [...document.querySelectorAll('.filtre-cip')].map(b => b.textContent.trim()) }));
+  check('Filtre çipleri: etkin filtreler çip olarak görünüyor, × tek tıkla kaldırıyor',
+    cipler.join('|') === "Komedi|1990'lar|Tümünü temizle" && cipSonra.hash === '#/?onyil=1990' && cipSonra.tur === '' && cipSonra.cip.join('|') === "1990'lar",
+    JSON.stringify({ cipler, cipSonra }));
+
+  // --- "İzlemeye devam et" + "Sana özel" ---
+  await p.evaluate(() => {
+    localStorage.setItem('ta_progress', JSON.stringify({ beck: { ep: 2, t: 5, d: 9.56, u: Date.now(), izlendi: [0, 1] } }));
+    localStorage.setItem('ta_favs', JSON.stringify(['k-on']));
+  });
+  // yalnız hash değişirse sayfa yeniden yüklenmiyor; kayıtlar modül açılışında okunduğu için tam yükleme
+  await p.goto(base + '/index.html#/', { waitUntil: 'domcontentloaded' });
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.card-devam');
+  const etiket = await p.locator('.card-devam .devam-etiket').first().textContent();
+  await p.waitForTimeout(800); // oneri.json gelsin
+  const ozel = await p.evaluate(() => {
+    const kartlar = [...document.querySelectorAll('#sana-ozel .card')];
+    return { sayi: kartlar.length, sluglar: kartlar.map(a => a.getAttribute('href').replace('#/anime/', '')),
+      baslik: (document.querySelector('#sana-ozel .section-title') || {}).textContent };
+  });
+  check('Sana özel: favori ve izlenenlerden öneri şeridi, kendileri ve aynı seri yok',
+    ozel.sayi >= 6 && /Sana özel/.test(ozel.baslik) && !ozel.sluglar.some(s => /^(beck|k-on)/.test(s)), JSON.stringify(ozel).slice(0, 200));
+  await p.locator('.card-devam').first().click();
+  const acildi = await p.waitForFunction(() => { const v = document.getElementById('player-modal-video'); return !document.getElementById('player-modal').hidden && !v.hidden && v.currentTime >= 4.5; }, null, { timeout: 15000 }).then(() => true, () => false);
+  const devam = await p.evaluate(() => ({ hash: location.hash, ep: document.getElementById('player-modal-eplabel').textContent.trim(), t: document.getElementById('player-modal-video').currentTime }));
+  check('Devam et: kart "Devam: 3. bölüm · 0:05" yazıyor ve detaya uğramadan oynatıcıyı kaldığı yerden açıyor',
+    etiket.trim() === 'Devam: 3. bölüm · 0:05' && acildi && devam.hash === '#/' && devam.ep === '3 / 26', JSON.stringify({ etiket, acildi, ...devam }));
+  // ana sayfada "Sonraki" de çalışıyor (bölüm listesi yokken)
+  await p.locator('#player-modal-next').click();
+  await p.waitForTimeout(800);
+  const sonraki = await p.evaluate(() => ({ ep: document.getElementById('player-modal-eplabel').textContent.trim(), acik: !document.getElementById('player-modal').hidden }));
+  check('Devam et: ana sayfada "Sonraki" bir sonraki bölümü açıyor', sonraki.acik && sonraki.ep === '4 / 26', JSON.stringify(sonraki));
+  await p.locator('#player-modal-close').click();
+
+  // --- sonsuz kaydırma ---
+  await p.goto(base + '/index.html#/?kategori=TV', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.card');
+  const onceKart = await p.evaluate(() => document.querySelectorAll('.grid:not(.recent-grid) .card').length);
+  await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await p.waitForFunction(n => document.querySelectorAll('.grid:not(.recent-grid) .card').length > n, onceKart, { timeout: 5000 }).catch(() => {});
+  const sonraKart = await p.evaluate(() => ({ kart: document.querySelectorAll('.grid:not(.recent-grid) .card').length, hash: location.hash }));
+  check('Sonsuz kaydırma: sona gelince sıradaki sayfa düğmeye basmadan ekleniyor, hash sayfayı tutuyor',
+    onceKart === 60 && sonraKart.kart >= 120 && /sayfa=\d/.test(sonraKart.hash), JSON.stringify({ onceKart, ...sonraKart }));
+  await ctx.close();
+}
+
 // Reklamsız oynatmanın güvenilirliği: sağlayıcı yoğunken bekleme mesajı ve tekrar deneme, silinmiş videoda
 // sebebini söyleyerek reklamlı oynatıcıya düşme; tanıtım sırasında Esc'nin oynatıcıyı kapatması.
 async function guvenilirlikTestleri(browser, base) {
@@ -1494,6 +1604,7 @@ async function run(page, base) {
     await xrayTestleri(browser, base);
     await seslendirmenTestleri(browser, base);
     await guvenilirlikTestleri(browser, base);
+    await anaSayfaTestleri(browser, base);
     await ilerlemeTestleri(browser, base);
     await yedekTestleri(browser, base);
   } finally {

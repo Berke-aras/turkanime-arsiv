@@ -659,6 +659,40 @@ footer a:hover{color:var(--text);text-decoration:underline}
 .sar-ipucu.goster{animation:sar-ipucu .7s ease-out}
 @keyframes sar-ipucu{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
 
+/* ---------- ana sayfa: devam etiketi, etkin filtre çipleri ---------- */
+.devam-etiket{position:absolute;left:6px;right:6px;bottom:10px;z-index:2;display:flex;align-items:center;gap:5px;
+  padding:5px 8px;border-radius:10px;font-size:11px;line-height:1.25;font-weight:700;letter-spacing:0;text-transform:none;color:#fff;background:rgba(10,12,17,.82);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);pointer-events:none}
+.devam-etiket .ic{flex:none;width:12px;height:12px;fill:currentColor;color:var(--accent)}
+.card-devam:hover .devam-etiket{background:var(--accent);color:#fff}
+.card-devam:hover .devam-etiket .ic{color:#fff}
+.card-yukleniyor{opacity:.6;pointer-events:none}
+.aktif-filtreler{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-4px 0 14px}
+.filtre-cip{display:inline-flex;align-items:center;gap:6px;padding:5px 8px 5px 11px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-transform:none;letter-spacing:0;
+  color:var(--accent-ink);background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.35)}
+.filtre-cip .ic{width:13px;height:13px}
+.filtre-cip:hover,.filtre-cip:focus-visible{background:rgba(var(--accent-rgb),.22);border-color:rgba(var(--accent-rgb),.6)}
+.filtre-cip-hepsi{color:var(--muted);background:none;border-color:var(--border);padding-right:11px}
+
+/* ---------- anında arama önerileri ---------- */
+.search-wrap{position:relative}
+.arama-oneri{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;max-height:min(70vh,520px);overflow-y:auto;overscroll-behavior:contain;
+  padding:6px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border-strong);box-shadow:var(--shadow-lg);animation:ao-gir .15s ease}
+@keyframes ao-gir{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.arama-oneri[hidden]{display:none}
+.ao-baslik{padding:8px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ao-oge{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:var(--r-sm);color:var(--text);text-decoration:none}
+.ao-oge:hover,.ao-oge[aria-selected="true"]{background:rgba(var(--accent-rgb),.14)}
+.ao-oge[aria-selected="true"]{outline:1px solid rgba(var(--accent-rgb),.45)}
+.ao-kapak{flex:none;width:34px;height:48px;border-radius:6px;object-fit:cover;background:var(--surface-3)}
+.ao-kisi{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;width:40px;height:40px;margin:4px -3px;
+  color:var(--accent-ink);background:rgba(var(--accent-rgb),.16);font-size:17px}
+.ao-metin{min-width:0;display:flex;flex-direction:column;line-height:1.3}
+.ao-metin b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ao-metin .meta{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ao-fazla{display:inline-block;padding:0 5px;border-radius:999px;font-size:10.5px;background:var(--surface-3)}
+.ao-bekle{padding:8px 10px;font-size:12px}
+
 /* ---------- detay sayfası: opening/ending şarkıları ---------- */
 .muzik-bolum{margin:22px 0 6px}
 .muzik-bolum[hidden]{display:none}

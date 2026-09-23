@@ -3,7 +3,8 @@
 import { esc } from './util.js';
 import { app } from './dom.js';
 import { getEpReverse } from './store.js';
-import { OLU, directParams, epLinksHtml, onerilenDirectLink, DIRECT_PROVIDERS } from './links.js';
+import { OLU, directParams, epLinksHtml, onerilenDirectLink, siralaLinkler, NO_EMBED_PLAYERS, DIRECT_PROVIDERS } from './links.js';
+import { loadScript } from './data.js';
 import { onceCozumle } from './cozum.js';
 import { playerModal, playerFrame, playerVideo, playerNewTab, playerPrevBtn, playerNextBtn,
   playerEpLabel, playerLoading, playerLoadingHint, playerControls,
@@ -11,7 +12,7 @@ import { playerModal, playerFrame, playerVideo, playerNewTab, playerPrevBtn, pla
 import { playDirect, stopVideo, bumpDirectToken, videoKlavye, kontrolleriGoster, pipKapat } from './player-video.js';
 import { animeBul } from './xray-yukle.js';
 import { posterUrl } from './data.js';
-import { ilerlemeYaz, devamSaniyesi, izlendiAyarla } from './progress.js';
+import { ilerlemeYaz, devamSaniyesi, izlendiAyarla, devamBilgisi } from './progress.js';
 import { xrayBolum, xrayKapat, panelDegistir, panelGoster, panelAcik } from './xray.js';
 
 let currentEpisodes = [];
@@ -183,13 +184,37 @@ function closePlayerModal() {
 // otomatik bir link seçip oynatmıyoruz.
 function jumpToEpisode(i) {
   const epEl = app.querySelector(`.ep[data-i="${i}"]`);
-  if (!epEl) return;
+  // Detay sayfasında değilsek (ana sayfadan "devam et" ile açıldıysa) bölüm listesi yok: link doğrudan seçiliyor.
+  if (!epEl) { bolumuOynat(i); return; }
   const g = epEl.closest('.ep-group'); if (g) g.open = true;
   openEpisode(epEl);
   epEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
   const d = directBtnOf(epEl);
   if (d) { d.click(); return; } // reklamsız link varsa modal kapanmadan sonraki bölüme geçer
   closePlayerModal();
+}
+
+// Bölüm listesi olmadan bir bölümü açar: önce otomatik seçilecek reklamsız link, yoksa çalışan ilk embed.
+// Hiçbiri yoksa detay sayfasına gidiyor (orada kullanıcı linki kendisi seçer).
+function bolumuOynat(i) {
+  const ep = currentEpisodes[i];
+  if (!ep) return false;
+  const d = onerilenDirectLink(ep.links);
+  if (d) { openPlayerModal(d.url, i, { player: d.player, params: directParams(d) }, d.fansub); return true; }
+  const e = siralaLinkler(ep.links).find(l => !OLU(l.tip) && !NO_EMBED_PLAYERS.has(l.player));
+  if (e) { openPlayerModal(e.url, i, null, e.fansub); return true; }
+  return false;
+}
+
+// "İzlemeye devam et" kartı: detay sayfasına uğramadan oynatıcıyı kaldığı yerden açar. Bölüm dosyası
+// yüklenemezse ya da oynatılacak link yoksa false döner; çağıran detay sayfasına yönlendirir.
+async function devamEt(slug) {
+  try { await loadScript(slug); } catch (e) { return false; }
+  const eps = (globalThis.__TKA__ && globalThis.__TKA__[slug]) || [];
+  const bilgi = devamBilgisi(slug, eps.length);
+  if (!eps.length || !bilgi) return false;
+  setCurrentEpisodes(eps, slug);
+  return bolumuOynat(Math.min(bilgi.i, eps.length - 1));
 }
 
 function wireEmbedButtons(container, epIndex) {
@@ -295,4 +320,4 @@ window.addEventListener('keydown', e => {
 export function setCurrentEpisodes(eps, slug = null) { currentEpisodes = eps; currentSlug = slug; }
 export const getCurrentEpisodes = () => currentEpisodes;
 
-export { openPlayerModal, closePlayerModal, openEpisode, wireEmbedButtons, syncEpNavButtons, playerModal, directBtnOf };
+export { devamEt, openPlayerModal, closePlayerModal, openEpisode, wireEmbedButtons, syncEpNavButtons, playerModal, directBtnOf };

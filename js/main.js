@@ -7,8 +7,10 @@ import { pickRandomAnime } from './search.js';
 import { renderList } from './views/list.js';
 import { route } from './router.js';
 import { initTheme } from './theme.js';
+import { baslat as aramaOnerileriBaslat } from './arama-oneri.js';
 
 initTheme();
+aramaOnerileriBaslat();
 
 let t;
 searchEl.addEventListener('input', () => {

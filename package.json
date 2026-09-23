@@ -13,6 +13,7 @@
     "build:xray": "node scripts/build-xray.js",
     "build:xray-ek": "node scripts/build-xray-ek.js",
     "build:seslendirmen": "node scripts/build-seslendirmen.js",
+    "build:ara": "node scripts/build-ara.js",
     "trim:data": "node scripts/trim-data.js"
   },
   "devDependencies": {

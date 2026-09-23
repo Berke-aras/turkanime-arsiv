@@ -58,6 +58,21 @@ export function ilerlemeOrani(slug) {
   return Math.max(0, Math.min(1, k.t / k.d));
 }
 
+// "İzlemeye devam et" kartı için: hangi bölüm açılacak ve kartta ne yazacak.
+// Son açılan bölüm bitmişse (izlendi işaretli ya da sonuna gelinmiş) sıradaki bölüm, değilse aynı bölüm
+// kaldığı saniyeden. Numara veri dizisindeki sıra + 1 (bölüm dosyası yüklenmeden kartta yazılabilsin diye).
+export function devamBilgisi(slug, bolumSayisi = Infinity) {
+  const k = kayitAl(slug);
+  if (!k) return null;
+  const ep = k.ep || 0;
+  const bitti = (Array.isArray(k.izlendi) && k.izlendi.includes(ep)) || (k.d && k.t >= k.d - BITIS_ESIGI(k.d));
+  if (bitti && ep + 1 >= bolumSayisi) return null; // son bölüm de bitmiş: devam edecek yer yok
+  const i = bitti ? ep + 1 : ep;
+  const t = bitti ? 0 : devamSaniyesi(slug, ep);
+  const dk = t ? ` · ${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}` : '';
+  return { i, etiket: bitti ? `Sıradaki: ${i + 1}. bölüm` : `Devam: ${i + 1}. bölüm${dk}` };
+}
+
 // "Devam et" şeridi: en son bakılandan geriye doğru.
 export function devamListesi() {
   return Object.entries(kayitlar)

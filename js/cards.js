@@ -20,11 +20,14 @@ const SERIT_BOYUT = (typeof devicePixelRatio === 'number' && devicePixelRatio >=
 //   oncelik → ekranın üstündeki kapak. `loading="lazy"` tarayıcının kapağı istemesini
 //     geciktiriyor; ilk ekranda görünenlerde bunu istemiyoruz (§2.5 A2/A3).
 //   boyut   → 'small' | 'medium'; şeritlerdeki küçük kartlar için (§2.5 A5).
+//   devam   → "İzlemeye devam et" kartı: { etiket } kapağın üstünde "Sıradaki: 5. bölüm"; kart
+//             tıklanınca detay yerine oynatıcı açılıyor (bkz. views/list.js).
 // decoding="async" hepsinde: kapak çözümü ana iş parçacığını kilitlemesin.
+const devamEtiketi = s => s.devam ? `<span class="devam-etiket">${ic('play')}${esc(s.devam.etiket)}</span>` : '';
 function posterPlaceholder(a, oran = 0, secenekler = {}) {
   const kaynak = secenekler.boyut ? (posterUrl(a, secenekler.boyut) || a.poster) : a.poster;
   const yukleme = secenekler.oncelik ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"';
-  if (kaynak) return `<div class="poster loaded"><img src="${esc(kaynak)}" ${yukleme} decoding="async" alt="">${ilerlemeCubugu(oran)}</div>`;
+  if (kaynak) return `<div class="poster loaded"><img src="${esc(kaynak)}" ${yukleme} decoding="async" alt="">${devamEtiketi(secenekler)}${ilerlemeCubugu(oran)}</div>`;
   const h = hue(a.baslik);
   const zemin = `linear-gradient(150deg,hsl(${h},45%,24%),hsl(${(h + 30) % 360},40%,14%))`;
   // .poster yüksekliğini padding-bottom ile kuruyor (height:0), o yüzden içerik mutlak
@@ -34,7 +37,7 @@ function posterPlaceholder(a, oran = 0, secenekler = {}) {
         <span class="poster-init">${esc(initials(a.baslik))}</span>
         <span class="poster-ad">${esc(a.baslik)}</span>
         <span class="poster-not">kapak yok</span>
-      </span>${ilerlemeCubugu(oran)}
+      </span>${devamEtiketi(secenekler)}${ilerlemeCubugu(oran)}
     </div>`;
 }
 
@@ -45,7 +48,7 @@ function cardHtml(a, secenekler = {}) {
   const oran = ilerlemeOrani(a.slug); // §7.1: kartın altında ince ilerleme çubuğu
   return `
     <div class="card-wrap">
-      <a class="card${a.eps ? '' : ' card-empty'}" href="#/anime/${encodeURIComponent(a.slug)}">
+      <a class="card${a.eps ? '' : ' card-empty'}${secenekler.devam ? ' card-devam' : ''}" href="#/anime/${encodeURIComponent(a.slug)}"${secenekler.devam ? ` data-devam="${esc(a.slug)}" title="${esc(secenekler.devam.etiket)} — oynatıcıyı aç"` : ''}>
         ${posterPlaceholder(a, oran, secenekler)}
         ${a.puan ? `<span class="rating-badge">${ic('star','ic-star')}${a.puan}</span>` : ''}
         ${a.nsfw ? '<span class="yas-rozet" title="Yetişkin içerik">18+</span>' : ''}

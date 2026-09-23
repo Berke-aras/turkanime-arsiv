@@ -38,8 +38,8 @@ Dosyayı açtığın anda çalışır.
 
 | | |
 |---|---|
-| **Arama** | Yazım hatasına toleranslı (Levenshtein tabanlı); sonuç çıkmazsa "bunu mu demek istedin" önerileri |
-| **Filtre ve sıralama** | Kategori, tür ve puana göre |
+| **Arama** | Yazarken kapaklı öneri listesi (↑/↓, Enter, Esc); karakter ve seslendirmen adıyla da bulur ("Levi" → Shingeki no Kyojin). Yazım hatasına toleranslı; sonuç çıkmazsa "bunu mu demek istedin" önerileri |
+| **Filtre ve sıralama** | Kategori, tür, on yıl ve puana göre; etkin filtreler çip olarak görünür, tek tıkla kaldırılır. Liste kaydırdıkça kendiliğinden uzar |
 | **Favoriler** | Yıldızlananlar ve son bakılanlar `localStorage`'da tutulur, hiçbir yere gönderilmez |
 | **Günün Animesi** | Puanı 7 ve üzerindekilerden, gün boyunca değişmeyen bir seçim |
 | **Rastgele** | Tek tuşla arşivden rastgele bir başlık |
@@ -47,7 +47,8 @@ Dosyayı açtığın anda çalışır.
 | **Bilgi paneli (X-Ray)** | Oynatıcıda duraklatınca (ya da **Bilgi** / `I`) karakterler, Japon seslendirmenleri, bölümün opening/ending şarkıları ve çeviren fansub görünür. Reklamsız oynatıcıda opening/ending sırasında **♪ Şu an çalıyor** etiketi ve **Opening'i geç** düğmesi çıkar |
 | **Seslendirmenler** | Detay sayfasında karakter şeridi; seslendirmen adına tıklayınca arşivde seslendirdiği bütün animeler ve karakterleri (`#/seslendirmen/<ad>`) |
 | **Mobil oynatıcı** | Çift dokunuşla ±10 sn sarma, resim içinde resim, kilit ekranı / bildirimde bölüm adı, kapak ve oynatma düğmeleri (Media Session) |
-| **İzlemeye devam et** | Bıraktığın yeri hatırlar, izlenen bölümleri işaretler, ilerleme çubuğu gösterir |
+| **İzlemeye devam et** | Bıraktığın yeri hatırlar, izlenen bölümleri işaretler, ilerleme çubuğu gösterir. Ana sayfadaki kartta "Sıradaki: 5. bölüm" yazar; tıklayınca oynatıcı detay sayfasına uğramadan kaldığı yerden açılır |
+| **Sana özel** | Favorilerin ve izlediklerinin türlerinden, ortak seslendirmenlerden öneriler (hepsi tarayıcıda hesaplanır, hiçbir yere gönderilmez) |
 | **Benzer animeler** | Detay sayfasında aynı seri ve aynı türden öneriler |
 | **18+ uyarısı** | Ecchi/Hentai/Erotica başlıklarında NSFW uyarısı ve kartlarda `18+` rozeti |
 | **Yedekleme** | Favoriler, geçmiş ve izleme konumları tek JSON dosyasına iner; başka cihazda birleştirilerek geri yüklenir |
@@ -157,12 +158,14 @@ kaynak/data.js                              anime listesi (slug, başlık, böl�
 kaynak/b/<slug>.js                          her anime için bölüm ve izleme linkleri
 kaynak/x/<slug>.json                        bilgi paneli: karakterler, seslendirmenler, OP/ED şarkıları
 kaynak/sv/<0-31>.json                       seslendirmen -> seslendirdiği animeler (32 kovaya bölünmüş)
+kaynak/ara/<harf>.json · kaynak/oneri.json  arama önerileri için karakter/seslendirmen dizini · "Sana özel" için ortak seslendirmen önerileri
 kaynak/animeler/<slug>/info.json            özet, kategori, puan gibi detay bilgisi
 scripts/build-meta.js                       info.json'lardan meta.js üretir
 scripts/build-posters.js                    AniList kapaklarını meta.js'e gömer
 scripts/build-xray.js                       AniList + AnimeThemes'ten kaynak/x/ dosyalarını üretir
 scripts/build-xray-ek.js                    sezon eşleşmesini düzeltir, eksik şarkıları MAL'dan tamamlar
 scripts/build-seslendirmen.js               kaynak/x'ten seslendirmen ters dizinini (kaynak/sv/) üretir
+scripts/build-ara.js                        kaynak/x'ten arama dizinini (kaynak/ara/) ve öneri dizinini (kaynak/oneri.json) üretir
 scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
 scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
 scripts/social-gorsel.py                    GitHub sosyal önizlemesi + og:image üretir
@@ -189,6 +192,7 @@ node scripts/build-posters.js
 node scripts/build-xray.js     # yeni kapağı olan animelere bilgi paneli verisi
 node scripts/build-xray-ek.js  # sezon düzeltme + eksik şarkılar + Spotify kimlikleri
 node scripts/build-seslendirmen.js
+node scripts/build-ara.js
 ```
 
 ## Sık sorulan sorular

@@ -37,6 +37,15 @@ function readLS(key, fallback) {
 }
 function writeLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* localStorage yoksa sessiz geç */ } }
 
+// On yıl etiketi Türkçe ünlü uyumuyla: 1990 "doksan" -> 1990'lar, 1980 "seksen" -> 1980'ler, 2000 "iki bin" -> 2000'ler.
+// Ek, okunuşun son kelimesine bağlı: onlar basamağı (on, yirmi, ...), 00 ise "bin"/"yüz".
+const ONLAR_EKI = ['', 'lar', 'ler', 'lar', 'lar', 'ler', 'lar', 'ler', 'ler', 'lar']; // on yirmi otuz kırk elli altmış yetmiş seksen doksan
+function onyilEtiketi(yil) {
+  const onlar = Math.floor(yil / 10) % 10;
+  // 00 ile biten yıllar "bin" / "yüz" diye bitiyor: ikisi de -ler alıyor
+  return `${yil}'${onlar ? ONLAR_EKI[onlar] : 'ler'}`;
+}
+
 function initials(title) {
   return title.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
@@ -57,4 +66,4 @@ export function jumpTo(y) {
   el.style.scrollBehavior = onceki;
 }
 
-export { TR_MAP, norm, esc, IS_TR, ic, levenshtein, readLS, writeLS, initials, hue };
+export { TR_MAP, norm, esc, IS_TR, ic, levenshtein, readLS, writeLS, initials, hue, onyilEtiketi };

@@ -1,12 +1,14 @@
 // Liste görünümü: istatistik şeridi, Günün Animesi, son bakılanlar, filtre çubuğu ve kart ızgarası.
-import { esc, ic, levenshtein, norm } from '../util.js';
-import { app, fadeApp } from '../dom.js';
+import { esc, ic, levenshtein, norm, onyilEtiketi } from '../util.js';
+import { app, fadeApp, searchEl } from '../dom.js';
 import { ANIME, KATEGORILER, TURLER, ONYILLAR, statsStripHtml, animeOfDay } from '../data.js';
 import { aramaAnahtari, aramaKelimeleri } from '../eslesme.js';
 import { listHash } from '../state.js';
-import { devamListesi } from '../progress.js';
+import { devamListesi, devamBilgisi, izlenenSayisi } from '../progress.js';
 import { wireSeritler } from '../serit.js';
-import { getRecent } from '../store.js';
+import { getRecent, favs, yetiskinOnayli } from '../store.js';
+import { devamEt } from '../player.js';
+import { sanaOzel, onerileriYukle } from '../sana-ozel.js';
 import { cardHtml, wireCards, posterPlaceholder, SERIT_BOYUT } from '../cards.js';
 import { filterAndSort, pickRandomAnime } from '../search.js';
 import { PAGE_SIZE, state, syncListHash } from '../state.js';
@@ -25,7 +27,7 @@ function filterBarHtml(count) {
       </select>
       <select id="f-onyil" title="Yayın yılı">
         <option value="">Tüm yıllar</option>
-        ${ONYILLAR.map(d => `<option value="${d}" ${state.onyil === d ? 'selected' : ''}>${d}'ler</option>`).join('')}
+        ${ONYILLAR.map(d => `<option value="${d}" ${state.onyil === d ? 'selected' : ''}>${onyilEtiketi(d)}</option>`).join('')}
       </select>
       <select id="f-sort" title="Sırala">
         <option value="isim" ${state.sort === 'isim' ? 'selected' : ''}>İsme göre</option>
@@ -38,8 +40,43 @@ function filterBarHtml(count) {
     </div>`;
 }
 
+// Etkin filtreler çip olarak: "Komedi ×", "1990'lar ×"; tek tıkla kaldırılıyor. Sıralama filtre değil, gösterilmiyor.
+function aktifFiltreler() {
+  const f = [];
+  if (state.query) f.push({ ad: 'q', etiket: `“${state.query}”`, baslik: 'Aramayı temizle' });
+  if (state.kategori) f.push({ ad: 'kategori', etiket: state.kategori, baslik: 'Kategori filtresini kaldır' });
+  if (state.tur) f.push({ ad: 'tur', etiket: state.tur, baslik: 'Janr filtresini kaldır' });
+  if (state.onyil) f.push({ ad: 'onyil', etiket: onyilEtiketi(state.onyil), baslik: 'Yıl filtresini kaldır' });
+  if (state.favOnly) f.push({ ad: 'fav', etiket: 'Favoriler', baslik: 'Yalnız favoriler filtresini kaldır' });
+  return f;
+}
+function aktifFiltrelerHtml() {
+  const f = aktifFiltreler();
+  if (!f.length) return '';
+  return `<div class="aktif-filtreler" role="group" aria-label="Etkin filtreler">
+      ${f.map(x => `<button type="button" class="filtre-cip" data-kaldir="${x.ad}" title="${esc(x.baslik)}" aria-label="${esc(x.baslik)}: ${esc(x.etiket)}">${esc(x.etiket)}${ic('x')}</button>`).join('')}
+      ${f.length > 1 ? `<button type="button" class="filtre-cip filtre-cip-hepsi" data-kaldir="hepsi">Tümünü temizle</button>` : ''}
+    </div>`;
+}
+const KALDIR = {
+  q: () => { state.query = ''; searchEl.value = ''; },
+  kategori: () => { state.kategori = ''; },
+  tur: () => { state.tur = ''; },
+  onyil: () => { state.onyil = 0; },
+  fav: () => { state.favOnly = false; },
+};
+KALDIR.hepsi = () => Object.values(KALDIR).filter(fn => fn !== KALDIR.hepsi).forEach(fn => fn());
+
 function wireFilterBar() {
   const apply = fn => e => { fn(e); state.page = 1; syncListHash(); renderList(); };
+  app.querySelectorAll('.filtre-cip').forEach(b => b.addEventListener('click', () => {
+    KALDIR[b.dataset.kaldir]();
+    state.page = 1;
+    syncListHash();
+    renderList();
+    const ilk = app.querySelector('.filtre-cip') || document.getElementById('f-kategori');
+    if (ilk) ilk.focus();
+  }));
   document.getElementById('f-kategori').addEventListener('change', apply(e => { state.kategori = e.target.value; }));
   document.getElementById('f-tur').addEventListener('change', apply(e => { state.tur = e.target.value; }));
   document.getElementById('f-onyil').addEventListener('change', apply(e => { state.onyil = Number(e.target.value) || 0; }));
@@ -53,15 +90,15 @@ function wireFilterBar() {
 const ONCELIKLI_KART = (typeof innerWidth === 'number' && innerWidth < 600) ? 4 : 8;
 
 // Yatay kaydırmalı kart şeridi. Ana sayfadaki keşif bölümlerinin tamamı bunu kullanıyor.
-function seritHtml(baslik, items, altBaslik = '') {
+function seritHtml(baslik, items, altBaslik = '', kartSecenek = () => ({}), id = '') {
   if (!items.length) return '';
   // Masaüstünde şerit yatay kaydırmalı ama dokunmatik yok ve kaydırma çubuğu gizli: ok
   // düğmeleri olmadan kaydırılamıyordu. Düğmeler yalnız taşma varsa görünür (bkz. wireSeritler).
-  return `<section class="recent-row">
+  return `<section class="recent-row"${id ? ` id="${id}"` : ''}>
       <h2 class="section-title">${esc(baslik)}${altBaslik ? `<span class="meta">${esc(altBaslik)}</span>` : ''}</h2>
       <div class="serit-sar">
         <button type="button" class="serit-ok serit-ok-sol" aria-label="Sola kaydır" hidden>${ic('chevron-left')}</button>
-        <div class="grid recent-grid">${items.map(a => cardHtml(a, { boyut: SERIT_BOYUT })).join('')}</div>
+        <div class="grid recent-grid">${items.map(a => cardHtml(a, { boyut: SERIT_BOYUT, ...kartSecenek(a) })).join('')}</div>
         <button type="button" class="serit-ok serit-ok-sag" aria-label="Sağa kaydır" hidden>${ic('chevron-right')}</button>
       </div>
     </section>`;
@@ -153,12 +190,22 @@ function renderList() {
     }
   }
 
-  // "Devam et" (§6.2.3 + §7.1): izlemeye başlanmış animeler en üstte.
+  // "Devam et" (§6.2.3 + §7.1): izlemeye başlanmış animeler en üstte. Kartta "Sıradaki: 5. bölüm"
+  // yazıyor; tıklayınca detay sayfasına uğramadan oynatıcı kaldığı yerden açılıyor (bkz. devamTikla).
   let devamHtml = '';
   if (showHome) {
     const devam = devamListesi().map(s => ANIME.find(a => a.slug === s)).filter(Boolean).slice(0, 16);
-    if (devam.length) devamHtml = seritHtml('İzlemeye devam et', devam);
+    if (devam.length) devamHtml = seritHtml('İzlemeye devam et', devam, '', a => {
+      const b = devamBilgisi(a.slug, a.eps || Infinity);
+      return b ? { devam: b } : {};
+    });
   }
+
+  // "Sana özel": favorilerden ve izlenenlerden. Önce yalnız türlere göre çiziliyor; ortak seslendirmen
+  // verisi (kaynak/oneri.json) gelince aynı yerde tazeleniyor, sayfa kaymıyor (kart sayısı aynı kalıyor).
+  const tohumlar = showHome ? sanaOzelTohumlari() : [];
+  const sanaOzelHtml = tohumlar.length
+    ? seritHtml('Sana özel', sanaOzel(ANIME, tohumlar, sonOneriler), 'Favorilerine ve izlediklerine göre', undefined, 'sana-ozel') : '';
 
   // Keşif şeritleri: 6107 anime tek düze alfabetik bir duvar hâlinde akmasın (§6.2).
   const enIyilerHtml = showHome ? seritHtml('En yüksek puanlı', enIyiler(), 'Puanı 8 ve üzeri') : '';
@@ -178,7 +225,7 @@ function renderList() {
     const filtreVar = state.kategori || state.tur || state.onyil || state.favOnly;
     const temizleHtml = filtreVar
       ? `<div class="suggest"><button type="button" id="filtre-temizle" class="link-btn">${ic('x')}Filtreleri temizle</button></div>` : '';
-    app.innerHTML = `${bar}<div class="empty">Sonuç bulunamadı.${suggestHtml}${temizleHtml}</div>`;
+    app.innerHTML = `${bar}${aktifFiltrelerHtml()}<div class="empty">Sonuç bulunamadı.${suggestHtml}${temizleHtml}</div>`;
     fadeApp();
     wireFilterBar();
     const temizleBtn = document.getElementById('filtre-temizle');
@@ -196,26 +243,76 @@ function renderList() {
 
   const archiveTitleHtml = showHome ? '<h2 class="section-title archive-title">Tüm Arşiv</h2>' : '';
 
-  app.innerHTML = `${statsHtml}${featuredHtml}${devamHtml}${recentHtml}${enIyilerHtml}${janrHtml}${archiveTitleHtml}${bar}<div class="grid">${pageItems.map((a, i) => cardHtml(a, { oncelik: i < ONCELIKLI_KART })).join('')}</div>${pager}`;
+  app.innerHTML = `${statsHtml}${featuredHtml}${devamHtml}${sanaOzelHtml}${recentHtml}${enIyilerHtml}${janrHtml}${archiveTitleHtml}${bar}${aktifFiltrelerHtml()}<div class="grid">${pageItems.map((a, i) => cardHtml(a, { oncelik: i < ONCELIKLI_KART })).join('')}</div>${pager}`;
   fadeApp();
   wireFilterBar();
   wireCards(app);
   wireSeritler(app);
   const rastgeleBtn = document.getElementById('featured-random');
   if (rastgeleBtn) rastgeleBtn.addEventListener('click', pickRandomAnime);
-  // tam yeniden çizim yerine yeni kartları ekle; kaydırma konumu korunur
-  app.querySelector('.pager').addEventListener('click', e => {
-    if (e.target.closest('#load-more') == null) return;
+  // tam yeniden çizim yerine yeni kartları ekle; kaydırma konumu korunur. Sayfa numarası hash'e
+  // yazılıyor (sayfa=N), geri dönüşte o kadar kart yeniden basılıp konum geri geliyor (state.js).
+  const pagerEl = app.querySelector('.pager');
+  const dahaFazla = () => {
+    if (state.page >= totalPages) return;
     const from = state.page * PAGE_SIZE;
     state.page++;
     syncListHash();
     const tpl = document.createElement('template');
     tpl.innerHTML = items.slice(from, state.page * PAGE_SIZE).map(a => cardHtml(a)).join('');
     wireCards(tpl.content);
-    app.querySelector('.grid:not(.recent-grid)').append(tpl.content);
-    e.currentTarget.innerHTML = loadMoreHtml();
-  });
+    app.querySelector('.grid:not(.recent-grid):not(.sv-grid)').append(tpl.content);
+    pagerEl.innerHTML = loadMoreHtml();
+  };
+  pagerEl.addEventListener('click', e => { if (e.target.closest('#load-more')) dahaFazla(); });
+  // Sonsuz kaydırma: listenin sonuna ~1,5 ekran kala sıradaki sayfa kendiliğinden ekleniyor. Düğme yedek
+  // olarak duruyor (IntersectionObserver yoksa ya da klavyeyle gezilirken).
+  if (sonsuzGozcu) sonsuzGozcu.disconnect();
+  if (typeof window.IntersectionObserver === 'function' && state.page < totalPages) {
+    sonsuzGozcu = new window.IntersectionObserver(girdiler => {
+      if (girdiler.some(g => g.isIntersecting)) dahaFazla();
+      if (state.page >= totalPages) sonsuzGozcu.disconnect();
+    }, { rootMargin: '0px 0px 1400px 0px' });
+    sonsuzGozcu.observe(pagerEl);
+  }
+
+  if (tohumlar.length && !sonOneriler) {
+    const t = ++sanaOzelToken;
+    onerileriYukle().then(m => {
+      if (!m || t !== sanaOzelToken) return;
+      sonOneriler = m;
+      const grid = document.querySelector('#sana-ozel .recent-grid');
+      if (!grid) return;
+      grid.innerHTML = sanaOzel(ANIME, sanaOzelTohumlari(), m).map(a => cardHtml(a, { boyut: SERIT_BOYUT })).join('');
+      wireCards(grid);
+    });
+  }
 }
+
+let sonsuzGozcu = null;
+let sonOneriler = null, sanaOzelToken = 0;
+// Favoriler ağırlıklı; izlenenler izlenen bölüm sayısına göre. Yetişkin başlıklar tohum da olmuyor.
+function sanaOzelTohumlari() {
+  const t = new Map();
+  for (const s of favs) t.set(s, 2);
+  for (const s of devamListesi().slice(0, 20)) t.set(s, Math.max(t.get(s) || 0, 1 + Math.min(10, izlenenSayisi(s)) / 10));
+  return [...t].map(([slug, w]) => ({ slug, w })).filter(x => { const a = ANIME.find(y => y.slug === x.slug); return a && !a.nsfw; });
+}
+
+// "İzlemeye devam et" kartına tıklamak oynatıcıyı açıyor. Ctrl/Orta tık yeni sekmede detay sayfası
+// (gerçek <a> davranışı) olarak kalıyor. Yetişkin başlıkta onay yoksa detaya gidiyor (yaş kapısı orada).
+app.addEventListener('click', e => {
+  const kart = e.target.closest('a[data-devam]');
+  if (!kart || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  const a = ANIME.find(x => x.slug === kart.dataset.devam);
+  if (!a || (a.nsfw && !yetiskinOnayli())) return;
+  e.preventDefault();
+  kart.classList.add('card-yukleniyor');
+  devamEt(a.slug).then(ok => {
+    kart.classList.remove('card-yukleniyor');
+    if (!ok) location.hash = kart.getAttribute('href');
+  });
+});
 
 
 export { renderList, filterBarHtml, wireFilterBar };
