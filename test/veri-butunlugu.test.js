@@ -149,6 +149,33 @@ test("'url' tipindeki linkler mutlak adres taşıyor", { timeout: 600000 }, () =
   assert.deepEqual(kotu.slice(0, 5), [], `${kotu.length} 'url' tipi link göreli`);
 });
 
+// Tarayıcı, kapaktan AniList kimliği çıkan her anime için kaynak/x/<slug>.json ister (js/xray.js);
+// dosya yoksa 404 olur. Kimliği çıkmayanlar için de fazladan dosya olmamalı.
+test("kimliği olan her anime için bilgi paneli dosyası var (kaynak/x)", () => {
+  const { anilistId } = require("../scripts/xray-ortak.js");
+  const dizin = path.join(ROOT, "kaynak", "x");
+  const var_ = new Set(fs.existsSync(dizin) ? fs.readdirSync(dizin) : []);
+  const beklenen = sluglar.filter(s => anilistId(META[s][3]));
+  const eksik = beklenen.filter(s => !var_.has(s + ".json"));
+  const fazla = [...var_].filter(d => !beklenen.includes(d.replace(/\.json$/, "")));
+  assert.deepEqual(eksik.slice(0, 5), [], `${eksik.length} animenin kaynak/x dosyası yok (npm run build:xray)`);
+  assert.deepEqual(fazla.slice(0, 5), [], `${fazla.length} fazladan kaynak/x dosyası`);
+});
+
+test("kaynak/x dosyaları beklenen biçimde", () => {
+  const dizin = path.join(ROOT, "kaynak", "x");
+  const bozuk = [];
+  for (const d of fs.readdirSync(dizin)) {
+    const x = JSON.parse(fs.readFileSync(path.join(dizin, d), "utf8"));
+    const iyi = Number.isInteger(x.id)
+      && (x.mal === undefined || Number.isInteger(x.mal))
+      && (x.k === undefined || (Array.isArray(x.k) && x.k.every(k => k.length === 5 && "AYF".includes(k[2]))))
+      && (x.m === undefined || (Array.isArray(x.m) && x.m.every(m => m.length === 5 && (m[0] === "OP" || m[0] === "ED"))));
+    if (!iyi) bozuk.push(d);
+  }
+  assert.deepEqual(bozuk.slice(0, 5), [], `${bozuk.length} kaynak/x dosyası biçim dışı`);
+});
+
 test("service worker kabuk listesi js/ altındaki her modülü kapsıyor (§1.5)", () => {
   // Eksik kalan bir modül uygulamayı çevrimdışıyken hiç açılmaz hale getiriyor; liste elle
   // tutulduğu için yeni modül eklendiğinde unutulması en olası şey bu.

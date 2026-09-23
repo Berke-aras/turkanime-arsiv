@@ -9,6 +9,7 @@ import { playerModal, playerFrame, playerVideo, playerNewTab, playerPrevBtn, pla
   startLoadHint, clearLoadHint } from './player-dom.js';
 import { playDirect, stopVideo, bumpDirectToken, videoKlavye, kontrolleriGoster } from './player-video.js';
 import { ilerlemeYaz, devamSaniyesi, izlendiAyarla } from './progress.js';
+import { xrayBolum, xrayKapat, panelDegistir, panelGoster, panelAcik } from './xray.js';
 
 let currentEpisodes = [];
 let currentEpIndex = null;
@@ -58,7 +59,7 @@ function izlendiIsaretiniTazele(i) {
   if (el) el.classList.add('ep-izlendi');
 }
 
-function openPlayerModal(url, epIndex = null, direct = null) {
+function openPlayerModal(url, epIndex = null, direct = null, fansub = '') {
   clearLoadHint();
   playerLoadingHint.hidden = true;
   playerLoading.hidden = false;
@@ -73,6 +74,7 @@ function openPlayerModal(url, epIndex = null, direct = null) {
   currentEpIndex = epIndex;
   const ep = epIndex != null ? currentEpisodes[epIndex] : null;
   playerEpLabel.textContent = ep ? `${epIndex + 1} / ${currentEpisodes.length}` : '';
+  xrayBolum({ slug: currentSlug, ep, fansub });
   syncEpNavButtons();
   startLoadHint();
   modalOdakAl();
@@ -112,6 +114,7 @@ function closePlayerModal() {
   ilerlemeKaydet(true); // kapatmadan önce son konumu yaz (§7.1)
   currentEpIndex = null; // kapandıktan sonra gelen pause/pagehide kayıt yazmasın
   playerModal.hidden = true;
+  xrayKapat();
   modalOdakBirak();
   bumpDirectToken();
   stopVideo();
@@ -135,7 +138,7 @@ function jumpToEpisode(i) {
 function wireEmbedButtons(container, epIndex) {
   container.querySelectorAll('[data-embed-url]').forEach(b => {
     const direct = b.dataset.directPlayer ? { player: b.dataset.directPlayer, params: b.dataset.directParams } : null;
-    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, epIndex, direct));
+    b.addEventListener('click', () => openPlayerModal(b.dataset.embedUrl, epIndex, direct, b.dataset.fansub));
   });
 }
 
@@ -214,9 +217,11 @@ playerNextBtn.addEventListener('click', () => { const i = neighborEp(1); if (has
 window.addEventListener('keydown', e => {
   if (playerModal.hidden) return;
   if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return; // metin kutusuna yazılıyorsa karışma
-  if (e.key === 'Escape') { closePlayerModal(); return; }
+  // Esc önce bilgi panelini, panel kapalıysa oynatıcıyı kapatıyor.
+  if (e.key === 'Escape') { if (panelAcik()) panelGoster(false); else closePlayerModal(); return; }
 
   const k = e.key.toLowerCase();
+  if (k === 'i' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); panelDegistir(); return; }
   const oncekiBolum = k === 'p' || (e.shiftKey && e.key === 'ArrowLeft');
   const sonrakiBolum = k === 'n' || (e.shiftKey && e.key === 'ArrowRight');
   if (oncekiBolum) { e.preventDefault(); playerPrevBtn.click(); return; }

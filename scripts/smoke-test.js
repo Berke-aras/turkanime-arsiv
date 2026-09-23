@@ -238,6 +238,118 @@ async function oynaticiTestleri(browser, base) {
   await ctx.close();
 }
 
+// Oynatıcı bilgi paneli (X-Ray): karakterler/seslendirmenler, fansub, duraklatınca açılma, AniSkip ile
+// "Opening'i geç" ve "Şu an çalıyor". AniSkip isteği sahte bir aralıkla cevaplanıyor.
+async function xrayTestleri(browser, base) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  let aniskipUrl = '';
+  await p.route('**/*', r => {
+    const u = r.request().url();
+    if (/tka-sibnet|tka-uqload|api\/sibnet/.test(u)) {
+      return r.fulfill({ status: 200, contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ url: base + '/test/fixtures/video.webm' }) });
+    }
+    if (/api\.aniskip\.com/.test(u)) {
+      aniskipUrl = u;
+      const uzunluk = Number(new URL(u).searchParams.get('episodeLength')) || 10;
+      return r.fulfill({ status: 200, contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ found: true, results: [
+          { interval: { startTime: 1, endTime: Math.max(3, Math.min(uzunluk - 1, 6)) }, skipType: 'op', episodeLength: uzunluk },
+        ] }) });
+    }
+    const host = new URL(u).hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? r.continue() : r.abort();
+  });
+
+  await p.goto(base + '/index.html#/anime/beck', { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.ep');
+  await p.locator('.ep[data-i="0"] .ep-head').click();
+  await p.waitForTimeout(400);
+  await p.locator('.ep[data-i="0"] .ep-links .link-btn.direct').first().click();
+  const oynadi = await p.waitForFunction(() => {
+    const v = document.getElementById('player-modal-video');
+    return !v.hidden && v.readyState >= 2 && v.currentTime > 0;
+  }, null, { timeout: 20000 }).then(() => true, () => false);
+  check('X-Ray: test videosu oynuyor', oynadi);
+  if (!oynadi) { await ctx.close(); return; }
+
+  // --- Bilgi düğmesi paneli açıyor: karakterler, seslendirmenler, fansub ---
+  await p.locator('#player-modal-xray').click();
+  await p.waitForSelector('#player-xray .xray-kisi', { timeout: 5000 }).catch(() => {});
+  const panel = await p.evaluate(() => {
+    const el = document.getElementById('player-xray');
+    return { acik: !el.hidden, kisi: el.querySelectorAll('.xray-kisi').length, metin: el.textContent,
+      basili: document.getElementById('player-modal-xray').getAttribute('aria-pressed') };
+  });
+  check('X-Ray: Bilgi düğmesi karakter ve seslendirmenleri gösteriyor',
+    panel.acik && panel.kisi > 0 && /Seslendirmen/.test(panel.metin) && panel.basili === 'true', `kişi=${panel.kisi}`);
+  // Beck'in ilk reklamsız linkinin fansub'ı veride "Varsayılan": anlamsız olduğu için yazılmamalı.
+  check('X-Ray: panelde bölüm numarası var, "Çeviri: Varsayılan" yazmıyor', /1\. bölüm/.test(panel.metin) && !/Varsayılan/.test(panel.metin));
+  // AniList CDN'i testte kapalı: görseller kırık resim yerine baş harflere düşmeli.
+  await p.waitForTimeout(300);
+  const kirik = await p.evaluate(() => [...document.querySelectorAll('#player-xray img')].filter(i => i.complete && !i.naturalWidth).length);
+  check('X-Ray: yüklenemeyen görseller baş harflere düşüyor', kirik === 0, `kırık=${kirik}`);
+  check('X-Ray: panelde bölümün şarkıları var (Beck: Hit in the USA)', /Hit in the USA/.test(panel.metin));
+
+  // --- Esc önce paneli kapatıyor, oynatıcıyı değil ---
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(150);
+  const escSonra = await p.evaluate(() => ({ panel: !document.getElementById('player-xray').hidden, modal: !document.getElementById('player-modal').hidden }));
+  check('X-Ray: Esc paneli kapatıyor, oynatıcı açık kalıyor', !escSonra.panel && escSonra.modal, JSON.stringify(escSonra));
+
+  // --- I tuşu aç/kapat ---
+  await p.keyboard.press('i');
+  await p.waitForTimeout(150);
+  const iActi = await p.evaluate(() => !document.getElementById('player-xray').hidden);
+  await p.keyboard.press('i');
+  await p.waitForTimeout(150);
+  const iKapatti = await p.evaluate(() => document.getElementById('player-xray').hidden);
+  check('X-Ray: I tuşu paneli açıp kapatıyor', iActi && iKapatti, `açtı=${iActi} kapattı=${iKapatti}`);
+
+  // --- AniSkip: MAL kimliği, bölüm no ve süreyle soruluyor ---
+  await p.waitForTimeout(300);
+  check('X-Ray: AniSkip MAL kimliği + bölüm + süre ile soruluyor',
+    /skip-times\/57\/1\?/.test(aniskipUrl) && /episodeLength=\d+/.test(aniskipUrl), aniskipUrl);
+
+  // --- opening aralığında "geç" düğmesi ve "Şu an çalıyor" ---
+  await p.evaluate(() => { const v = document.getElementById('player-modal-video'); v.pause(); v.currentTime = 1.5; });
+  await p.waitForTimeout(400);
+  const opDurum = await p.evaluate(() => ({
+    gec: !document.getElementById('player-xray-gec').hidden, gecMetin: document.getElementById('player-xray-gec').textContent,
+    muzik: !document.getElementById('player-xray-muzik').hidden, muzikMetin: document.getElementById('player-xray-muzik').textContent,
+  }));
+  check('X-Ray: opening sırasında "Opening\'i geç" düğmesi çıkıyor', opDurum.gec && /Opening'i geç/.test(opDurum.gecMetin), opDurum.gecMetin);
+  check('X-Ray: opening sırasında "Şu an çalıyor" şarkıyı gösteriyor',
+    opDurum.muzik && /Şu an çalıyor/.test(opDurum.muzikMetin) && /Hit in the USA/.test(opDurum.muzikMetin), opDurum.muzikMetin);
+  await p.locator('#player-xray-gec').click();
+  await p.waitForTimeout(300);
+  const gecSonra = await p.evaluate(() => ({ t: document.getElementById('player-modal-video').currentTime,
+    gec: !document.getElementById('player-xray-gec').hidden, muzik: !document.getElementById('player-xray-muzik').hidden }));
+  check('X-Ray: "geç" opening sonuna sarıyor, etiket ve düğme kayboluyor',
+    gecSonra.t >= 2.9 && !gecSonra.gec && !gecSonra.muzik, JSON.stringify(gecSonra));
+
+  // --- duraklatınca panel kendiliğinden açılıyor, oynatınca kapanıyor ---
+  await p.evaluate(() => { const v = document.getElementById('player-modal-video'); v.currentTime = 0.3; return v.play().catch(() => {}); });
+  await p.waitForTimeout(400);
+  await p.evaluate(() => document.getElementById('player-modal-video').pause());
+  await p.waitForTimeout(1100);
+  const durakAcik = await p.evaluate(() => !document.getElementById('player-xray').hidden);
+  await p.evaluate(() => document.getElementById('player-modal-video').play().catch(() => {}));
+  await p.waitForTimeout(300);
+  const oynatKapali = await p.evaluate(() => document.getElementById('player-xray').hidden);
+  check('X-Ray: duraklatınca panel açılıyor, oynatınca kapanıyor', durakAcik && oynatKapali, `açıldı=${durakAcik} kapandı=${oynatKapali}`);
+
+  // --- kapatınca her şey sıfırlanıyor ---
+  await p.locator('#player-modal-close').click();
+  const kapaninca = await p.evaluate(() => ['player-xray', 'player-xray-gec', 'player-xray-muzik'].every(id => document.getElementById(id).hidden));
+  check('X-Ray: oynatıcı kapanınca panel, etiket ve düğme gizleniyor', kapaninca);
+
+  await ctx.close();
+}
+
 // §7.1 / §7.2: izleme konumu ve izlendi işareti. Gerçek <video> gerektiği için resolver
 // yerel test videosuna yönlendiriliyor (oynatıcı testleriyle aynı yöntem).
 // §7.3 yedek indirme / geri yükleme + §7.5 "/" kısayolu.
@@ -1177,6 +1289,7 @@ async function run(page, base) {
     await run(await ctx.newPage(), base);
     await temaTestleri(browser, base);
     await oynaticiTestleri(browser, base);
+    await xrayTestleri(browser, base);
     await ilerlemeTestleri(browser, base);
     await yedekTestleri(browser, base);
   } finally {

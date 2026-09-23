@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "build:meta": "node scripts/build-meta.js",
     "build:posters": "node scripts/build-posters.js",
+    "build:xray": "node scripts/build-xray.js",
     "trim:data": "node scripts/trim-data.js"
   },
   "devDependencies": {

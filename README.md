@@ -44,6 +44,7 @@ Dosyayı açtığın anda çalışır.
 | **Günün Animesi** | Puanı 7 ve üzerindekilerden, gün boyunca değişmeyen bir seçim |
 | **Rastgele** | Tek tuşla arşivden rastgele bir başlık |
 | **Reklamsız oynatıcı** | Sibnet ve Uqload bölümleri sitenin kendi oynatıcısında, reklamsız açılır |
+| **Bilgi paneli (X-Ray)** | Oynatıcıda duraklatınca (ya da **Bilgi** / `I`) karakterler, Japon seslendirmenleri, bölümün opening/ending şarkıları ve çeviren fansub görünür. Reklamsız oynatıcıda opening/ending sırasında **♪ Şu an çalıyor** etiketi ve **Opening'i geç** düğmesi çıkar |
 | **İzlemeye devam et** | Bıraktığın yeri hatırlar, izlenen bölümleri işaretler, ilerleme çubuğu gösterir |
 | **Benzer animeler** | Detay sayfasında aynı seri ve aynı türden öneriler |
 | **18+ uyarısı** | Ecchi/Hentai/Erotica başlıklarında NSFW uyarısı ve kartlarda `18+` rozeti |
@@ -96,11 +97,14 @@ js/                                         ES modülleri (giriş: js/main.js)
   links · cards · views/                    link butonları, kart, liste/detay/yasal görünümleri
   views/yas-kapisi                          18+ onay ekranı ve uyarı paneli
   player · player-dom · player-video        reklamsız oynatıcı modalı
+  xray · xray-veri                          oynatıcı bilgi paneli, şu an çalan şarkı, opening'i geç
 kaynak/data.js                              anime listesi (slug, başlık, bölüm/link sayısı)
 kaynak/b/<slug>.js                          her anime için bölüm ve izleme linkleri
+kaynak/x/<slug>.json                        bilgi paneli: karakterler, seslendirmenler, OP/ED şarkıları
 kaynak/animeler/<slug>/info.json            özet, kategori, puan gibi detay bilgisi
 scripts/build-meta.js                       info.json'lardan meta.js üretir
 scripts/build-posters.js                    AniList kapaklarını meta.js'e gömer
+scripts/build-xray.js                       AniList + AnimeThemes'ten kaynak/x/ dosyalarını üretir
 scripts/trim-data.js                        data.js'i kullanılan alanlara kırpar
 scripts/smoke-test.js                       tarayıcı duman testi (Playwright)
 scripts/social-gorsel.py                    GitHub sosyal önizlemesi + og:image üretir
@@ -124,6 +128,7 @@ Veride bir değişiklik olduğunda sırasıyla:
 ```bash
 node scripts/build-meta.js
 node scripts/build-posters.js
+node scripts/build-xray.js     # yeni kapağı olan animelere bilgi paneli verisi
 ```
 
 ## Sık sorulan sorular

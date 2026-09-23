@@ -55,12 +55,12 @@ function epLinksHtml(links) {
   });
   // reklamsız butonları en başa (önerilen); orijinal embed butonları aynen kalır
   const direct = sorted.filter(l => !OLU(l.tip) && directParams(l)).map((l, i, arr) =>
-    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-direct-player="${l.player}" data-direct-params="${esc(directParams(l))}" title="${esc(l.player)} videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`);
+    `<button type="button" class="link-btn direct" data-embed-url="${esc(l.url)}" data-fansub="${esc(l.fansub || '')}" data-direct-player="${l.player}" data-direct-params="${esc(directParams(l))}" title="${esc(l.player)} videosunu reklamsız oynat">${ic('zap')}Reklamsız izle${arr.length > 1 ? ' ' + (i + 1) : ''}${i === 0 ? '<span class="meta">önerilen</span>' : ''}</button>`);
   return direct.concat(sorted.map(l => {
     const label = esc(l.player);
     if (OLU(l.tip)) return `<span class="link-btn mask" title="turkanime sunucusu gerekiyor, çalışmıyor">${label}</span>`;
     if (NO_EMBED_PLAYERS.has(l.player)) return `<a class="link-btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${label}${ic('external')}</a>`;
-    return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}">${label}</button>`;
+    return `<button type="button" class="link-btn" data-embed-url="${esc(l.url)}" data-fansub="${esc(l.fansub || '')}">${label}</button>`;
   })).join('');
 }
 

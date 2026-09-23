@@ -575,6 +575,56 @@ footer a:hover{color:var(--text);text-decoration:underline}
 @keyframes spin{to{transform:rotate(360deg)}}
 #player-modal-loading-hint{color:var(--muted);font-size:12.5px;text-align:center;padding:0 24px}
 
+/* ---------- bilgi paneli (X-Ray): karakterler, seslendirmenler, müzik ----------
+   Video üstünde durduğu için tema ne olursa olsun koyu; renkler bu yüzden sabit. */
+.xray-panel{position:absolute;top:0;left:0;bottom:0;z-index:3;width:min(400px,46%);overflow-y:auto;overscroll-behavior:contain;
+  padding:18px 18px 22px;color:#eef0f6;background:linear-gradient(90deg,rgba(6,7,11,.94) 0%,rgba(6,7,11,.86) 75%,rgba(6,7,11,.6) 100%);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:xray-gir .22s var(--ease)}
+.xray-panel[hidden]{display:none}
+@keyframes xray-gir{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+.xray-panel .meta{color:#9aa0b2}
+.xray-bas{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+.xray-ust{margin:0;color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.xray-baslik{margin:2px 0 3px;font-size:17px;line-height:1.25}
+.xray-bas .meta{margin:0;font-size:12.5px}
+.xray-bas .meta b{color:#eef0f6;font-weight:600}
+.xray-kapat{flex:none;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#eef0f6;cursor:pointer}
+.xray-kapat:hover{background:rgba(255,255,255,.14)}
+.xray-kapat .ic{width:16px;height:16px}
+.xray-h{margin:16px 0 8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9aa0b2}
+.xray-sarkilar,.xray-kisiler{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.xray-sarki{display:flex;align-items:baseline;gap:10px;font-size:13.5px;line-height:1.35}
+.xray-sarki-tip{flex:none;min-width:58px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)}
+.xray-kisi{display:flex;align-items:center;gap:10px;padding:6px;border-radius:var(--r-sm);background:rgba(255,255,255,.04)}
+.xray-foto{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;background:#1b1f2a}
+.xray-bos{display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;background:hsl(var(--h,230) 40% 32%)}
+.xray-kisi-ad,.xray-kisi-va{min-width:0;display:flex;flex-direction:column;font-size:13px;line-height:1.3}
+.xray-kisi-ad{flex:1}
+.xray-kisi-va{flex:1;text-align:right}
+.xray-kisi-ad b,.xray-kisi-va span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xray-kisi .meta{font-size:11.5px}
+.xray-yok{font-size:13px}
+.xray-kaynak{margin:16px 0 0;font-size:11.5px}
+.xray-kaynak a{color:#b7bccb}
+
+/* "♪ Şu an çalıyor" etiketi ve "Opening'i geç" düğmesi (yalnız reklamsız <video>) */
+.xray-muzik{position:absolute;top:14px;right:14px;z-index:2;max-width:min(360px,70%);display:flex;align-items:center;gap:10px;
+  padding:9px 14px 9px 11px;border-radius:var(--r);color:#eef0f6;font-size:13px;line-height:1.3;
+  background:rgba(6,7,11,.78);border:1px solid rgba(255,255,255,.1);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  transition:opacity .35s,transform .35s var(--ease);animation:xray-gir .3s var(--ease)}
+.xray-muzik[hidden]{display:none}
+.xray-muzik .meta{color:#9aa0b2}
+.xray-muzik-ust{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.xray-nota{flex:none;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;
+  font-size:16px;background:rgba(var(--accent-rgb),.2);color:var(--accent)}
+#player-modal-viewport.kontrol-gizli .xray-muzik.sakin{opacity:0;transform:translateY(-6px)}
+.xray-gec{position:absolute;right:16px;bottom:calc(84px + var(--safe-b));z-index:3;padding:10px 18px;border-radius:var(--r-sm);cursor:pointer;
+  font:inherit;font-size:14px;font-weight:700;color:#0a0c11;background:#eef0f6;border:0;box-shadow:0 8px 24px -8px rgba(0,0,0,.7)}
+.xray-gec:hover{background:#fff}
+.xray-gec[hidden]{display:none}
+#player-modal-xray[aria-pressed="true"]{color:var(--accent-ink);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.12)}
+
 /* ---------- top button ---------- */
 #top-btn{position:fixed;right:18px;bottom:calc(18px + var(--safe-b));z-index:20;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--border-strong);
   background:var(--float-bg);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--text);font-size:18px;box-shadow:var(--shadow);
@@ -669,6 +719,9 @@ footer a:hover{color:var(--text);text-decoration:underline}
   #top-btn{right:14px;bottom:calc(14px + var(--safe-b));width:42px;height:42px}
 
   #player-modal{padding:0}
+  .xray-panel{width:100%;padding:14px 14px 18px;background:rgba(6,7,11,.93)}
+  .xray-muzik{top:10px;right:10px;max-width:calc(100% - 20px);font-size:12px}
+  .xray-gec{right:10px;bottom:calc(96px + var(--safe-b));font-size:13px}
   /* dokunmatikte 44px'lik hedef (§6.6.4) */
   #player-modal-controls button{width:44px;height:44px}
   #player-modal-controls .ic{width:22px;height:22px}

@@ -120,6 +120,7 @@
   <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
   <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
   <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5"/><path d="M12 8h.01"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></symbol>
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 21V9"/><path d="m7 12 5-5 5 5"/><path d="M5 3h14"/></symbol>
@@ -173,6 +174,7 @@
         <button id="player-modal-next" type="button" class="link-btn" title="Sonraki bölüm">Sonraki<svg class="ic" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
       </div>
       <div class="player-modal-right">
+        <button id="player-modal-xray" type="button" class="link-btn" aria-pressed="false" aria-controls="player-xray" title="Karakterler, seslendirmenler ve müzik (I)"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>Bilgi</button>
         <a id="player-modal-newtab" class="link-btn player-modal-cta" href="#" target="_blank" rel="noopener noreferrer">Ayrı sayfada aç</a>
         <button id="player-modal-close" type="button" aria-label="Kapat"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
       </div>
@@ -183,6 +185,9 @@
         <span id="player-modal-loading-hint" hidden>Yüklenmiyor mu? Yukarıdan "Ayrı sayfada aç"ı dene.</span>
       </div>
       <video id="player-modal-video" playsinline preload="metadata" hidden></video>
+      <div id="player-xray-muzik" class="xray-muzik" role="status" aria-live="polite" hidden></div>
+      <button id="player-xray-gec" type="button" class="xray-gec" hidden></button>
+      <aside id="player-xray" class="xray-panel" aria-label="Bölüm bilgisi" hidden></aside>
       <div id="player-modal-controls" hidden>
         <input id="player-modal-progress" type="range" min="0" max="100" value="0" step="0.1" title="Konum">
         <div id="player-modal-controls-row">

@@ -3,7 +3,7 @@
 //  - DATA_CACHE:  kaynak/b/<slug>.js ve info.json gibi talep üzerine gelen bölüm verisi. Tek bir
 //    kaynak/b dosyası 3.4 MB'a kadar çıkabiliyor (one-piece), sınırsız biriktirilirse cihazda
 //    yüzlerce MB'a ulaşıp kota hatasıyla SW'yi sessizce düşürüyordu. Bu yüzden LRU ile sınırlı.
-const SHELL_CACHE = 'tka-shell-v21';
+const SHELL_CACHE = 'tka-shell-v22';
 const DATA_CACHE = 'tka-data-v1';
 const KEEP = new Set([SHELL_CACHE, DATA_CACHE]);
 const DATA_CAP = 40;
@@ -17,11 +17,11 @@ const SHELL = ['./', 'index.html', 'style.css', 'kaynak/data.js', 'meta.js',
   // hepsi kabuk cache'inde. Listenin eksiksizliğini test/veri-butunlugu.test.js doğruluyor.
   'js/main.js', 'js/cards.js', 'js/data.js', 'js/dom.js', 'js/eslesme.js', 'js/links.js',
   'js/player-dom.js', 'js/player-video.js', 'js/player.js', 'js/progress.js', 'js/router.js', 'js/search.js',
-  'js/serit.js', 'js/state.js', 'js/store.js', 'js/theme.js', 'js/util.js', 'js/yedek.js',
+  'js/serit.js', 'js/state.js', 'js/store.js', 'js/theme.js', 'js/util.js', 'js/xray.js', 'js/xray-veri.js', 'js/yedek.js',
   'js/views/bolum-listesi.js', 'js/views/detail.js', 'js/views/legal.js', 'js/views/list.js',
   'js/views/yas-kapisi.js'];
 
-const isData = url => /\/kaynak\/b\/[^/]+\.js$/.test(url.pathname) || /\/kaynak\/animeler\/[^/]+\/info\.json$/.test(url.pathname);
+const isData = url => /\/kaynak\/b\/[^/]+\.js$/.test(url.pathname) || /\/kaynak\/x\/[^/]+\.json$/.test(url.pathname) || /\/kaynak\/animeler\/[^/]+\/info\.json$/.test(url.pathname);
 
 self.addEventListener('install', e => {
   // addAll tek bir dosyada bile patlarsa kurulum tümden başarısız olur; tek tek ekleyip

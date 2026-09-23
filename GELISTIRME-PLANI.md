@@ -1220,3 +1220,4 @@ iskelet ekranlar, SVG ikon sprite'ı, `prefers-reduced-motion` desteği. Aşağ�
 | 2026-09-22 | §7.6 | Google doğrulama dosyası eklendi; `scripts/social-gorsel.py` ile GitHub sosyal önizleme (1280×640) ve yeni `og-image.png` üretildi |
 | 2026-09-22 | §7.6 | `og:image` PNG yerine 141 KB JPEG (WhatsApp önizlemesi büyük dosyaları atlıyor) + `og:image:alt` |
 | 2026-09-22 | §2.5 | Kapak yükleme: preconnect, LCP kapağına öncelik, ilk kartlar eager, `decoding=async`, şeritlerde küçük kapak → masaüstünde kapak trafiği −%27 |
+| 2026-09-23 | yeni | Oynatıcı bilgi paneli (X-Ray): AniList karakter + seslendirmen, AnimeThemes OP/ED (`scripts/build-xray.js` → `kaynak/x/`), AniSkip ile "♪ Şu an çalıyor" ve "Opening'i geç"; duraklatınca panel açılıyor, `I` kısayolu |
